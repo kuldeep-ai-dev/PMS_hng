@@ -50,7 +50,8 @@ export async function GET(request: Request) {
             console.log('[API/download-invoice] Applying cryptographic digital signature to PDF...');
             try {
                 const { signPdfDocument } = await import('@/utils/signPdf');
-                finalBuffer = await signPdfDocument(rawPdfBuffer, settings.digital_signature_pfx_base64, settings.digital_signature_password);
+                const signed = await signPdfDocument(rawPdfBuffer, settings.digital_signature_pfx_base64, settings.digital_signature_password);
+                finalBuffer = Buffer.from(signed);
             } catch (sigErr: any) {
                 console.error('[API/download-invoice] Digital Signature error ignored for fallback:', sigErr);
             }

@@ -48,7 +48,8 @@ export async function GET(request: Request) {
             console.log('[API/download-grc] Applying cryptographic digital signature to PDF...');
             try {
                 const { signPdfDocument } = await import('@/utils/signPdf');
-                finalBuffer = await signPdfDocument(Buffer.from(rawPdfBuffer), settings.digital_signature_pfx_base64, settings.digital_signature_password);
+                const signed = await signPdfDocument(Buffer.from(rawPdfBuffer), settings.digital_signature_pfx_base64, settings.digital_signature_password);
+                finalBuffer = Buffer.from(signed);
             } catch (sigErr: any) {
                 console.error('[API/download-grc] Digital Signature error ignored for fallback:', sigErr);
             }
