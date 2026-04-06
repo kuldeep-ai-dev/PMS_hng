@@ -12,23 +12,40 @@ export async function GET(request: Request) {
 
     const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
-    const targetUrl = `http://localhost:3000/print-grc/${bookingId}?${params.toString()}`;
+
+    // For Browserless.io, we need an absolute public URL because Browserless cannot see "localhost"
+    const host = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const targetUrl = `${host}/print-grc/${bookingId}?${params.toString()}`;
 
     console.log('[API/download-grc] Generating PDF for:', targetUrl);
     let browser;
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-        });
+        const browserlessToken = process.env.BROWSERLESS_API_KEY;
+
+        if (browserlessToken) {
+            console.log('[API/download-grc] Using Browserless.io for remote PDF generation...');
+            browser = await puppeteer.connect({
+                browserWSEndpoint: `wss://chrome.browserless.io?token=${browserlessToken}`,
+            });
+        } else {
+            console.log('[API/download-grc] BROWSERLESS_API_KEY missing, falling back to local launch (may fail on Vercel)...');
+            browser = await puppeteer.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+            });
+        }
         const page = await browser.newPage();
 
         try {
             await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 30000 });
         } catch (e) {
-            console.warn('[API/download-grc] Localhost failed, trying 127.0.0.1...');
-            const fallbackUrl = targetUrl.replace('localhost', '127.0.0.1');
-            await page.goto(fallbackUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+            if (!browserlessToken) {
+                console.warn('[API/download-grc] Localhost failed, trying 127.0.0.1...');
+                const fallbackUrl = targetUrl.replace('localhost', '127.0.0.1');
+                await page.goto(fallbackUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+            } else {
+                throw e; // Browserless cannot access 127.0.0.1
+            }
         }
 
         const rawPdfBuffer = await page.pdf({
