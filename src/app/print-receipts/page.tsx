@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getMoneyReceiptsData } from '@/app/(dashboard)/operations/money-receipts/actions';
-import { generateRegnNo, formatCurrency } from '@/utils/billing';
+import { generateInvoiceNo, formatCurrency } from '@/utils/billing';
 import { cn } from '@/lib/utils';
 
 function PrintReceiptsContent() {
@@ -24,7 +24,7 @@ function PrintReceiptsContent() {
                     ...data.roomPayments.map((p: any) => ({
                         id: p.id,
                         date: p.created_at,
-                        regnNo: generateRegnNo(p.id, p.created_at),
+                        regnNo: generateInvoiceNo(p.id, p.created_at),
                         guestName: p.bookings?.guests?.name || 'Unknown',
                         roomNo: p.bookings?.rooms?.number || 'N/A',
                         source: 'Room Booking',
@@ -41,7 +41,7 @@ function PrintReceiptsContent() {
                     ...data.posPayments.map((p: any) => ({
                         id: p.id,
                         date: p.order_time,
-                        regnNo: generateRegnNo(p.id, p.order_time),
+                        regnNo: generateInvoiceNo(p.id, p.order_time),
                         guestName: p.guests?.name || 'Walk-in',
                         roomNo: p.rooms?.number || 'N/A',
                         source: 'Restaurant POS',
