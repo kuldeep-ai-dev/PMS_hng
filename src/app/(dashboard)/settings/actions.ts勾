@@ -1,0 +1,30 @@
+'use server';
+
+import fs from 'fs/promises';
+import path from 'path';
+import { revalidatePath } from 'next/cache';
+
+const SETTINGS_PATH = path.resolve(process.cwd(), 'src/data/hotel-settings.json');
+
+export async function getSettings() {
+    try {
+        const data = await fs.readFile(SETTINGS_PATH, 'utf-8');
+        return JSON.parse(data);
+    } catch (e) {
+        return {
+            hotel_name: "My Hotel",
+            currency: "INR",
+            currency_symbol: "₹",
+            gstin: "",
+            cgst_rate: 6,
+            sgst_rate: 6,
+            address: ""
+        };
+    }
+}
+
+export async function updateSettings(settings: any) {
+    await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+    revalidatePath('/settings');
+    return { success: true };
+}

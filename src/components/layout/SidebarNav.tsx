@@ -1,0 +1,256 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+    Home, Users, CalendarDays, Receipt, Settings, BedDouble,
+    ShieldAlert, Globe, History, Timer, UtensilsCrossed,
+    ChevronDown, LayoutDashboard, Building2, Monitor,
+    UserPlus, FileCheck, FileText, PackageSearch, LayoutGrid,
+    Utensils, Layout, UserCheck, Brush, BarChart3, MessageCircle,
+    TrendingUp, Coins, Users2, PieChart, LineChart, Zap, CalendarPlus
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    Home, Users, CalendarDays, Receipt, Settings, BedDouble,
+    ShieldAlert, Globe, History, Timer, UtensilsCrossed,
+    LayoutDashboard, Building2, Monitor, UserPlus, FileCheck,
+    FileText, PackageSearch, LayoutGrid, Utensils, Layout,
+    UserCheck, Brush, BarChart3, MessageCircle, TrendingUp,
+    Coins, Users2, PieChart, LineChart, Zap
+};
+
+type NavItem = {
+    label: string;
+    iconName: string;
+    href?: string;
+    items?: { label: string; href: string; iconName: string }[];
+};
+
+interface SidebarNavProps {
+    role: string;
+    onNavigate?: () => void;
+}
+
+export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
+    const pathname = usePathname();
+    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+        'Operations': true,
+        'Property': true
+    });
+    const toggleGroup = (label: string) => {
+        setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+    };
+
+    const isAdmin = role === 'admin' || role === 'owner' || role === 'manager';
+
+    let navGroups: NavItem[] = [
+        { label: 'Dashboard', iconName: 'LayoutDashboard', href: '/' },
+        {
+            label: 'Operations',
+            iconName: 'CalendarDays',
+            items: [
+                { label: 'Room Grid', href: '/front-desk', iconName: 'Monitor' },
+                { label: 'Check-In', href: '/check-in', iconName: 'UserPlus' },
+                { label: 'Advance Booking', href: '/operations/advance-booking', iconName: 'CalendarPlus' },
+                { label: 'Guests', href: '/guests', iconName: 'Users' },
+                { label: 'Corporate', href: '/companies', iconName: 'Building2' },
+                { label: 'Money Receipts', href: '/operations/money-receipts', iconName: 'Receipt' },
+                { label: 'Bill Verification', href: '/operations/verify-bill', iconName: 'FileCheck' },
+                { label: 'GRC', href: '/operations/grc', iconName: 'FileText' },
+                { label: 'Lost & Found', href: '/operations/lost-and-found', iconName: 'PackageSearch' },
+                { label: 'Day Closing', href: '/operations/day-closing', iconName: 'Timer' },
+            ]
+        },
+        {
+            label: 'Property',
+            iconName: 'BedDouble',
+            items: [
+                { label: role === 'front_desk' ? 'Manage Rooms' : 'Rooms Grid', href: '/rooms', iconName: 'LayoutGrid' },
+                { label: 'Restaurant POS', href: '/restaurant/pos', iconName: 'Utensils' },
+                { label: 'Rest. History', href: '/restaurant/order-history', iconName: 'History' },
+                { label: 'Rest. Receipts', href: '/restaurant/money-receipts', iconName: 'Coins' },
+                { label: 'Inventory & Stock', href: '/restaurant/inventory', iconName: 'PackageSearch' },
+                { label: 'Website Bookings', href: '/website-bookings', iconName: 'Globe' },
+            ]
+        },
+        ...(isAdmin ? [{
+            label: 'Admin Hub',
+            iconName: 'ShieldAlert',
+            items: [
+                { label: 'Master Suite', href: '/admin/master-suite', iconName: 'Layout' },
+                { label: 'Restaurant Master', href: '/admin/restaurant-master', iconName: 'UtensilsCrossed' },
+                { label: 'Audit Archives', href: '/admin/audit-logs', iconName: 'History' },
+                { label: 'Night Audit', href: '/admin/night-audit', iconName: 'Timer' },
+                { label: 'Admin Panel', href: '/admin', iconName: 'Settings' },
+                { label: 'Staff Management', href: '/admin/staff', iconName: 'UserCheck' },
+                { label: 'WhatsApp Hub', href: '/admin/whatsapp', iconName: 'MessageCircle' },
+                { label: 'Housekeeping Monitor', href: '/admin/housekeeping', iconName: 'Brush' },
+            ]
+        }] : []),
+        ...(isAdmin ? [{
+            label: 'Analytics',
+            iconName: 'BarChart3',
+            items: [
+                { label: 'WA Insights', href: '/admin/analytics/whatsapp', iconName: 'MessageCircle' },
+                { label: 'Finance', href: '/admin/analytics/finance', iconName: 'Coins' },
+                { label: 'Trends', href: '/admin/analytics/trends', iconName: 'TrendingUp' },
+                { label: 'Staff Performance', href: '/admin/analytics/staff', iconName: 'Users2' },
+                { label: 'Business Growth', href: '/admin/analytics/growth', iconName: 'Zap' },
+                { label: 'Rest. Revenue', href: '/admin/analytics/restaurant/revenue', iconName: 'Utensils' },
+                { label: 'Rest. Preferences', href: '/admin/analytics/restaurant/preferences', iconName: 'PieChart' },
+            ]
+        }] : []),
+        ...(isAdmin ? [{ label: 'Settings', iconName: 'Settings', href: '/settings' }] : []),
+    ];
+
+    if (role === 'cleaning_staff') {
+        navGroups = [
+            { label: 'Dashboard / Tasks', iconName: 'Home', href: '/' },
+            ...(isAdmin ? [{ label: 'Profile Settings', iconName: 'Settings', href: '/settings' }] : []),
+        ];
+    }
+
+    const isActive = (href: string) => {
+        if (href === '/' && pathname !== '/') return false;
+        return pathname === href || pathname?.startsWith(href + '/');
+    };
+
+    // ────────────────────────────────────────────────────────
+    // FLATTENING LOGIC FOR FRONT DESK
+    // ────────────────────────────────────────────────────────
+    const isFrontDesk = role === 'front_desk';
+
+    return (
+        <nav className="flex-1 flex flex-col justify-start gap-1 overflow-y-auto px-4 py-4 custom-scrollbar">
+            {navGroups.map((group) => {
+                const Icon = iconMap[group.iconName] || Home;
+                const isGroupActive = group.items?.some(item => isActive(item.href)) || (group.href && isActive(group.href));
+
+                if (group.href) {
+                    return (
+                        <Link
+                            key={group.label}
+                            href={group.href}
+                            onClick={onNavigate}
+                            className={cn(
+                                "shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group",
+                                isGroupActive
+                                    ? "bg-teal-500 text-white font-bold shadow-lg shadow-teal-100"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-semibold"
+                            )}
+                        >
+                            <Icon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", isGroupActive ? "text-white" : "text-slate-400")} />
+                            <span className="text-[13px] tracking-tight">{group.label}</span>
+                        </Link>
+                    );
+                }
+
+                // If Front Desk, flatten the Operations and Property groups
+                if (isFrontDesk && (group.label === 'Operations' || group.label === 'Property')) {
+                    return (
+                        <div key={group.label} className="flex flex-col gap-1 mb-2">
+                            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 opacity-70">
+                                {group.label}
+                            </div>
+                            {group.items?.map(sub => {
+                                const SubIcon = iconMap[sub.iconName] || LayoutDashboard;
+                                const isSubActive = isActive(sub.href);
+                                return (
+                                    <Link
+                                        key={sub.href}
+                                        href={sub.href}
+                                        onClick={onNavigate}
+                                        className={cn(
+                                            "shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group",
+                                            isSubActive
+                                                ? "bg-teal-500 text-white font-bold shadow-lg shadow-teal-100"
+                                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-semibold"
+                                        )}
+                                    >
+                                        <SubIcon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", isSubActive ? "text-white" : "text-slate-400")} />
+                                        <span className="text-[13px] tracking-tight">{sub.label}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    );
+                }
+
+                const isOpen = openGroups[group.label];
+
+                return (
+                    <div key={group.label} className="shrink-0 flex flex-col gap-1">
+                        <button
+                            onClick={() => toggleGroup(group.label)}
+                            className={cn(
+                                "w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group",
+                                isGroupActive && !isOpen ? "bg-teal-50 text-teal-700 font-bold" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-semibold"
+                            )}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "p-1.5 rounded-lg transition-colors",
+                                    isGroupActive && !isOpen ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600"
+                                )}>
+                                    <Icon className="w-4 h-4" />
+                                </div>
+                                <span className="text-[13px] tracking-tight">{group.label}</span>
+                            </div>
+                            <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform duration-300", isOpen ? "rotate-180" : "")} />
+                        </button>
+
+                        <div
+                            className={cn(
+                                "overflow-hidden transition-all duration-500 ease-in-out relative",
+                                isOpen ? "max-h-[600px] opacity-100 mt-1" : "max-h-0 opacity-0"
+                            )}
+                        >
+                            {/* Vertical Connector Line */}
+                            <div className="absolute left-[23px] top-0 bottom-4 w-px bg-slate-200" />
+
+                            <div className="pl-8 pr-1 pb-2 flex flex-col gap-1">
+                                {group.items?.map(sub => {
+                                    const SubIcon = iconMap[sub.iconName] || LayoutDashboard;
+                                    const isSubActive = isActive(sub.href);
+
+                                    return (
+                                        <Link
+                                            key={sub.href}
+                                            href={sub.href}
+                                            onClick={onNavigate}
+                                            className={cn(
+                                                "relative flex items-center gap-3 px-3 py-2 text-[13px] rounded-lg transition-all duration-200 group/sub",
+                                                isSubActive
+                                                    ? "bg-teal-50 text-teal-700 font-bold"
+                                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                                            )}
+                                        >
+                                            {/* Horizontal connector stub */}
+                                            <div className={cn(
+                                                "absolute -left-[14px] top-1/2 -translate-y-1/2 w-3 h-px bg-slate-200",
+                                                isSubActive && "bg-teal-200 w-4 shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                                            )} />
+
+                                            <SubIcon className={cn(
+                                                "w-4 h-4 transition-all duration-300",
+                                                isSubActive ? "text-teal-600 scale-110" : "text-slate-400 group-hover/sub:text-slate-600 group-hover/sub:scale-105"
+                                            )} />
+                                            <span className="truncate">{sub.label}</span>
+
+                                            {isSubActive && (
+                                                <div className="absolute right-2 w-1 h-4 bg-teal-500 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
+                                            )}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </nav>
+    );
+}
