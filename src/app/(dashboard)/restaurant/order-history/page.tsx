@@ -88,10 +88,10 @@ export default function OrderHistory() {
 
             {/* List View */}
             <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="max-h-[650px] overflow-y-auto overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-100">
+                        <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
+                            <tr className="border-b border-slate-100">
                                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Bill Info</th>
                                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Guest / Location</th>
                                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Items Detail</th>

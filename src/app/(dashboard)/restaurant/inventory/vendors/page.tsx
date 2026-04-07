@@ -12,7 +12,8 @@ import {
     User,
     ChevronRight,
     Building2,
-    Briefcase
+    Briefcase,
+    Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { getInventoryVendors, addInventoryVendor } from '../actions';
@@ -24,6 +25,7 @@ export default function VendorManagementPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [isPending, setIsPending] = useState(false);
     const [newVendor, setNewVendor] = useState({
         name: '',
         contact_person: '',
@@ -52,6 +54,7 @@ export default function VendorManagementPage() {
     const handleAddVendor = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            setIsPending(true);
             await addInventoryVendor(newVendor);
             toast.success('Vendor added successfully');
             setIsAddModalOpen(false);
@@ -59,6 +62,8 @@ export default function VendorManagementPage() {
             loadData();
         } catch (error) {
             toast.error('Failed to add vendor');
+        } finally {
+            setIsPending(false);
         }
     };
 
@@ -240,9 +245,11 @@ export default function VendorManagementPage() {
 
                             <button
                                 type="submit"
-                                className="w-full py-5 bg-orange-600 text-white rounded-[20px] font-black text-sm shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all"
+                                disabled={isPending}
+                                className="w-full py-5 bg-orange-600 text-white rounded-[20px] font-black text-sm shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-2"
                             >
-                                REGISTER VENDOR & ENABLE POs
+                                {isPending && <Loader2 className="w-5 h-5 animate-spin" />}
+                                {isPending ? 'PROCESSING...' : 'REGISTER VENDOR & ENABLE POs'}
                             </button>
                         </form>
                     </div>

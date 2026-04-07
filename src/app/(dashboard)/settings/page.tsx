@@ -681,20 +681,40 @@ export default function SettingsPage() {
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Booking Template</p>
-                                    <p className="text-sm font-mono text-slate-800">{process.env.NEXT_PUBLIC_WA_BOOKING_TEMPLATE || 'booking_confirmation'}</p>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Booking Template</label>
+                                    <input
+                                        type="text"
+                                        value={settings.whatsapp_booking_template || ''}
+                                        onChange={e => setSettings({ ...settings, whatsapp_booking_template: e.target.value })}
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
+                                    />
                                 </div>
                                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Checkout Template</p>
-                                    <p className="text-sm font-mono text-slate-800">{process.env.NEXT_PUBLIC_WA_CHECKOUT_TEMPLATE || 'checkout_thankyou'}</p>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Checkout Template</label>
+                                    <input
+                                        type="text"
+                                        value={settings.whatsapp_checkout_template || ''}
+                                        onChange={e => setSettings({ ...settings, whatsapp_checkout_template: e.target.value })}
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
+                                    />
+                                </div>
+                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Restaurant Template</label>
+                                    <input
+                                        type="text"
+                                        value={settings.whatsapp_restaurant_template || ''}
+                                        onChange={e => setSettings({ ...settings, whatsapp_restaurant_template: e.target.value })}
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
+                                    />
                                 </div>
                             </div>
 
+
                             <div className="bg-green-50/60 border border-green-100 rounded-xl p-5">
                                 <p className="text-sm text-slate-700 font-semibold mb-3">🧪 Test WhatsApp Delivery</p>
-                                <div className="flex gap-3 items-end">
+                                <div className="flex gap-3 items-end mb-5">
                                     <div className="flex-1">
                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Phone Number (with country code)</label>
                                         <input
@@ -728,16 +748,49 @@ export default function SettingsPage() {
                                         Send Test
                                     </button>
                                 </div>
-                                {waResult && (
-                                    <div className={`mt-3 p-3 rounded-lg text-sm border ${waResult.success
-                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                                        : 'bg-red-50 border-red-200 text-red-800'
-                                        }`}>
-                                        <p className="font-medium">{waResult.success ? '✅ Message sent successfully!' : `❌ ${waResult.error || waResult.message || 'Failed to send'}`}</p>
-                                        {waResult.messageId && <p className="text-xs mt-1 font-mono">ID: {waResult.messageId}</p>}
+
+                                <div className="p-4 bg-white rounded-lg border border-green-100 space-y-4">
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-700 mb-1">Meta Webhook URL</p>
+                                        <p className="text-[10px] text-slate-500 mb-2">Copy this into "Callback URL" in Meta App Settings → WhatsApp → Configuration.</p>
+                                        <div className="flex">
+                                            <code className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-l-lg text-xs font-mono text-slate-800 break-all">
+                                                {typeof window !== 'undefined' ? `${window.location.origin}/api/whatsapp/webhook` : '...'}
+                                            </code>
+                                            <button
+                                                onClick={() => handleCopy(`${window.location.origin}/api/whatsapp/webhook`, 'wa-url')}
+                                                className="px-4 bg-slate-50 border border-l-0 border-slate-200 rounded-r-lg text-slate-500 hover:bg-slate-100 transition-colors"
+                                            >
+                                                {copiedKey === 'wa-url' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                            </button>
+                                        </div>
                                     </div>
-                                )}
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-700 mb-1">Verify Token</p>
+                                        <p className="text-[10px] text-slate-500 mb-2">Copy this into "Verify Token" field in Meta App Settings.</p>
+                                        <div className="flex">
+                                            <code className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-l-lg text-xs font-mono text-slate-800">
+                                                geny_pms_wa_verify_2026
+                                            </code>
+                                            <button
+                                                onClick={() => handleCopy('geny_pms_wa_verify_2026', 'wa-token')}
+                                                className="px-4 bg-slate-50 border border-l-0 border-slate-200 rounded-r-lg text-slate-500 hover:bg-slate-100 transition-colors"
+                                            >
+                                                {copiedKey === 'wa-token' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+                            {waResult && (
+                                <div className={`mt-3 p-3 rounded-lg text-sm border ${waResult.success
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                    : 'bg-red-50 border-red-200 text-red-800'
+                                    }`}>
+                                    <p className="font-medium">{waResult.success ? '✅ Message sent successfully!' : `❌ ${waResult.error || waResult.message || 'Failed to send'}`}</p>
+                                    {waResult.messageId && <p className="text-xs mt-1 font-mono">ID: {waResult.messageId}</p>}
+                                </div>
+                            )}
 
                             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
                                 <p className="text-sm text-amber-800">
@@ -752,7 +805,7 @@ export default function SettingsPage() {
                     )}
                 </BentoCard>
 
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

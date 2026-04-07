@@ -123,6 +123,52 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Pr
     }
 }
 
+/**
+ * Generate Restaurant Bill PDF using Puppeteer.
+ */
+async function generateRestaurantBillPDF(orderId: string): Promise<Uint8Array> {
+    const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
+    const url = `http://localhost:3000/print-pos-bill/${orderId}?_token=${pdfToken}`;
+
+    console.log('[WhatsApp] Generating Restaurant PDF for:', url);
+    let browser;
+    try {
+        browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        });
+        const page = await browser.newPage();
+
+        // Emulate thermal printer width if needed, but the page already has 80mm CSS
+        await page.setViewport({ width: 400, height: 800 });
+
+        try {
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+        } catch (e) {
+            console.warn('[WhatsApp] Localhost failed, trying 127.0.0.1...');
+            const fallbackUrl = url.replace('localhost', '127.0.0.1');
+            await page.goto(fallbackUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        }
+
+        const rawPdfBuffer = await page.pdf({
+            width: '80mm',
+            printBackground: true,
+            margin: { top: '0', right: '0', bottom: '0', left: '0' }
+        });
+
+        await browser.close();
+        return rawPdfBuffer as unknown as Uint8Array;
+    } catch (err: any) {
+        if (browser) await browser.close();
+        console.error('[WhatsApp] Restaurant PDF Error:', err.message);
+        throw new Error(`Restaurant PDF fail: ${err.message}`);
+    }
+}
+
+// ─── Core WhatsApp API Call ───────────────────────────────────────────────────
+// ... (lines 126-451 exist below, I'll use the proper replacement range)
+
+
 // ─── Core WhatsApp API Call ───────────────────────────────────────────────────
 
 /**
@@ -271,7 +317,7 @@ export async function sendBookingWhatsApp(bookingId: string) {
 
         const result = await sendWhatsAppTemplate({
             to: phone,
-            templateName: process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation',
+            templateName: settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation',
             headerDocUrl: pdfUrl,
             headerDocFilename: `Provisional_Receipt_${bookingId.split('-')[0].toUpperCase()}.pdf`,
             bodyParams: [
@@ -356,7 +402,7 @@ export async function sendCheckoutWhatsApp(bookingId: string) {
 
         const result = await sendWhatsAppTemplate({
             to: phone,
-            templateName: process.env.WHATSAPP_CHECKOUT_TEMPLATE || 'checkout_thankyou',
+            templateName: settings.whatsapp_checkout_template || process.env.WHATSAPP_CHECKOUT_TEMPLATE || 'checkout_thankyou',
             headerDocUrl: pdfUrl,
             headerDocFilename: `Tax_Invoice_${bookingId.split('-')[0].toUpperCase()}.pdf`,
             bodyParams: [
@@ -409,7 +455,7 @@ export async function testSendWhatsApp(phoneNumber: string) {
 
         const result = await sendWhatsAppTemplate({
             to: phone,
-            templateName: process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation',
+            templateName: settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation',
             headerDocUrl: settings.logo_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
             headerDocFilename: 'Test_Invoice.pdf',
             bodyParams: [
@@ -448,3 +494,84 @@ export async function testSendWhatsApp(phoneNumber: string) {
         return { success: false, error: err.message };
     }
 }
+
+/**
+ * Send restaurant order thank-you WhatsApp with bill PDF and rating link.
+ */
+export async function sendRestaurantOrderWhatsApp(orderId: string) {
+    try {
+        const settings = await getSettings();
+        if (!settings.whatsapp_enabled) {
+            console.log('[WhatsApp] Restaurant disabled in settings. Skipping.');
+            return { success: false, message: 'WhatsApp disabled' };
+        }
+
+        const supabase = await createClient();
+        const { data: order, error } = await supabase
+            .from('restaurant_orders')
+            .select('*')
+            .eq('id', orderId)
+            .single();
+
+        if (error || !order?.customer_mobile) {
+            console.log('[WhatsApp] Skipping restaurant order. No mobile for:', orderId);
+            return { success: false, message: 'No phone found' };
+        }
+
+        const phone = formatPhoneForWhatsApp(order.customer_mobile);
+        const guestName = (order.customer_name || 'Guest').split(' ')[0];
+        const billNo = order.bill_no || 'N/A';
+        const totalAmount = (order.total_amount || 0).toLocaleString('en-IN');
+
+        // Generate & upload PDF
+        const pdfBuffer = await generateRestaurantBillPDF(orderId);
+        const pdfFilename = `Bill_${billNo}_${Date.now()}.pdf`;
+        const pdfUrl = await uploadPdfToR2(pdfBuffer, pdfFilename);
+
+        // Generate a tracking ID for the "Rate Us" button URL (if supported by template)
+        const trackingId = crypto.randomUUID().split('-')[0];
+
+        const result = await sendWhatsAppTemplate({
+            to: phone,
+            templateName: settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'restaurant_thankyou',
+            headerDocUrl: pdfUrl,
+            headerDocFilename: `Bill_${billNo}.pdf`,
+            bodyParams: [
+                guestName,
+                settings.hotel_name,
+                billNo,
+                totalAmount
+            ],
+            buttonUrlSuffix: trackingId, // Useful if the template has a dynamic URL button
+        });
+
+        console.log('[WhatsApp] Restaurant WhatsApp result:', result);
+
+        // Save tracking record if message was sent successfully
+        if (result.success && result.messageId) {
+            try {
+                await supabase.from('whatsapp_analytics').insert({
+                    wamid: result.messageId,
+                    booking_id: null, // Restaurant order doesn't always have a room booking
+                    restaurant_order_id: orderId,
+                    status: 'sent',
+                    template_type: 'restaurant_bill',
+                    guest_name: order.customer_name || 'Guest',
+                    guest_phone: phone,
+                    destination_url: settings.google_review_url || null,
+                    tracking_id: trackingId,
+                    sent_at: new Date().toISOString(),
+                });
+                console.log('[WhatsApp] Analytics record saved for restaurant message:', result.messageId);
+            } catch (analyticsErr: any) {
+                console.warn('[WhatsApp] Failed to save restaurant analytics:', analyticsErr.message);
+            }
+        }
+
+        return result;
+    } catch (err: any) {
+        console.error('[WhatsApp] Error in sendRestaurantOrderWhatsApp:', err.message);
+        return { success: false, message: err.message };
+    }
+}
+

@@ -108,7 +108,20 @@ export default function MenuManagement() {
     }
   };
 
-  if (loading || !mounted) return <div className="p-8 text-center text-slate-500">Loading menu data...</div>;
+  if (loading || !mounted) {
+    return (
+      <div className="flex flex-col gap-6 w-full max-w-[1600px] mx-auto animate-pulse">
+        <div className="space-y-2">
+          <div className="h-8 w-48 bg-slate-100 rounded-lg" />
+          <div className="h-4 w-64 bg-slate-50 rounded" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-4 h-[500px] bg-white rounded-2xl border border-slate-100" />
+          <div className="lg:col-span-8 h-[600px] bg-white rounded-2xl border border-slate-100" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-[1600px] mx-auto h-full pb-10">

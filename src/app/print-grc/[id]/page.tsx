@@ -46,7 +46,7 @@ export default async function PrintGRCPage({
             </div>
 
             {/* GRC Document Container */}
-            <div className="max-w-[850px] mx-auto bg-white border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.05)] print:border-0 print:shadow-none p-6 flex flex-col relative overflow-hidden">
+            <div className="max-w-[850px] mx-auto bg-white border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.05)] print:border-0 print:shadow-none p-8 flex flex-col relative overflow-hidden min-h-[1050px]">
 
                 {/* Decorative Pattern Background (CSS) */}
                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none grc-pattern" />
@@ -55,11 +55,11 @@ export default async function PrintGRCPage({
                 <div className="grid grid-cols-3 items-start mb-4 relative z-10">
                     <div className="space-y-1.5 text-[11px] font-sans">
                         <p className="flex items-center gap-2">
-                            <span className="font-bold text-slate-400 uppercase tracking-widest text-[9px]">GR Card No.</span>
+                            <span className="font-bold text-slate-600 uppercase tracking-widest text-[9px]">GR Card No.</span>
                             <span className="border-b border-slate-300 font-bold text-slate-900 min-w-[120px] pb-0.5 tracking-tight">GRC-{bookingId.slice(-8).toUpperCase()}</span>
                         </p>
                         <p className="flex items-center gap-2">
-                            <span className="font-bold text-slate-400 uppercase tracking-widest text-[9px]">Bill Ref.</span>
+                            <span className="font-bold text-slate-600 uppercase tracking-widest text-[9px]">Bill Ref.</span>
                             <span className="border-b border-slate-300 font-bold text-slate-900 min-w-[120px] pb-0.5 tracking-tight">{bookingRef}</span>
                         </p>
                     </div>
@@ -67,9 +67,9 @@ export default async function PrintGRCPage({
                     <div className="flex flex-col items-center justify-center">
                         <div className="relative mb-2">
                             {settings.logo_url ? (
-                                <img src={settings.logo_url} alt="Hotel Logo" className="h-16 w-auto object-contain relative z-10" />
+                                <img src={settings.logo_url} alt="Hotel Logo" className="h-14 w-auto object-contain relative z-10" />
                             ) : (
-                                <div className="h-16 w-32 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-[9px] uppercase font-black tracking-widest border border-dashed border-slate-200">No Logo</div>
+                                <div className="h-14 w-32 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 text-[9px] uppercase font-black tracking-widest border border-dashed border-slate-200">No Logo</div>
                             )}
                             <div className="absolute -inset-4 bg-teal-500/5 blur-3xl rounded-full" />
                         </div>
@@ -94,86 +94,86 @@ export default async function PrintGRCPage({
 
                 <div className="text-center mb-6 relative">
                     <div className="text-center mb-2 relative z-10 flex items-center justify-center gap-4">
-                        <span className="text-4xl font-black opacity-[0.03] tracking-[1em] text-slate-900 uppercase pointer-events-none">REGISTRATION</span>
+                        <span className="text-4xl font-black opacity-[0.06] tracking-[1em] text-slate-900 uppercase pointer-events-none">REGISTRATION</span>
                     </div>
                     <h1 className="text-xl font-black tracking-[0.25em] uppercase text-slate-900 relative z-10">Guest Registration Card</h1>
                     <div className="h-1 w-12 bg-teal-500 mx-auto mt-2 rounded-full" />
                 </div>
 
                 {/* Primary Guest Info Grid */}
-                <div className="space-y-2 text-xs font-serif relative z-10">
+                <div className="space-y-3 text-xs font-serif relative z-10">
                     <div className="grid grid-cols-1">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-500 mb-0.5">Full Name</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Full Name</span>
                             <span className="border-b-2 border-slate-950 flex-1 uppercase font-black text-base tracking-tight pb-0.5">{guest.name}</span>
                         </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Contact No</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Contact No</span>
                             <span className="border-b border-slate-200 flex-1 font-bold text-slate-800 pb-0.5">{guest.phone}</span>
                         </p>
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Mobile</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Mobile</span>
                             <span className="border-b border-slate-200 flex-1 font-bold text-slate-800 pb-0.5">{guest.phone}</span>
                         </p>
                     </div>
 
                     <div className="grid grid-cols-1">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Residential Address</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Residential Address</span>
                             <span className="border-b border-slate-200 flex-1 italic text-slate-600 pb-0.5">{guest.address || '__________________________________________________________________________________________'}</span>
                         </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">City</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">City</span>
                             <span className="border-b border-slate-200 flex-1 uppercase font-bold text-slate-800 pb-0.5">{guest.city || '_________________'}</span>
                         </p>
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Country</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Country</span>
                             <span className="border-b border-slate-200 flex-1 uppercase font-bold text-slate-800 pb-0.5">{guest.country || 'India'}</span>
                         </p>
                     </div>
 
                     <div className="grid grid-cols-1">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Identity Reference</span>
-                            <span className="border-b border-slate-200 flex-1 uppercase font-bold text-teal-700 pb-0.5">{guest.passport_number ? 'Passport: ' + guest.passport_number : 'ID Type: Aadhar / Government ID'}</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Identity Reference</span>
+                            <span className="border-b border-slate-200 flex-1 uppercase font-bold text-teal-800 pb-0.5">{guest.passport_number ? 'Passport: ' + guest.passport_number : 'ID Type: Aadhar / Government ID'}</span>
                         </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Arrival Date / Time</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Arrival Date / Time</span>
                             <span className="border-b border-slate-200 flex-1 font-bold text-slate-800 pb-0.5">{new Date(booking.check_in_date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                         </p>
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Departure Date / Time</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Departure Date / Time</span>
                             <span className="border-b border-slate-200 flex-1 font-bold text-slate-800 pb-0.5">{new Date(booking.check_out_date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                         </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Coming From</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Coming From</span>
                             <span className="border-b border-slate-200 flex-1 italic text-slate-600 pb-0.5">{booking.coming_from || '_________________'}</span>
                         </p>
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Next Destination</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Next Destination</span>
                             <span className="border-b border-slate-200 flex-1 italic text-slate-600 pb-0.5">{booking.next_destination || '_________________'}</span>
                         </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Nationality</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Nationality</span>
                             <span className="border-b border-slate-200 flex-1 uppercase font-bold text-slate-800 pb-0.5">{guest.country || 'Indian'}</span>
                         </p>
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Purpose of Visit</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Purpose</span>
                             <span className="border-b border-slate-200 flex-1 italic text-slate-600 pb-0.5">{booking.purpose_of_visit || 'Leisure'}</span>
                         </p>
                     </div>
@@ -182,29 +182,29 @@ export default async function PrintGRCPage({
                 {/* Management Terms & Conditions Area */}
                 <div className="mt-4 border-2 border-slate-950/20 rounded-lg p-3 relative bg-slate-50/50">
                     <div className="flex justify-between items-center mb-1.5">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Management Terms & Conditions</div>
-                        <div className="text-[9px] font-bold text-slate-600 italic">Check-in: {settings.check_in_time || '12:00 PM'} | Check-out: {settings.check_out_time || '11:00 AM'}</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-600">Management Terms & Conditions</div>
+                        <div className="text-[9px] font-bold text-slate-700 italic">Check-in: {settings.check_in_time || '12:00 PM'} | Check-out: {settings.check_out_time || '11:00 AM'}</div>
                     </div>
-                    <p className="text-[8px] leading-snug text-slate-700 text-justify font-medium">
-                        The Management will not be held responsible for the Loss / Theft of any valuable / Cash. All valuables should be deposited with the Front Office Cashier. Early Check-in or Late Check-out will be subject to availability and charged as per the Hotel policy.
+                    <p className="text-[9px] leading-snug text-slate-800 text-justify font-medium">
+                        The Management will not be held responsible for the Loss / Theft of any valuable / Cash. All valuables should be deposited with the Front Office Cashier. Early Check-in or Late Check-out subject to availability.
                     </p>
-                    <div className="mt-2 text-[10px] font-serif font-bold text-right italic text-slate-400">
+                    <div className="mt-2 text-[10px] font-serif font-bold text-right italic text-slate-600">
                         Guest Signature _________________________
                     </div>
                 </div>
 
                 {/* Secondary Info Section */}
-                <div className="mt-3 space-y-4 text-xs font-serif">
+                <div className="mt-4 space-y-3 text-xs font-serif">
                     <div className="grid grid-cols-2 gap-4">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Date of Birth / Age</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">DOB / Age</span>
                             <span className="border-b border-slate-200 flex-1 italic text-slate-800 pb-0.5">
                                 {guest.dob ? new Date(guest.dob).toLocaleDateString('en-IN') : '_________________'}
-                                {guest.age ? ` (${guest.age} Years)` : ''}
+                                {guest.age ? ` (${guest.age} Yrs)` : ''}
                             </span>
                         </p>
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Email</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Email</span>
                             <span className="border-b border-slate-200 flex-1 lowercase text-slate-600 pb-0.5 whitespace-nowrap">{guest.email || '_________________'}</span>
                         </p>
                     </div>
@@ -240,42 +240,42 @@ export default async function PrintGRCPage({
                 )}
 
                 {/* Logistics */}
-                <div className="mt-2 space-y-2 text-xs font-serif opacity-80">
+                <div className="mt-4 space-y-3 text-xs font-serif opacity-90">
                     <div className="grid grid-cols-3 gap-6">
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Mode of Transport</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Transport</span>
                             <span className="border-b border-slate-200 flex-1 italic text-slate-600 pb-0.5">_________</span>
                         </p>
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Vehicle No.</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Vehicle No.</span>
                             <span className="border-b border-slate-200 flex-1 italic text-slate-600 pb-0.5">_________</span>
                         </p>
                         <p className="flex items-end gap-3">
-                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-400 mb-0.5">Driver Name</span>
+                            <span className="font-sans font-black uppercase tracking-widest text-[9px] text-slate-600 mb-0.5">Driver Name</span>
                             <span className="border-b border-slate-200 flex-1 italic text-slate-600 pb-0.5">_________</span>
                         </p>
                     </div>
                 </div>
 
                 {/* Settlement Method */}
-                <div className="mt-3 flex flex-wrap gap-x-10 gap-y-3 text-[10px] font-sans font-black items-center py-4 border-y border-slate-100 bg-slate-50/30">
-                    <span className="uppercase tracking-widest text-slate-500">Settlement Preference:</span>
+                <div className="mt-4 flex flex-wrap gap-x-10 gap-y-3 text-[10px] font-sans font-black items-center py-3 border-y border-slate-100 bg-slate-50/30">
+                    <span className="uppercase tracking-widest text-slate-600">Settlement Preference:</span>
                     <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 border-2 border-slate-300 bg-white rounded-md flex items-center justify-center">
-                        </div> <span>CASH</span>
+                        <div className="w-5 h-5 border-2 border-slate-400 bg-white rounded flex items-center justify-center">
+                        </div> <span className="text-slate-900">CASH</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 border-2 border-slate-300 bg-white rounded-md flex items-center justify-center">
-                        </div> <span>UPI/ONLINE</span>
+                        <div className="w-5 h-5 border-2 border-slate-400 bg-white rounded flex items-center justify-center">
+                        </div> <span className="text-slate-900">UPI</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 border-2 border-slate-300 bg-white rounded-md flex items-center justify-center">
-                        </div> <span>CARD</span>
+                        <div className="w-5 h-5 border-2 border-slate-400 bg-white rounded flex items-center justify-center">
+                        </div> <span className="text-slate-900">CARD</span>
                     </div>
                 </div>
 
                 {/* Room and Advance Table */}
-                <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 shadow-sm">
+                <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 shadow-sm">
                     <table className="w-full border-collapse text-[11px] font-sans">
                         <thead>
                             <tr className="bg-white border-b-2 border-slate-900 text-slate-900">
@@ -287,10 +287,10 @@ export default async function PrintGRCPage({
                             </tr>
                         </thead>
                         <tbody>
-                            <tr className="h-8 text-center text-sm bg-white">
-                                <td className="p-2 text-left font-black border-r border-slate-200">
+                            <tr className="h-10 text-center text-sm bg-white">
+                                <td className="p-2 text-left font-black border-r border-slate-200 leading-tight">
                                     <p className="text-xl">#{room.number}</p>
-                                    <p className="text-[9px] uppercase text-slate-400 tracking-tighter">{room.type}</p>
+                                    <p className="text-[9px] uppercase text-slate-500 tracking-tighter">{room.type}</p>
                                 </td>
                                 <td className="p-2 font-black text-slate-900 border-r border-slate-200">
                                     {settings.currency_symbol || '₹'}{Number(room.base_rate).toLocaleString()}
@@ -299,20 +299,20 @@ export default async function PrintGRCPage({
                                 <td className="p-2 font-bold text-slate-700 border-r border-slate-200">{booking.extra_beds || '—'}</td>
                                 <td className="p-2 text-left bg-slate-50" colSpan={2}>
                                     <div className="space-y-1.5 font-bold text-[10px]">
-                                        <p className="flex justify-between"><span>Payment Settled:</span> <span className="text-emerald-700 bg-emerald-50 px-1 rounded">{settings.currency_symbol || '₹'}{totalPaid.toLocaleString()}</span></p>
-                                        <p className="flex justify-between text-slate-500"><span>Invoice ID:</span> <span className="font-bold text-slate-900 ml-2 tracking-tight uppercase">{invoiceNumber}</span></p>
+                                        <p className="flex justify-between text-slate-700"><span>Payment Settled:</span> <span className="text-emerald-800 bg-emerald-50 px-1 rounded">{settings.currency_symbol || '₹'}{totalPaid.toLocaleString()}</span></p>
+                                        <p className="flex justify-between text-slate-600"><span>Ref ID:</span> <span className="font-bold text-slate-900 ml-2 tracking-tight uppercase">{invoiceNumber.slice(-8)}</span></p>
                                     </div>
                                 </td>
                             </tr>
                             <tr className="bg-white border-t-2 border-slate-900">
                                 <td className="p-2 text-left font-black uppercase" colSpan={4}>
                                     <div className="flex items-center gap-4">
-                                        <span className="text-slate-400 text-[9px] tracking-widest">Master Invoice No:</span>
+                                        <span className="text-slate-600 text-[10px] tracking-widest">Master Invoice No:</span>
                                         <span className="font-black text-lg text-slate-950 tracking-tighter uppercase">{invoiceNumber}</span>
                                     </div>
                                 </td>
                                 <td className="p-2 text-right font-black uppercase" colSpan={2}>
-                                    <div className="flex items-center justify-end gap-2 text-slate-500">
+                                    <div className="flex items-center justify-end gap-2 text-slate-600 text-[10px]">
                                         <span>Issued:</span>
                                         <span className="text-slate-900">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                                     </div>
@@ -326,8 +326,7 @@ export default async function PrintGRCPage({
                 <footer className="mt-auto pt-8 border-slate-900 px-4 font-sans uppercase relative z-10 grid grid-cols-3 items-end gap-12 overflow-visible">
                     <div className="flex flex-col items-center text-center">
                         <div className="w-full border-b-2 border-slate-300 border-dashed h-8 mb-3"></div>
-                        <p className="text-[10px] font-black tracking-[0.2em] text-slate-900 pt-3 w-full">Receptionist Signature</p>
-                        <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase opacity-60">Verification Required</p>
+                        <p className="text-[10px] font-black tracking-[0.2em] text-slate-900 pt-2 w-full">Receptionist Signature</p>
                     </div>
 
                     <div className="flex flex-col items-center group pb-1">
@@ -338,8 +337,8 @@ export default async function PrintGRCPage({
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                 </div>
                                 <div className="flex flex-col text-left">
-                                    <span className="text-[10px] font-black text-green-800 leading-none mb-0.5">Signature Valid</span>
-                                    <span className="text-[6px] font-medium text-green-700 leading-tight uppercase tracking-widest whitespace-nowrap">Digitally signed by administrator<br />Reference: {invoiceNumber}</span>
+                                    <span className="text-[10px] font-black text-green-800 leading-none mb-0.5">SIGNATURE VALID</span>
+                                    <span className="text-[6px] font-medium text-green-700 leading-tight uppercase tracking-widest whitespace-nowrap">DIGITALLY SIGNED<br />REF: {invoiceNumber.slice(-8)}</span>
                                 </div>
                             </div>
                         )}
@@ -354,13 +353,12 @@ export default async function PrintGRCPage({
                     <div className="flex flex-col items-center text-center">
                         <div className="w-full h-8 mb-3 flex items-end justify-center">
                             {settings.signature_url ? (
-                                <img src={settings.signature_url} alt="Authorized Signature" style={{ height: '35px', width: 'auto', objectFit: 'contain', display: 'block' }} />
+                                <img src={settings.signature_url} alt="Authorized Signature" style={{ height: '32px', width: 'auto', objectFit: 'contain', display: 'block' }} />
                             ) : (
                                 <div className="w-full border-b-2 border-slate-300 border-dashed flex-1"></div>
                             )}
                         </div>
-                        <p className="text-[10px] font-black tracking-[0.2em] text-slate-900 pt-3 w-full">Manager Signature</p>
-                        <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase opacity-60">Authorized Official Only</p>
+                        <p className="text-[10px] font-black tracking-[0.2em] text-slate-900 pt-2 w-full">Manager Signature</p>
                     </div>
                 </footer>
             </div>

@@ -37,6 +37,9 @@ export async function getSettings() {
             free_pax_limit: 2,
             extra_bed_rate: 1000,
             extra_pax_rate: 800,
+            whatsapp_booking_template: "booking_confirmation",
+            whatsapp_checkout_template: "checkout_thankyou",
+            whatsapp_restaurant_template: "restaurant_thankyou",
             meal_plan_rates: {
                 EP: 0,
                 CP: 500,

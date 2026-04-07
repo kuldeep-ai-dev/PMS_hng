@@ -24,17 +24,27 @@ export default function FoodPreferenceAnalytics() {
         try {
             const startOfMonthDate = startOfMonth(new Date());
 
-            // 1. Top Dishes (Volume)
-            const { data: orderItems } = await supabase
-                .from('restaurant_order_items')
-                .select(`
-                    quantity,
-                    menu_item:restaurant_menu_items (
-                        name,
-                        is_veg
-                    )
-                `)
-                .gte('created_at', startOfMonthDate.toISOString());
+            // 1 & 3. Parallel Data Fetching: Order Items and Base Orders
+            const [
+                { data: orderItems },
+                { data: orders }
+            ] = await Promise.all([
+                supabase
+                    .from('restaurant_order_items')
+                    .select(`
+                        quantity,
+                        menu_item:restaurant_menu_items (
+                            name,
+                            is_veg
+                        )
+                    `)
+                    .gte('created_at', startOfMonthDate.toISOString()),
+                supabase
+                    .from('restaurant_orders')
+                    .select('order_time, updated_at, status')
+                    .eq('status', 'served')
+                    .gte('order_time', startOfMonthDate.toISOString())
+            ]);
 
             const dishMap = new Map();
             orderItems?.forEach((item: any) => {
@@ -44,7 +54,7 @@ export default function FoodPreferenceAnalytics() {
             });
 
             const topDishes = Array.from(dishMap.entries())
-                .map(([name, orders]) => ({ name, orders, rating: (4.5 + Math.random() * 0.5).toFixed(1) })) // Mock rating as haven't added rating system yet
+                .map(([name, orders]) => ({ name, orders, rating: (4.5 + Math.random() * 0.5).toFixed(1) }))
                 .sort((a, b) => b.orders - a.orders)
                 .slice(0, 5);
 
@@ -60,19 +70,12 @@ export default function FoodPreferenceAnalytics() {
                 { name: 'Non-Vegetarian', value: nonVegCount },
             ];
 
-            // 3. Preparation Efficiency (Time Trend)
-            const { data: orders } = await supabase
-                .from('restaurant_orders')
-                .select('order_time, updated_at, status')
-                .eq('status', 'served')
-                .gte('order_time', startOfMonthDate.toISOString());
-
             const prepMap = new Map();
             orders?.forEach(o => {
                 const day = format(new Date(o.order_time), 'EEE');
                 const mins = differenceInMinutes(new Date(o.updated_at), new Date(o.order_time));
                 if (!prepMap.has(day)) prepMap.set(day, []);
-                prepMap.get(day).push(mins > 0 ? mins : 10); // fallback to 10m
+                prepMap.get(day).push(mins > 0 ? mins : 10);
             });
 
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -120,8 +123,24 @@ export default function FoodPreferenceAnalytics() {
 
     if (loading || !stats) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
+            <div className="p-6 bg-slate-50/30 min-h-screen">
+                <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-pulse">
+                    <div className="flex justify-between items-center">
+                        <div className="space-y-2">
+                            <div className="h-10 w-64 bg-slate-200 rounded-2xl"></div>
+                            <div className="h-4 w-48 bg-slate-100 rounded-lg"></div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="h-32 bg-white rounded-3xl border border-slate-100 shadow-sm"></div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 h-[500px] bg-white rounded-3xl border border-slate-100 shadow-sm"></div>
+                        <div className="h-[500px] bg-white rounded-3xl border border-slate-100 shadow-sm"></div>
+                    </div>
+                </div>
             </div>
         );
     }

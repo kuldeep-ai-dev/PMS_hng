@@ -25,7 +25,11 @@ export default async function Dashboard() {
     .eq('id', user?.id)
     .single();
 
-  // Restaurant staff → go straight to the POS, no PMS access
+  // Safety Redirection (if middleware is bypassed)
+  if (profile?.role === 'master') {
+    redirect('/master-control');
+  }
+
   if (profile?.role === 'restaurant_staff') {
     redirect('/restaurant/pos');
   }
@@ -36,102 +40,61 @@ export default async function Dashboard() {
     return <StaffDashboard staffId={profile.id} staffName={profile.name} />;
   }
 
-  // Fetch Rooms for Occupancy and Availability
-  const { data: rooms } = await supabase.from('rooms').select('status');
+  const { start: istStart, end: istEnd } = getISTTodayRange();
+  const sevenDaysAgo = subDays(new Date(), 6).toISOString();
+
+  // Parallel Data Fetching
+  const [
+    { data: rooms },
+    { data: latestAudit },
+    { data: todayPayments },
+    { data: todayRestaurantSales },
+    { count: arrivalsCount },
+    { data: checkoutData, count: checkoutsCount },
+    { data: recentPaymentsData },
+    { data: recentRestaurantRevenueData },
+    { data: recentBookings }
+  ] = await Promise.all([
+    supabase.from('rooms').select('status'),
+    supabase.from('night_audit_logs').select('audit_date').order('audit_date', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('payments').select('amount, method').gte('created_at', istStart).lt('created_at', istEnd),
+    supabase.from('restaurant_orders').select('total_amount, payment_status').in('payment_status', ['paid', 'charged_to_room']).eq('is_refund', false).gte('order_time', istStart).lt('order_time', istEnd),
+    supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('check_in_date', istStart).lt('check_in_date', istEnd).eq('status', 'Confirmed'),
+    supabase.from('bookings').select('id, rooms(number), guests(name), check_out_date', { count: 'exact' }).lt('check_out_date', istEnd).eq('status', 'Active'),
+    supabase.from('payments').select('created_at, amount').gte('created_at', sevenDaysAgo),
+    supabase.from('restaurant_orders').select('order_time, total_amount').in('payment_status', ['paid', 'charged_to_room']).eq('is_refund', false).gte('order_time', sevenDaysAgo),
+    supabase.from('bookings').select(`id, check_in_date, status, guests(name), rooms(number)`).order('created_at', { ascending: false }).limit(5)
+  ]);
+
+  // --- Process Room Stats ---
   const totalRooms = rooms?.length || 0;
   const occupiedRooms = rooms?.filter(r => r.status === 'Occupied').length || 0;
   const availableRooms = rooms?.filter(r => r.status === 'Available').length || 0;
   const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
-  // Fetch latest Night Audit to determine the true Business Date
-  const { data: latestAudit } = await supabase
-    .from('night_audit_logs')
-    .select('audit_date')
-    .order('audit_date', { ascending: false })
-    .limit(1)
-    .single();
-
+  // --- Process Business Date ---
   let today = new Date();
-
   if (latestAudit?.audit_date) {
     const lastAuditDate = new Date(latestAudit.audit_date + 'T00:00:00Z');
     today = new Date(lastAuditDate);
-    today.setDate(today.getDate() + 1); // Business Date is Audit + 1
+    today.setDate(today.getDate() + 1);
   }
-
   const businessDateDisplay = format(today, 'MMM dd, yyyy');
   today.setHours(0, 0, 0, 0);
-  const todayIso = today.toISOString();
 
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowIso = tomorrow.toISOString();
-
-  const { start: istStart, end: istEnd } = getISTTodayRange();
-
-  // 1. Today's Payments (True Revenue)
-  const { data: todayPayments } = await supabase
-    .from('payments')
-    .select('amount, method')
-    .gte('created_at', istStart)
-    .lt('created_at', istEnd);
-
-  const { data: todayRestaurantSales } = await supabase
-    .from('restaurant_orders')
-    .select('total_amount, payment_status')
-    .in('payment_status', ['paid', 'charged_to_room'])
-    .eq('is_refund', false)
-    .gte('order_time', istStart)
-    .lt('order_time', istEnd);
-
+  // --- Process Revenue ---
   let todayRevenue = 0;
-  let breakdown = { cash: 0, card: 0, online: 0 };
-
   todayPayments?.forEach(p => {
-    const amt = Number(p.amount || 0);
-    todayRevenue += amt;
-    if (p.method === 'Cash') breakdown.cash += amt;
-    else if (p.method === 'Card') breakdown.card += amt;
-    else breakdown.online += amt;
+    todayRevenue += Number(p.amount || 0);
   });
-
-  // Restaurant Sales shown as its own card — not double-counted into todayRevenue
   const restaurantTotalToday = todayRestaurantSales?.reduce((sum, o) => sum + Number(o.total_amount || 0), 0) || 0;
   const formattedRestaurantSales = await formatCurrency(restaurantTotalToday);
   const formattedRevenue = await formatCurrency(todayRevenue);
 
-  // 2. Expected Arrivals Today
-  const { count: arrivalsCount } = await supabase
-    .from('bookings')
-    .select('*', { count: 'exact', head: true })
-    .gte('check_in_date', todayIso)
-    .lt('check_in_date', tomorrowIso)
-    .eq('status', 'Confirmed');
-
-  // 2b. Expected Checkouts Today
-  const { data: checkoutData, count: checkoutsCount } = await supabase
-    .from('bookings')
-    .select('id, rooms(number), guests(name), check_out_date', { count: 'exact' })
-    .lt('check_out_date', tomorrowIso)
-    .eq('status', 'Active');
-
+  // --- Process Arrivals/Checkouts ---
   const pendingCheckouts = checkoutData?.filter(b => b.rooms) || [];
 
-  // 3. Last 7 Days Revenue (from Payments)
-  const sevenDaysAgo = subDays(today, 6);
-  const { data: recentPaymentsData } = await supabase
-    .from('payments')
-    .select('created_at, amount')
-    .gte('created_at', sevenDaysAgo.toISOString());
-
-  const { data: recentRestaurantRevenueData } = await supabase
-    .from('restaurant_orders')
-    .select('order_time, total_amount')
-    .in('payment_status', ['paid', 'charged_to_room'])
-    .eq('is_refund', false)
-    .gte('order_time', sevenDaysAgo.toISOString());
-
-  // Aggregate daily revenue
+  // --- Process Chart Data ---
   const chartDataMap = new Map<string, number>();
   for (let i = 6; i >= 0; i--) {
     const d = subDays(today, i);
@@ -168,18 +131,7 @@ export default async function Dashboard() {
     revenueTrend = '+100%';
   }
 
-  // 4. Fetch Recent Bookings
-  const { data: recentBookings } = await supabase
-    .from('bookings')
-    .select(`
-      id,
-      check_in_date,
-      status,
-      guests (name),
-      rooms (number)
-    `)
-    .order('created_at', { ascending: false })
-    .limit(5);
+  // --- Chart Data End ---
 
   const stats = [
     { label: 'Total Occupancy', value: `${occupancyRate}%`, icon: Users, trend: '+0%', color: 'text-indigo-600', bg: 'bg-indigo-50' },

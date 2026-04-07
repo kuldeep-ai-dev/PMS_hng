@@ -21,13 +21,13 @@ export default async function RestaurantLayout({
     .single();
 
   // Strict RLS equivalent check on the frontend layout level
-  if (profile?.role !== 'admin' && profile?.role !== 'restaurant_staff') {
+  if (profile?.role !== 'admin' && profile?.role !== 'restaurant_staff' && profile?.role !== 'master') {
     redirect('/'); // Kick unauthorized users back to main dash
   }
 
   const showSubNav = profile?.role !== 'restaurant_staff';
 
-  const initials = profile?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '??';
+  const initials = profile?.name?.split(' ')?.map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '??';
   const displayName = profile?.name || user?.email?.split('@')[0] || 'User';
   const role = profile?.role || 'staff';
 

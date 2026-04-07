@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, MonitorSmartphone, ClipboardList, BookOpen, Utensils, LogOut, Receipt, Users, PackageSearch, Gift, History, Calendar } from 'lucide-react';
+import { LayoutDashboard, MonitorSmartphone, ClipboardList, BookOpen, Utensils, LogOut, Receipt, Users, PackageSearch, Gift, History, Calendar, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logout } from '@/app/login/actions';
 
@@ -28,6 +28,7 @@ export function RestaurantNav({ initials = '??', displayName = 'User', role = 'R
     { name: 'Order History', href: '/restaurant/order-history', icon: History },
     { name: 'Inventory & Stock', href: '/restaurant/inventory', icon: PackageSearch },
     { name: 'Tables & QR', href: '/restaurant/tables', icon: Utensils },
+    { name: 'User Guide', href: '/help', icon: HelpCircle },
   ];
 
   const pathname = usePathname();

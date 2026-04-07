@@ -14,7 +14,8 @@ import {
     ChevronDown,
     FileText,
     Truck,
-    PackageCheck
+    PackageCheck,
+    Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { getPurchaseOrders, receivePurchaseOrder } from '../actions';
@@ -27,6 +28,7 @@ export default function ProcurementPage() {
     const [pos, setPos] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedPO, setExpandedPO] = useState<string | null>(null);
+    const [isReceiving, setIsReceiving] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -50,14 +52,14 @@ export default function ProcurementPage() {
         if (!confirm('Mark this PO as received? This will automatically add items to your inventory stock.')) return;
 
         try {
-            toast.loading('Processing GRN and updating stock...');
+            setIsReceiving(id);
             await receivePurchaseOrder(id);
-            toast.dismiss();
             toast.success('Goods received successfully. Stock updated.');
             loadData();
         } catch (error) {
-            toast.dismiss();
             toast.error('Failed to process receipt');
+        } finally {
+            setIsReceiving(null);
         }
     };
 
@@ -160,9 +162,11 @@ export default function ProcurementPage() {
                                     {po.status === 'sent' && (
                                         <button
                                             onClick={() => handleReceivePO(po.id)}
-                                            className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+                                            disabled={isReceiving === po.id}
+                                            className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2 disabled:opacity-70"
                                         >
-                                            Receive GRN
+                                            {isReceiving === po.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                                            {isReceiving === po.id ? 'RECEIVING...' : 'Receive GRN'}
                                         </button>
                                     )}
                                     <button

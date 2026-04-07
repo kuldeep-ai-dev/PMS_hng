@@ -9,11 +9,28 @@ import { formatCurrencySync } from '@/lib/currency';
 
 export default async function PrintPOSBillPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ _token?: string; token?: string }>;
 }) {
     const { id: orderId } = await params;
-    const supabase = await createClient();
+    const { _token, token } = await searchParams;
+
+    const pdfToken = _token || token;
+    const expectedToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
+
+    let supabase;
+    if (pdfToken && pdfToken === expectedToken) {
+        const { createClient: createJsClient } = await import('@supabase/supabase-js');
+        supabase = createJsClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+    } else {
+        supabase = await createClient();
+    }
+
     const settings = await getSettings();
 
     const { data: order, error } = await supabase

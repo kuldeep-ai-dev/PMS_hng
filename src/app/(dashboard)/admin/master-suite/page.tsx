@@ -137,8 +137,16 @@ export default function MasterSuitePage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center p-12">
-                <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+            <div className="max-w-6xl mx-auto space-y-8 pb-12 animate-pulse">
+                <div className="space-y-2">
+                    <div className="h-8 w-64 bg-slate-100 rounded-lg" />
+                    <div className="h-4 w-96 bg-slate-50 rounded" />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="h-[400px] bg-white rounded-xl border border-slate-100" />
+                    <div className="lg:col-span-2 h-[400px] bg-white rounded-xl border border-slate-100" />
+                    <div className="lg:col-span-3 h-[300px] bg-white rounded-xl border border-slate-100" />
+                </div>
             </div>
         );
     }

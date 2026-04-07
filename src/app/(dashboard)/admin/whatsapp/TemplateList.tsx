@@ -88,10 +88,10 @@ export function TemplateList({ templates, onEdit, onDelete }: TemplateListProps)
     };
 
     return (
-        <div className="overflow-x-auto">
+        <div className="max-h-[500px] overflow-y-auto overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-collapse">
-                <thead>
-                    <tr className="bg-slate-50/50 border-bottom border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm shadow-sm">
+                    <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-widest">
                         <th className="px-6 py-4">Template Name</th>
                         <th className="px-6 py-4">Status</th>
                         <th className="px-6 py-4">Category</th>

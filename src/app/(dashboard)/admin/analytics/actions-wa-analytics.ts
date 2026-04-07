@@ -22,7 +22,7 @@ export async function getWhatsAppAnalytics(range: DateRange = '7d') {
     // Fetch records within the date range, with booking + room data
     const { data: records, error } = await supabase
         .from('whatsapp_analytics')
-        .select('*, bookings(id, room_id, check_in_date, check_out_date, rooms(number, type))')
+        .select('*, bookings(id, room_id, check_in_date, check_out_date, rooms(number, type)), restaurant_orders(id, bill_no, total_amount, customer_name)')
         .gte('sent_at', cutoff)
         .order('sent_at', { ascending: false });
 
@@ -35,7 +35,7 @@ export async function getWhatsAppAnalytics(range: DateRange = '7d') {
 
     // Split records by module
     const hotelRecords = all.filter((r: any) => ['check_in', 'check_out', 'test'].includes(r.template_type));
-    const restaurantRecords = all.filter((r: any) => r.template_type === 'restaurant_order');
+    const restaurantRecords = all.filter((r: any) => r.template_type === 'restaurant_bill');
 
     const calculateStats = (records: any[]) => {
         const total = records.length;
@@ -49,7 +49,7 @@ export async function getWhatsAppAnalytics(range: DateRange = '7d') {
         const checkOutCount = records.filter(r => r.template_type === 'check_out').length;
 
         // CTR only if message has a link (checkout or restaurant order with link)
-        const linkEnabledMessages = records.filter(r => ['check_out', 'restaurant_order'].includes(r.template_type));
+        const linkEnabledMessages = records.filter(r => ['check_out', 'restaurant_bill'].includes(r.template_type));
         const linkRead = linkEnabledMessages.filter(r => ['read', 'clicked'].includes(r.status)).length;
         const clicked = linkEnabledMessages.filter(r => r.status === 'clicked').length;
 
@@ -84,8 +84,8 @@ export async function getWhatsAppAnalytics(range: DateRange = '7d') {
         deliveredAt: r.delivered_at,
         readAt: r.read_at,
         clickedAt: r.clicked_at,
-        roomNumber: (r.bookings as any)?.rooms?.number || null,
-        roomType: (r.bookings as any)?.rooms?.type || null,
+        roomNumber: (r.bookings as any)?.rooms?.number || (r.restaurant_orders as any)?.bill_no ? `Bill #${(r.restaurant_orders as any).bill_no}` : null,
+        roomType: (r.bookings as any)?.rooms?.type || (r.restaurant_orders as any)?.total_amount ? `₹${(r.restaurant_orders as any).total_amount}` : null,
     }));
 
     const hotelTimeline = mapTimeline(hotelRecords);
@@ -143,7 +143,7 @@ export async function exportInsightsData(range: DateRange = '3m') {
 
     const { data: records, error } = await supabase
         .from('whatsapp_analytics')
-        .select('*, bookings(id, room_id, check_in_date, check_out_date, rooms(number, type))')
+        .select('*, bookings(id, room_id, check_in_date, check_out_date, rooms(number, type)), restaurant_orders(id, bill_no, total_amount, customer_name)')
         .gte('sent_at', cutoff)
         .order('sent_at', { ascending: false });
 

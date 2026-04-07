@@ -3,6 +3,62 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+export async function getOrdersData() {
+    const supabase = await createClient();
+    try {
+        const [
+            { data: { user } },
+            { data: orders },
+            { data: tables },
+            { data: loyaltySettings },
+            { data: hotelSettings }
+        ] = await Promise.all([
+            supabase.auth.getUser(),
+            supabase
+                .from('restaurant_orders')
+                .select(`
+                    *,
+                    table:restaurant_tables(table_number),
+                    room:rooms(number),
+                    guest:guests(name),
+                    items:restaurant_order_items(
+                        menu_item_id,
+                        quantity, 
+                        notes, 
+                        price_at_time,
+                        item:restaurant_menu_items(name, is_veg)
+                    )
+                `)
+                .in('status', ['pending', 'preparing', 'ready', 'served', 'partial'])
+                .not('order_source', 'in', '("pos_walkin","pos_room")')
+                .order('order_time', { ascending: false }),
+            supabase.from('restaurant_tables').select('*').order('table_number'),
+            supabase.from('restaurant_loyalty_settings').select('*').limit(1).maybeSingle(),
+            supabase.from('hotel_settings').select('*').limit(1).maybeSingle()
+        ]);
+
+        let userRole = null;
+        if (user) {
+            const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+            if (profile) userRole = profile.role;
+        }
+
+        return {
+            success: true,
+            data: {
+                orders: (orders || []) as any,
+                tables: (tables || []) as any,
+                loyaltySettings,
+                hotelSettings,
+                userRole
+            }
+        };
+    } catch (error: any) {
+        console.error('Server Action Error (getOrdersData):', error);
+        return { success: false, error: error.message };
+    }
+}
+
 export async function updateOrderStatus(orderId: string, currentStatus: string) {
     const supabase = await createClient();
     const sequence = ['pending', 'preparing', 'ready', 'served'];

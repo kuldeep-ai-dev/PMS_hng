@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/utils/supabase/client';
-import { Search, Plus, Minus, Trash2, CheckCircle2, Bed, Hash, User, Utensils, Split } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, CheckCircle2, Bed, Hash, User, Utensils, Split, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatCurrencySync } from '@/lib/currency';
-import { SharedBillingModal as POSBillingModal } from '../_components/SharedBillingModal';
-import { SharedSplitModal as POSSplitModal } from '../_components/SharedSplitModal';
-import { SharedMergeModal as POSMergeModal } from '../_components/SharedMergeModal';
+
+const POSBillingModal = dynamic(() => import('../_components/SharedBillingModal').then(mod => mod.SharedBillingModal), { ssr: false });
+const POSSplitModal = dynamic(() => import('../_components/SharedSplitModal').then(mod => mod.SharedSplitModal), { ssr: false });
+const POSMergeModal = dynamic(() => import('../_components/SharedMergeModal').then(mod => mod.SharedMergeModal), { ssr: false });
 
 interface MenuItem {
   id: string;
@@ -40,14 +42,15 @@ export default function POSTerminal() {
   const [customerMobile, setCustomerMobile] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [billToRoom, setBillToRoom] = useState(false);
-  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
-  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
-  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
   const [isKOTSaving, setIsKOTSaving] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [loyaltySettings, setLoyaltySettings] = useState<any>(null);
   const [waiters, setWaiters] = useState<any[]>([]);
   const [selectedWaiterId, setSelectedWaiterId] = useState<string>('');
+  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const fetchTables = async () => {
     const { data } = await supabase.from('restaurant_tables').select('*').order('table_number');
@@ -57,10 +60,11 @@ export default function POSTerminal() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        setLoading(true);
         const results = await Promise.all([
           supabase.from('restaurant_menu_items').select('*').eq('is_available', true),
           supabase.from('restaurant_categories').select('*').order('display_order'),
-          supabase.from('rooms').select('*, bookings(*)').eq('status', 'Occupied'),
+          supabase.from('rooms').select('*, bookings(*, guests(name))').eq('status', 'Occupied'),
           supabase.from('restaurant_tables').select('*').order('table_number'),
           supabase.from('restaurant_loyalty_settings').select('*').limit(1).maybeSingle(),
           supabase.from('profiles').select('id, name').eq('role', 'restaurant_staff')
@@ -87,6 +91,8 @@ export default function POSTerminal() {
       } catch (error) {
         console.error('POS Loading Error:', error);
         toast.error('Failed to load menu data');
+      } finally {
+        setLoading(false);
       }
     };
     loadData();
@@ -156,6 +162,16 @@ export default function POSTerminal() {
     fetchTableOrder();
   }, [selectedTableId, orderType]);
 
+  useEffect(() => {
+    if (orderType === 'room' && selectedRoomId) {
+      const room = rooms.find(r => r.id === selectedRoomId);
+      if (room && room.bookings?.[0]?.guests) {
+        setCustomerName(room.bookings[0].guests.name);
+        setCustomerMobile(room.bookings[0].guests.phone || '');
+      }
+    }
+  }, [selectedRoomId, orderType, rooms]);
+
   const addToCart = (item: MenuItem) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
@@ -182,7 +198,8 @@ export default function POSTerminal() {
     if (cart.length === 0) return toast.error('Cart is empty');
     if (orderType === 'room' && !selectedRoomId) return toast.error('Please select a room');
     if (orderType === 'table' && !selectedTableId) return toast.error('Please select a table');
-    if (!customerMobile || customerMobile.length < 10) return toast.error('Please enter a 10-digit mobile number');
+
+    // Redundant inputs are hidden and optional
     setIsBillingModalOpen(true);
   };
 
@@ -207,8 +224,11 @@ export default function POSTerminal() {
       if (!orderId) {
         const { data: kotNo } = await supabase.rpc('get_next_restaurant_kot_no');
         const { data: newOrder, error: orderErr } = await supabase.from('restaurant_orders').insert({
-          order_source: orderType === 'table' ? 'pos_table' : 'pos_walkin',
+          order_source: orderType === 'table' ? 'pos_table' : orderType === 'room' ? 'pos_room' : 'pos_walkin',
           table_id: selectedTableId || null,
+          room_id: orderType === 'room' ? selectedRoomId : null,
+          booking_id: orderType === 'room' ? rooms.find(r => r.id === selectedRoomId)?.bookings?.[0]?.id : null,
+          guest_id: orderType === 'room' ? rooms.find(r => r.id === selectedRoomId)?.bookings?.[0]?.guest_id : null,
           customer_name: customerName,
           customer_mobile: customerMobile,
           status: 'pending',
@@ -315,6 +335,27 @@ export default function POSTerminal() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-100px)] gap-6 p-4 overflow-hidden bg-slate-50/30 animate-pulse">
+        <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+          <div className="flex justify-between items-center shrink-0">
+            <div className="h-12 w-96 bg-white rounded-2xl border border-slate-100" />
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-10 w-24 bg-white rounded-xl border border-slate-100" />)}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+              <div key={i} className="h-64 bg-white rounded-[32px] border border-slate-100" />
+            ))}
+          </div>
+        </div>
+        <div className="w-[380px] bg-white rounded-[32px] border border-slate-100 shadow-sm" />
+      </div>
+    );
+  }
+
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const tax = subtotal * 0.05; // 5% GST
   const totalRaw = subtotal + tax;
@@ -378,225 +419,218 @@ export default function POSTerminal() {
       </div>
 
       {/* Cart Workspace */}
-      <div className="w-[380px] bg-white rounded-[32px] border border-slate-100 flex flex-col shadow-[0_10px_40px_rgba(0,0,0,0.04)] shrink-0 overflow-hidden">
-        <div className="p-6 bg-slate-900 text-white shrink-0">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center">
+      <div className="w-[380px] bg-white rounded-[32px] border border-slate-100 flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.06)] shrink-0 overflow-hidden">
+        {/* Dark Header */}
+        <div className="p-6 pb-7 bg-[#0f172a] text-white shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 blur-[80px] -mr-16 -mt-16" />
+
+          <div className="flex items-center justify-between mb-5 relative z-10">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-teal-500/20 rounded-[10px] flex items-center justify-center border border-white/10">
                 <Utensils className="text-teal-400 w-4 h-4" />
               </div>
-              <h2 className="text-lg font-black tracking-tight">Order Details</h2>
+              <h2 className="text-lg font-black tracking-tighter">Order Details</h2>
             </div>
-            <button onClick={() => setCart([])} className="text-[10px] uppercase font-black tracking-[0.2em] text-white/40 hover:text-white transition-colors">Reset</button>
+            <button
+              onClick={() => {
+                setCart([]);
+                setCustomerMobile('');
+                setCustomerName('');
+                setSelectedRoomId('');
+                setSelectedTableId('');
+                setSelectedWaiterId('');
+              }}
+              className="text-[9px] uppercase font-black tracking-[0.2em] text-white/40 hover:text-white transition-colors"
+            >
+              Reset
+            </button>
           </div>
 
-          <div className="flex gap-1.5 p-1 bg-white/5 rounded-xl mb-5 border border-white/5 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1 p-1 bg-white/5 rounded-[16px] mb-5 border border-white/10 relative z-10">
             <button
               onClick={() => { setOrderType('walkin'); setBillToRoom(false); }}
-              className={cn("flex-1 px-2 py-2 rounded-[10px] text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1 transition-all whitespace-nowrap", orderType === 'walkin' ? "bg-white text-slate-900 shadow-lg" : "text-white/50 hover:text-white/80")}
+              className={cn(
+                "flex-1 py-2 rounded-[10px] text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all text-nowrap",
+                orderType === 'walkin' ? "bg-white text-slate-900 shadow-xl" : "text-white/40 hover:text-white/80"
+              )}
             >
               <User className="w-3 h-3" /> Walk-in
             </button>
             <button
               onClick={() => setOrderType('room')}
-              className={cn("flex-1 px-2 py-2 rounded-[10px] text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1 transition-all whitespace-nowrap", orderType === 'room' ? "bg-white text-slate-900 shadow-lg" : "text-white/50 hover:text-white/80")}
+              className={cn(
+                "flex-1 py-2 rounded-[10px] text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all text-nowrap",
+                orderType === 'room' ? "bg-white text-slate-900 shadow-xl" : "text-white/40 hover:text-white/80"
+              )}
             >
               <Bed className="w-3 h-3" /> Room
             </button>
             <button
               onClick={() => { setOrderType('table'); setBillToRoom(false); }}
-              className={cn("flex-1 px-2 py-2 rounded-[10px] text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1 transition-all whitespace-nowrap", orderType === 'table' ? "bg-white text-slate-900 shadow-lg" : "text-white/50 hover:text-white/80")}
+              className={cn(
+                "flex-1 py-2 rounded-[10px] text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all text-nowrap",
+                orderType === 'table' ? "bg-white text-slate-900 shadow-xl" : "text-white/40 hover:text-white/80"
+              )}
             >
               <Utensils className="w-3 h-3" /> Table
             </button>
           </div>
 
-          <div className="space-y-3">
-            {orderType === 'room' && (
-              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="relative">
-                  <Bed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
-                  <select
-                    value={selectedRoomId}
-                    onChange={(e) => setSelectedRoomId(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 bg-white/10 border border-white/10 rounded-xl outline-none focus:bg-white focus:text-slate-900 transition-all text-xs font-bold appearance-none cursor-pointer"
-                  >
-                    <option value="" className="text-slate-900">Select Room</option>
-                    {rooms.map(room => (
-                      <option key={room.id} value={room.id} className="text-slate-900">Room {room.number} - {room.bookings?.[0]?.guests?.name || 'Unknown'}</option>
-                    ))}
-                  </select>
-                </div>
-                <label className="flex items-center gap-2.5 p-3 bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:bg-white/10 transition-colors">
-                  <input type="checkbox" checked={billToRoom} onChange={(e) => setBillToRoom(e.target.checked)} className="w-3.5 h-3.5 rounded-lg border-white/20 bg-transparent text-teal-500 focus:ring-offset-slate-900" />
-                  <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">Add to guest folio</span>
-                </label>
-              </div>
-            )}
-            {orderType === 'table' && (
-              <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="relative">
-                  <Utensils className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
-                  <select
-                    value={selectedTableId}
-                    onChange={(e) => setSelectedTableId(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 bg-white/10 border border-white/10 rounded-xl outline-none focus:bg-white focus:text-slate-900 transition-all text-xs font-bold appearance-none cursor-pointer"
-                  >
-                    <option value="" className="text-slate-900">Select Table</option>
-                    {tables.map(table => (
-                      <option key={table.id} value={table.id} className="text-slate-900">Table {table.table_number}{table.status === 'Occupied' ? ' (Occupied)' : ''}</option>
-                    ))}
-                  </select>
-                </div>
-                {selectedTableId && (
-                  <button
-                    onClick={() => setIsMergeModalOpen(true)}
-                    className="w-full py-2 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-200 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                  >
-                    Merge / Move Table <Split className="w-3 h-3 rotate-180" />
-                  </button>
-                )}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+          {orderType === 'walkin' && (
+            <div className="grid grid-cols-2 gap-2 relative z-10">
+              <div className="relative group">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20 group-focus-within:text-teal-400 transition-colors" />
                 <input
                   type="text"
                   placeholder="Mobile"
                   value={customerMobile}
                   onChange={(e) => setCustomerMobile(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2.5 bg-white/10 border border-white/10 rounded-xl outline-none focus:bg-white focus:text-slate-900 transition-all text-xs font-bold placeholder:text-white/20"
+                  className="w-full pl-9 pr-2 py-2.5 bg-white/5 border border-white/10 rounded-[12px] outline-none focus:bg-white/10 focus:border-white/20 transition-all text-[11px] font-bold text-white placeholder:text-white/20"
                 />
               </div>
-              <div className="relative flex-1">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+              <div className="relative group">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20 group-focus-within:text-teal-400 transition-colors" />
                 <input
                   type="text"
                   placeholder="Name"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2.5 bg-white/10 border border-white/10 rounded-xl outline-none focus:bg-white focus:text-slate-900 transition-all text-xs font-bold placeholder:text-white/20"
+                  className="w-full pl-9 pr-2 py-2.5 bg-white/5 border border-white/10 rounded-[12px] outline-none focus:bg-white/10 focus:border-white/20 transition-all text-[11px] font-bold text-white placeholder:text-white/20"
                 />
               </div>
             </div>
-          </div>
+          )}
+
+          {orderType !== 'walkin' && (
+            <div className="mt-3 animate-in fade-in slide-in-from-top-3 relative z-10">
+              {orderType === 'room' ? (
+                <div className="relative">
+                  <Bed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-teal-400" />
+                  <select
+                    value={selectedRoomId}
+                    onChange={(e) => setSelectedRoomId(e.target.value)}
+                    className="w-full pl-10 pr-8 py-2.5 bg-white border-none rounded-[12px] outline-none shadow-lg text-slate-900 text-[11px] font-black appearance-none cursor-pointer"
+                  >
+                    <option value="">Select Occupied Room</option>
+                    {rooms.map(room => (
+                      <option key={room.id} value={room.id}>Room {room.number} - {room.bookings?.[0]?.guests?.name || 'Unknown'}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                </div>
+              ) : (
+                <div className="relative">
+                  <Utensils className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-teal-400" />
+                  <select
+                    value={selectedTableId}
+                    onChange={(e) => setSelectedTableId(e.target.value)}
+                    className="w-full pl-10 pr-8 py-2.5 bg-white border-none rounded-[12px] outline-none shadow-lg text-slate-900 text-[11px] font-black appearance-none cursor-pointer"
+                  >
+                    <option value="">Select Table Number</option>
+                    {tables.map(table => (
+                      <option key={table.id} value={table.id}>Table {table.table_number}{table.status === 'occupied' ? ' (Occupied)' : ''}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 flex flex-col gap-6 min-h-0 custom-scrollbar">
-          {/* Waiter Selection Section */}
-          <div className="space-y-3 shrink-0">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">Service & Staff</h3>
-            <div className="p-4 bg-white rounded-3xl border border-slate-100 flex items-center gap-3 group hover:border-teal-200 transition-all shadow-sm shadow-slate-200/50">
-              <div className="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-500 transition-colors">
-                <User className="w-5 h-5 transition-transform group-hover:scale-110" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Assigned Waiter</p>
-                <select
-                  value={selectedWaiterId}
-                  onChange={(e) => setSelectedWaiterId(e.target.value)}
-                  className="w-full bg-transparent border-none text-[11px] font-black text-slate-900 outline-none uppercase tracking-wider cursor-pointer appearance-none"
-                >
-                  <option value="">Select Staff...</option>
-                  {waiters.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
+        {/* Cart View Area - Main Container */}
+        <div className="flex-1 flex flex-col min-h-0 bg-slate-100/50">
 
-          <div className="flex flex-col gap-4">
+          {/* Scrollable Cart Items */}
+          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 custom-scrollbar min-h-0">
             {cart.length > 0 && (
-              <div className="flex items-center justify-between px-2 shrink-0">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Order Items</h4>
-                <div className="flex gap-4">
-                  {currentOrderId && (
-                    <button
-                      onClick={() => setIsSplitModalOpen(true)}
-                      className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-teal-600 hover:text-teal-700 transition-colors"
-                    >
-                      <Split className="w-3.5 h-3.5" /> Split Bill
-                    </button>
-                  )}
-                  <button onClick={() => setCart([])} className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-rose-500 transition-colors">Clear</button>
-                </div>
+              <div className="flex items-center justify-between px-1 shrink-0">
+                <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Order Items</h4>
+                <button onClick={() => setCart([])} className="text-[9px] font-black uppercase tracking-[0.1em] text-rose-500/60 hover:text-rose-500 transition-colors px-1.5 py-0.5 rounded-lg hover:bg-rose-50">Clear</button>
               </div>
             )}
+
             {cart.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-300 opacity-50">
-                <Utensils className="w-16 h-16 mb-4 opacity-10" />
-                <p className="font-black uppercase tracking-widest text-[10px]">Cart is empty</p>
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-200 py-16">
+                <div className="w-16 h-16 bg-slate-200/50 rounded-full flex items-center justify-center mb-4 opacity-40">
+                  <Utensils className="w-8 h-8" />
+                </div>
+                <p className="font-black uppercase tracking-[0.2em] text-[10px] opacity-30">Cart is empty</p>
               </div>
             ) : (
-              cart.map((item) => (
-                <div key={item.id} className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col gap-4 shrink-0 animate-in fade-in zoom-in-95 duration-200">
-                  <div className="flex justify-between items-start">
-                    <div className="pr-10">
-                      <h4 className="font-black text-slate-800 text-sm leading-tight flex items-center gap-2">
-                        {item.name}
-                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.is_veg ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                      </h4>
-                      <p className="text-slate-400 font-bold text-[11px] mt-1 tracking-wider">₹{item.price}</p>
+              <div className="space-y-3">
+                {cart.map((item) => (
+                  <div key={item.id} className="bg-white p-4 rounded-[22px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-slate-200/60 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", item.is_veg ? "bg-emerald-500" : "bg-red-500")} />
+                          <h4 className="font-black text-slate-800 text-[13px] leading-tight truncate uppercase tracking-tight">{item.name}</h4>
+                        </div>
+                        <p className="text-slate-400 font-bold text-[10px] tracking-wider uppercase">₹{item.price}</p>
+                      </div>
+                      <button onClick={() => updateQuantity(item.id, -item.quantity)} className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <button onClick={() => updateQuantity(item.id, -item.quantity)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Special instructions..."
-                    value={item.notes}
-                    onChange={(e) => updateNotes(item.id, e.target.value)}
-                    className="text-[10px] px-3 py-2 bg-slate-50 rounded-xl border border-transparent focus:border-slate-200 focus:bg-white focus:outline-none transition-all italic font-medium placeholder:text-slate-300"
-                  />
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center bg-slate-100 rounded-2xl p-1 gap-1">
-                      <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 flex items-center justify-center hover:bg-white rounded-xl transition-all text-slate-600"><Minus className="w-4 h-4" /></button>
-                      <span className="w-10 text-center text-xs font-black text-slate-900">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 flex items-center justify-center hover:bg-white rounded-xl transition-all text-slate-600"><Plus className="w-4 h-4" /></button>
+
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <div className="flex items-center bg-slate-100/80 rounded-xl p-0.5 gap-0.5">
+                        <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 flex items-center justify-center bg-white shadow-sm rounded-lg transition-all text-slate-600 hover:text-teal-600 active:scale-90"><Minus className="w-3.5 h-3.5" /></button>
+                        <span className="w-8 text-center text-[11px] font-black text-slate-900 tabular-nums">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 flex items-center justify-center bg-white shadow-sm rounded-lg transition-all text-slate-600 hover:text-teal-600 active:scale-90"><Plus className="w-3.5 h-3.5" /></button>
+                      </div>
+                      <span className="font-black text-slate-900 text-[14px] tracking-tighter">₹{item.price * item.quantity}</span>
                     </div>
-                    <span className="font-black text-slate-900 tracking-tighter">₹{item.price * item.quantity}</span>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
 
-          <div className="px-6 py-8 bg-white border-t border-slate-100 shrink-0">
-            <div className="bg-slate-50/80 backdrop-blur-sm rounded-3xl p-5 border border-slate-100 mb-6 space-y-3 shadow-sm shadow-slate-100/50">
-              <div className="flex justify-between text-[10px] font-black text-slate-400/80 uppercase tracking-[0.15em]">
-                <span>Subtotal</span>
-                <span className="text-slate-600 tracking-normal font-bold text-xs">{formatCurrencySync(subtotal)}</span>
+          {/* Fixed Bottom Section */}
+          <div className="shrink-0 p-6 pt-0 space-y-4">
+            {/* Pricing Card */}
+            <div className="bg-white rounded-[24px] p-5 border border-slate-200/60 shadow-[0_12px_36px_rgba(0,0,0,0.06)] space-y-3">
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-0.5">
+                  <span>Subtotal</span>
+                  <span className="text-slate-700 tabular-nums">{formatCurrencySync(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-0.5">
+                  <span>Tax (GST 5%)</span>
+                  <span className="text-slate-700 tabular-nums">{formatCurrencySync(tax)}</span>
+                </div>
               </div>
-              <div className="flex justify-between text-[10px] font-black text-slate-400/80 uppercase tracking-[0.15em]">
-                <span>Tax (GST 5%)</span>
-                <span className="text-slate-600 tracking-normal font-bold text-xs">{formatCurrencySync(tax)}</span>
-              </div>
-              <div className="h-px bg-slate-200/50 my-2" />
-              <div className="flex justify-between items-center">
-                <span className="text-[12px] font-black text-slate-900 uppercase tracking-[0.05em]">Total Payable</span>
-                <span className="text-3xl font-black text-slate-900 tracking-tight tabular-nums drop-shadow-sm">{formatCurrencySync(totalRaw)}</span>
+
+              <div className="h-px bg-slate-100" />
+
+              <div className="flex justify-between items-center py-1 px-0.5">
+                <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Total Payable</span>
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-xs font-black text-slate-900 tracking-tighter">₹</span>
+                  <span className="text-3xl font-black text-slate-900 tracking-tighter tabular-nums">{formatCurrencySync(totalRaw).replace('₹', '')}</span>
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-4">
+            {/* Checkout Buttons */}
+            <div className="flex gap-3 pb-2">
               <button
                 onClick={handleSaveKOT}
                 disabled={cart.length === 0 || isKOTSaving}
-                className="group flex-1 h-[60px] bg-slate-800 hover:bg-slate-900 disabled:bg-slate-100 disabled:text-slate-400 text-white font-black text-[11px] uppercase tracking-[0.1em] rounded-2xl transition-all shadow-xl shadow-slate-200/50 flex items-center justify-center gap-3 relative overflow-hidden"
+                className="flex-1 h-[60px] bg-[#0f172a] hover:bg-black disabled:bg-slate-200/50 disabled:text-slate-400 text-white font-black text-[11px] uppercase tracking-[0.25em] rounded-[22px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-slate-200/50"
               >
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span>{isKOTSaving ? 'Saving...' : 'Send to Kitchen'}</span>
-                <Utensils className="w-4 h-4 text-orange-400 group-hover:scale-110 transition-transform" />
+                <span className="shrink-0">{isKOTSaving ? 'SAVING...' : 'KITCHEN'}</span>
+                <Utensils className={cn("w-4 h-4 shrink-0", isKOTSaving ? "text-white/40" : "text-orange-400")} />
               </button>
               <button
                 onClick={handleCheckout}
                 disabled={cart.length === 0}
-                className="group flex-[1.6] h-[60px] bg-teal-500 hover:bg-teal-600 disabled:bg-slate-100 disabled:text-slate-400 text-white font-black text-[11px] uppercase tracking-[0.1em] rounded-2xl transition-all hover:shadow-2xl hover:shadow-teal-200/40 active:scale-[0.98] flex items-center justify-center gap-3 relative overflow-hidden"
+                className="flex-[1.5] h-[60px] bg-teal-500 hover:bg-teal-600 disabled:bg-slate-100 disabled:text-slate-300 text-white font-black text-[11px] uppercase tracking-[0.25em] rounded-[22px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-teal-500/20"
               >
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span>Settle Bill</span>
-                <CheckCircle2 className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                <span>SETTLE BILL</span>
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
               </button>
             </div>
           </div>

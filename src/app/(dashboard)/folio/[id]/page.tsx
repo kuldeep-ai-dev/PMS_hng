@@ -864,7 +864,7 @@ export default function FolioPage() {
                                             guestPhone={booking.guests?.phone || ''}
                                             onUploadComplete={async (url) => {
                                                 await updateGuestIdUrl(booking.guests.id, url);
-                                                window.location.reload(); // Refresh fully to update profile
+                                                setBooking(prev => ({ ...prev, guests: { ...prev.guests, id_image_url: url } })); router.refresh();
                                             }}
                                         />
                                     </div>

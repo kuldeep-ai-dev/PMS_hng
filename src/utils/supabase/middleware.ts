@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // Routes that restaurant staff ARE allowed to access
-const RESTAURANT_ALLOWED = ['/restaurant', '/qr-order', '/auth', '/login', '/_next', '/api', '/print-pos-bill', '/print-kot'];
+const RESTAURANT_ALLOWED = ['/restaurant', '/qr-order', '/auth', '/login', '/_next', '/api', '/print-pos-bill', '/print-kot', '/help'];
 
 export async function updateSession(request: NextRequest) {
     let supabaseResponse = NextResponse.next({ request });
@@ -55,6 +55,13 @@ export async function updateSession(request: NextRequest) {
             .single();
 
         const role = profile?.role;
+
+        // ── MASTER ROLE: redirect to master control ──
+        if (role === 'master' && pathname === '/') {
+            const url = request.nextUrl.clone();
+            url.pathname = '/master-control';
+            return NextResponse.redirect(url);
+        }
 
         // ── RESTAURANT STAFF: can ONLY access /restaurant/* routes ──
         if (role === 'restaurant_staff') {

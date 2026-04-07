@@ -127,9 +127,10 @@ export default function GRCPage() {
 
             {/* Guest Grid */}
             {loading ? (
-                <div className="flex flex-col items-center justify-center py-32 gap-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-                    <p className="text-sm font-medium text-slate-400">Synchronizing GRC Records...</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="h-64 bg-white rounded-2xl border border-slate-100 shadow-sm" />
+                    ))}
                 </div>
             ) : filteredBookings.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

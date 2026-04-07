@@ -159,6 +159,20 @@ export function POSBillingModal({
             }
 
             setSettledOrder(order);
+
+            // --- AUTO-WHATSAPP (THANK YOU + BILL) ---
+            if (customerMobile && customerMobile.length >= 10) {
+                try {
+                    const { sendRestaurantOrderWhatsApp } = await import('@/app/actions/whatsapp');
+                    // We don't await this to avoid blocking the UI, but we log errors
+                    sendRestaurantOrderWhatsApp(order.id).then((res: any) => {
+                        if (res.success) console.log("[WhatsApp] Order message sent");
+                        else console.warn("[WhatsApp] Failed to send:", res.error || res.message);
+                    });
+                } catch (waErr) {
+                    console.error("WhatsApp trigger failed:", waErr);
+                }
+            }
         } catch (err: any) {
             toast.error(err.message || 'Settlement failed');
         } finally {

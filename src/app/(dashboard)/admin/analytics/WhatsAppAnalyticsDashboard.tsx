@@ -4,7 +4,7 @@ import { BentoCard } from '@/components/ui/BentoCard';
 import {
     MessageCircle, Send, CheckCheck, Eye, MousePointerClick,
     AlertTriangle, Clock, Phone, BarChart3, Zap, Activity,
-    Star, BedDouble, ThumbsUp, ThumbsDown, Download, Trash2, CalendarDays
+    Star, BedDouble, ThumbsUp, ThumbsDown, Download, Trash2, CalendarDays, UtensilsCrossed
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -360,11 +360,14 @@ export function WhatsAppAnalyticsDashboard({ data: initialData }: Props) {
                         </div>
                     )}
                     {view === 'restaurant' && (
-                        <div className="mt-6 pt-4 border-t border-slate-100">
-                            <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                                <p className="text-xs text-amber-700 font-medium">
-                                    Restaurant WhatsApp automation is currently in planning phase. Data will appear here once implemented.
-                                </p>
+                        <div className="mt-6 pt-4 border-t border-slate-100 grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-amber-50 rounded-xl text-center border border-amber-100">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">Restaurant Orders</p>
+                                <p className="text-2xl font-black text-amber-600">{stats!.total}</p>
+                            </div>
+                            <div className="p-3 bg-green-50 rounded-xl text-center border border-green-100">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-green-500 mb-1">CTR</p>
+                                <p className="text-2xl font-black text-green-600">{stats!.ctr}%</p>
                             </div>
                         </div>
                     )}
@@ -511,18 +514,68 @@ export function WhatsAppAnalyticsDashboard({ data: initialData }: Props) {
                 </BentoCard>
             )}
 
-            {view === 'restaurant' && (
+            {view === 'restaurant' && timeline.length > 0 && (
                 <BentoCard className="p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                        <BarChart3 className="w-5 h-5 text-indigo-600" />
-                        <h2 className="font-bold text-slate-800">Restaurant Order Insights</h2>
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                            <UtensilsCrossed className="w-5 h-5 text-amber-500" />
+                            <h2 className="font-bold text-slate-800">Restaurant Engagement Tracker</h2>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs">
+                            <span className="flex items-center gap-1.5 text-emerald-600 font-bold">
+                                <ThumbsUp className="w-3.5 h-3.5" />
+                                {timeline.filter(r => r.status === 'clicked').length} Rated
+                            </span>
+                            <span className="flex items-center gap-1.5 text-slate-400 font-bold">
+                                <ThumbsDown className="w-3.5 h-3.5" />
+                                {timeline.filter(r => r.status !== 'clicked').length} Pending
+                            </span>
+                        </div>
                     </div>
-                    <div className="py-20 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                        <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-bold text-slate-800">Coming Soon</h3>
-                        <p className="text-slate-500 text-sm max-w-md mx-auto mt-2 px-6">
-                            We are integrating WhatsApp ordering and feedback for the restaurant module. You will be able to track order confirmations, menu views, and dining feedback here.
-                        </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[340px] overflow-y-auto pr-1 custom-scrollbar">
+                        {timeline.map((item) => (
+                            <div
+                                key={item.id}
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all",
+                                    item.status === 'clicked'
+                                        ? "bg-emerald-50/50 border-emerald-200"
+                                        : "bg-slate-50/50 border-slate-200"
+                                )}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className={cn(
+                                            "w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black",
+                                            item.status === 'clicked'
+                                                ? "bg-emerald-100 text-emerald-700"
+                                                : "bg-slate-100 text-slate-500"
+                                        )}>
+                                            {item.roomNumber?.replace('Bill #', '') || 'ORD'}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800">{item.guestName}</p>
+                                            <p className="text-[10px] text-slate-400">Total: {item.roomType || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    {item.status === 'clicked' ? (
+                                        <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">
+                                            <Star className="w-3 h-3 fill-emerald-500" /> Rated
+                                        </span>
+                                    ) : (
+                                        <StatusPill status={item.status} />
+                                    )}
+                                </div>
+                                <div className="text-[11px] text-slate-400 mt-1">
+                                    <span>Sent: {format(new Date(item.sentAt), 'dd MMM, p')}</span>
+                                    {item.clickedAt && (
+                                        <span className="ml-2 text-emerald-500 font-bold">
+                                            • Clicked {format(new Date(item.clickedAt), 'p')}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </BentoCard>
             )}

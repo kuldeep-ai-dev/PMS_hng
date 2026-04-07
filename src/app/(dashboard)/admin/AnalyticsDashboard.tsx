@@ -119,8 +119,15 @@ export function AnalyticsDashboard() {
 
     if (loading || !data) {
         return (
-            <div className="flex items-center justify-center p-12">
-                <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            <div className="space-y-6 animate-pulse">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="h-48 bg-white rounded-2xl border border-slate-100" />
+                    <div className="h-48 bg-white rounded-2xl border border-slate-100" />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="h-[320px] bg-white rounded-2xl border border-slate-100" />
+                    <div className="h-[320px] lg:col-span-2 bg-white rounded-2xl border border-slate-100" />
+                </div>
             </div>
         );
     }

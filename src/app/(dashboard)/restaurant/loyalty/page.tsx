@@ -95,8 +95,18 @@ export default function LoyaltyManagementPage() {
 
     if (!mounted || loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+            <div className="space-y-8 p-4 md:p-8 max-w-[1600px] mx-auto animate-pulse">
+                <div className="flex justify-between items-center">
+                    <div className="space-y-2">
+                        <div className="h-8 w-64 bg-slate-100 rounded-lg" />
+                        <div className="h-4 w-48 bg-slate-50 rounded" />
+                    </div>
+                    <div className="h-12 w-48 bg-slate-100 rounded-2xl" />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div className="lg:col-span-5 h-[600px] bg-white rounded-[2.5rem] border border-slate-100" />
+                    <div className="lg:col-span-7 h-[600px] bg-white rounded-[2.5rem] border border-slate-100" />
+                </div>
             </div>
         );
     }

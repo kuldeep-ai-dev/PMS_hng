@@ -11,18 +11,20 @@ export const dynamic = 'force-dynamic';
 export default async function WhatsAppControlCenterPage() {
     const supabase = await createClient();
 
-    // Auth & RBAC Check
-    const { data: { user } } = await supabase.auth.getUser();
+    // Parallel Data Fetching: Auth, Profile, and Templates
+    const [
+        { data: { user } },
+        { data: profile },
+        result
+    ] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('profiles').select('role').eq('id', (await supabase.auth.getUser()).data.user?.id).single(),
+        getWhatsAppTemplates()
+    ]);
 
     if (!user) {
         redirect('/login');
     }
-
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
 
     const isConfigured = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -38,7 +40,6 @@ export default async function WhatsAppControlCenterPage() {
         );
     }
 
-    const result = await getWhatsAppTemplates();
     const templates = result.success ? result.data : [];
     const error = !result.success ? result.error : null;
 

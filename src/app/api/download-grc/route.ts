@@ -83,6 +83,14 @@ export async function GET(request: Request) {
     } catch (err: any) {
         if (browser) await browser.close();
         console.error('[API/download-grc] PDF Generation Error:', err.message);
-        return new NextResponse(`PDF Generation failed: ${err.message}`, { status: 500 });
+
+        let userMessage = err.message;
+        if (err.message.includes('Could not find Chrome')) {
+            userMessage = `PDF Generation failed: Chrome binary not found on the server. 
+            \n- Recommended: Set BROWSERLESS_API_KEY environment variable.
+            \n- Alternative: Run "npx puppeteer browsers install chrome" on the server.`;
+        }
+
+        return new NextResponse(userMessage, { status: 500 });
     }
 }

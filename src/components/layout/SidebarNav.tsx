@@ -9,7 +9,7 @@ import {
     ChevronDown, LayoutDashboard, Building2, Monitor,
     UserPlus, FileCheck, FileText, PackageSearch, LayoutGrid,
     Utensils, Layout, UserCheck, Brush, BarChart3, MessageCircle,
-    TrendingUp, Coins, Users2, PieChart, LineChart, Zap, CalendarPlus
+    TrendingUp, Coins, Users2, PieChart, LineChart, Zap, CalendarPlus, ShieldCheck, HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +19,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     LayoutDashboard, Building2, Monitor, UserPlus, FileCheck,
     FileText, PackageSearch, LayoutGrid, Utensils, Layout,
     UserCheck, Brush, BarChart3, MessageCircle, TrendingUp,
-    Coins, Users2, PieChart, LineChart, Zap
+    Coins, Users2, PieChart, LineChart, Zap, ShieldCheck, HelpCircle
 };
 
 type NavItem = {
@@ -61,7 +61,7 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                 { label: 'Bill Verification', href: '/operations/verify-bill', iconName: 'FileCheck' },
                 { label: 'GRC', href: '/operations/grc', iconName: 'FileText' },
                 { label: 'Lost & Found', href: '/operations/lost-and-found', iconName: 'PackageSearch' },
-                { label: 'Day Closing', href: '/operations/day-closing', iconName: 'Timer' },
+                { label: 'User Guide', href: '/help', iconName: 'HelpCircle' },
             ]
         },
         {
@@ -74,6 +74,7 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                 { label: 'Rest. Receipts', href: '/restaurant/money-receipts', iconName: 'Coins' },
                 { label: 'Inventory & Stock', href: '/restaurant/inventory', iconName: 'PackageSearch' },
                 { label: 'Website Bookings', href: '/website-bookings', iconName: 'Globe' },
+                { label: 'Restaurant Guide', href: '/help', iconName: 'HelpCircle' },
             ]
         },
         ...(isAdmin ? [{
@@ -83,11 +84,12 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                 { label: 'Master Suite', href: '/admin/master-suite', iconName: 'Layout' },
                 { label: 'Restaurant Master', href: '/admin/restaurant-master', iconName: 'UtensilsCrossed' },
                 { label: 'Audit Archives', href: '/admin/audit-logs', iconName: 'History' },
-                { label: 'Night Audit', href: '/admin/night-audit', iconName: 'Timer' },
                 { label: 'Admin Panel', href: '/admin', iconName: 'Settings' },
                 { label: 'Staff Management', href: '/admin/staff', iconName: 'UserCheck' },
                 { label: 'WhatsApp Hub', href: '/admin/whatsapp', iconName: 'MessageCircle' },
+                { label: 'Software License', href: '/admin/license', iconName: 'ShieldCheck' },
                 { label: 'Housekeeping Monitor', href: '/admin/housekeeping', iconName: 'Brush' },
+                { label: 'Admin Help Guide', href: '/help', iconName: 'HelpCircle' },
             ]
         }] : []),
         ...(isAdmin ? [{
@@ -104,7 +106,17 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
             ]
         }] : []),
         ...(isAdmin ? [{ label: 'Settings', iconName: 'Settings', href: '/settings' }] : []),
+        { label: 'User Guide', iconName: 'HelpCircle', href: '/help' },
     ];
+
+    if (role === 'master') {
+        navGroups = [
+            { label: 'Master Control', iconName: 'Zap', href: '/master-control' },
+            { label: 'License Authority', iconName: 'ShieldCheck', href: '/master-control/license' },
+            { label: 'System Logs', iconName: 'History', href: '/master-control/logs' },
+            { label: 'Master Guide', iconName: 'HelpCircle', href: '/help' },
+        ];
+    }
 
     if (role === 'cleaning_staff') {
         navGroups = [
@@ -160,7 +172,7 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                                 const isSubActive = isActive(sub.href);
                                 return (
                                     <Link
-                                        key={sub.href}
+                                        key={sub.label + sub.href}
                                         href={sub.href}
                                         onClick={onNavigate}
                                         className={cn(
@@ -218,7 +230,7 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
 
                                     return (
                                         <Link
-                                            key={sub.href}
+                                            key={sub.label + sub.href}
                                             href={sub.href}
                                             onClick={onNavigate}
                                             className={cn(

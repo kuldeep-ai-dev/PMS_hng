@@ -58,8 +58,20 @@ export default function RestaurantCustomersPage() {
 
     if (loading || !mounted) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+            <div className="space-y-8 p-4 md:p-8 max-w-[1600px] mx-auto animate-pulse">
+                <div className="flex justify-between items-center">
+                    <div className="space-y-2">
+                        <div className="h-8 w-64 bg-slate-100 rounded-lg" />
+                        <div className="h-4 w-48 bg-slate-50 rounded" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-40 bg-white rounded-3xl border border-slate-100" />
+                    ))}
+                </div>
+                <div className="h-14 w-full bg-white rounded-[2rem] border border-slate-100" />
+                <div className="h-[500px] bg-white rounded-[2.5rem] border border-slate-100" />
             </div>
         );
     }

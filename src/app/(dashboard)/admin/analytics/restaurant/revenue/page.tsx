@@ -41,15 +41,33 @@ export default function RestaurantRevenueAnalytics() {
             const startOfToday = startOfDay(now);
             const endOfToday = endOfDay(now);
 
-            // 1. Fetch MTD Sales and Total Orders (Filtered by Status)
-            const { data: monthOrders, error: mError } = await supabase
-                .from('restaurant_orders')
-                .select('total_amount, order_time, status')
-                .gte('order_time', startOfMonthDate.toISOString())
-                .lte('order_time', endOfToday.toISOString())
-                .eq('payment_status', 'paid');
+            // 1 & 4. Parallel Data Fetching: Orders and Categories
+            const [
+                { data: monthOrders, error: mError },
+                { data: categoryDataRaw, error: cError }
+            ] = await Promise.all([
+                supabase
+                    .from('restaurant_orders')
+                    .select('total_amount, order_time, status')
+                    .gte('order_time', startOfMonthDate.toISOString())
+                    .lte('order_time', endOfToday.toISOString())
+                    .eq('payment_status', 'paid'),
+                supabase
+                    .from('restaurant_order_items')
+                    .select(`
+                        quantity,
+                        price_at_time,
+                        menu_item:restaurant_menu_items (
+                            category:restaurant_categories (name)
+                        ),
+                        order:restaurant_orders!inner (status)
+                    `)
+                    .gte('created_at', startOfMonthDate.toISOString())
+                    .eq('order.payment_status', 'paid')
+            ]);
 
             if (mError) throw mError;
+            if (cError) throw cError;
 
             const mtdSales = monthOrders?.reduce((sum, o) => sum + Number(o.total_amount), 0) || 0;
             const mtdOrdersCount = monthOrders?.length || 0;
@@ -75,23 +93,6 @@ export default function RestaurantRevenueAnalytics() {
                 }
             });
             const salesTrend = Array.from(trendMap.values());
-
-            // 4. Category Data (Filtered by Order Status)
-            // We use !inner join to filter items only from accepted orders
-            const { data: categoryDataRaw, error: cError } = await supabase
-                .from('restaurant_order_items')
-                .select(`
-                    quantity,
-                    price_at_time,
-                    menu_item:restaurant_menu_items (
-                        category:restaurant_categories (name)
-                    ),
-                    order:restaurant_orders!inner (status)
-                `)
-                .gte('created_at', startOfMonthDate.toISOString())
-                .eq('order.payment_status', 'paid');
-
-            if (cError) throw cError;
 
             const catMap = new Map();
             categoryDataRaw?.forEach((item: any) => {
@@ -155,8 +156,24 @@ export default function RestaurantRevenueAnalytics() {
 
     if (loading || !stats) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="w-8 h-8 text-teal-500 animate-spin" />
+            <div className="p-6 bg-slate-50/30 min-h-screen">
+                <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-pulse">
+                    <div className="flex justify-between items-center">
+                        <div className="space-y-2">
+                            <div className="h-10 w-64 bg-slate-200 rounded-2xl"></div>
+                            <div className="h-4 w-48 bg-slate-100 rounded-lg"></div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="h-32 bg-white rounded-3xl border border-slate-100 shadow-sm"></div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 h-[400px] bg-white rounded-3xl border border-slate-100 shadow-sm"></div>
+                        <div className="h-[400px] bg-white rounded-3xl border border-slate-100 shadow-sm"></div>
+                    </div>
+                </div>
             </div>
         );
     }

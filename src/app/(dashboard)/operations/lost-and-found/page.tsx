@@ -15,7 +15,8 @@ import {
     ShieldAlert,
     X,
     Phone,
-    Home
+    Home,
+    Loader2
 } from 'lucide-react';
 import {
     getLostAndFoundItems,
@@ -35,6 +36,7 @@ export default function LostAndFoundPage() {
     const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
     const [isMarkFoundModalOpen, setIsMarkFoundModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [isPending, setIsPending] = useState(false);
 
     // Form states
     const [newItem, setNewItem] = useState({
@@ -78,6 +80,7 @@ export default function LostAndFoundPage() {
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            setIsPending(true);
             await addLostAndFoundItem(newItem);
             toast.success("Item added successfully");
             setIsAddModalOpen(false);
@@ -94,12 +97,15 @@ export default function LostAndFoundPage() {
             loadItems();
         } catch (error) {
             toast.error("Failed to add item");
+        } finally {
+            setIsPending(false);
         }
     };
 
     const handleClaim = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            setIsPending(true);
             await updateItemStatus(selectedItem.id, 'Claimed', claimDetails);
             toast.success("Item marked as claimed");
             setIsClaimModalOpen(false);
@@ -107,12 +113,15 @@ export default function LostAndFoundPage() {
             loadItems();
         } catch (error) {
             toast.error("Failed to update status");
+        } finally {
+            setIsPending(false);
         }
     };
 
     const handleMarkFound = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            setIsPending(true);
             await markAsFound(selectedItem.id, markFoundDetails);
             toast.success("Item marked as found and moved to repository");
             setIsMarkFoundModalOpen(false);
@@ -124,6 +133,8 @@ export default function LostAndFoundPage() {
             loadItems();
         } catch (error) {
             toast.error("Failed to update status");
+        } finally {
+            setIsPending(false);
         }
     };
 
@@ -501,9 +512,11 @@ export default function LostAndFoundPage() {
                             </div>
                             <button
                                 type="submit"
-                                className="w-full bg-slate-900 text-white font-black uppercase tracking-widest text-sm py-5 rounded-[24px] hover:bg-slate-800 transition-all hover:scale-[1.02] active:scale-[0.98] mt-4 shadow-xl shadow-slate-200"
+                                disabled={isPending}
+                                className="w-full bg-slate-900 text-white font-black uppercase tracking-widest text-sm py-5 rounded-[24px] hover:bg-slate-800 transition-all hover:scale-[1.02] active:scale-[0.98] mt-4 shadow-xl shadow-slate-200 flex items-center justify-center gap-2"
                             >
-                                Register Entry
+                                {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {isPending ? 'PROCESSING...' : 'Register Entry'}
                             </button>
                         </form>
                     </div>
@@ -559,9 +572,11 @@ export default function LostAndFoundPage() {
                             </div>
                             <button
                                 type="submit"
-                                className="w-full bg-purple-600 text-white font-black uppercase tracking-widest text-sm py-5 rounded-[24px] hover:bg-purple-700 shadow-xl shadow-purple-100 transition-all font-sans"
+                                disabled={isPending}
+                                className="w-full bg-purple-600 text-white font-black uppercase tracking-widest text-sm py-5 rounded-[24px] hover:bg-purple-700 shadow-xl shadow-purple-100 transition-all font-sans flex items-center justify-center gap-2"
                             >
-                                Confirm Handover
+                                {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {isPending ? 'PROCESSING...' : 'Confirm Handover'}
                             </button>
                         </form>
                     </div>
@@ -618,9 +633,11 @@ export default function LostAndFoundPage() {
                             </div>
                             <button
                                 type="submit"
-                                className="w-full bg-teal-600 text-white font-black uppercase tracking-widest text-sm py-5 rounded-[24px] hover:bg-teal-700 shadow-xl shadow-teal-100 transition-all"
+                                disabled={isPending}
+                                className="w-full bg-teal-600 text-white font-black uppercase tracking-widest text-sm py-5 rounded-[24px] hover:bg-teal-700 shadow-xl shadow-teal-100 transition-all flex items-center justify-center gap-2"
                             >
-                                Move to Found Inventory
+                                {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {isPending ? 'PROCESSING...' : 'Move to Found Inventory'}
                             </button>
                         </form>
                     </div>

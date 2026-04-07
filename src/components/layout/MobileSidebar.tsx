@@ -54,7 +54,7 @@ export function MobileSidebar({ initials, displayName, role }: MobileSidebarProp
                 </div>
 
                 {/* Navigation (uses shared SidebarNav component) */}
-                <SidebarNav role={role} onNavigate={() => setOpen(false)} />
+                <SidebarNav key={role} role={role} onNavigate={() => setOpen(false)} />
 
                 {/* User Section */}
                 <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">

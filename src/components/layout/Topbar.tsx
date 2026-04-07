@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Grid3X3, X, BedDouble, Users, UtensilsCrossed, Settings, BarChart2, ClipboardList, LogOut, ChevronRight, AlertTriangle, CheckCircle2, CalendarCheck } from 'lucide-react';
+import { Bell, Grid3X3, X, BedDouble, Users, UtensilsCrossed, Settings, BarChart2, ClipboardList, LogOut, ChevronRight, AlertTriangle, CheckCircle2, CalendarCheck, Clock } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { getNotifications, type Notification } from '@/app/actions/notifications';
+import { getLicenseStatus } from '@/app/actions/license';
 
 const MODULES = [
     { label: 'Front Desk', href: '/front-desk', icon: BedDouble, color: 'bg-teal-500' },
@@ -21,16 +23,34 @@ function NotificationIcon({ type }: { type: Notification['type'] }) {
     return <CalendarCheck className="w-4 h-4 text-teal-500 flex-shrink-0" />;
 }
 
-export function Topbar() {
+interface TopbarProps {
+    role?: string;
+}
+
+export function Topbar({ role }: TopbarProps) {
+    if (role === 'master') return null;
+
     const [showNotifications, setShowNotifications] = useState(false);
     const [showLauncher, setShowLauncher] = useState(false);
+    const [daysLeft, setDaysLeft] = useState<number | null>(null);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(false);
 
     const notifRef = useRef<HTMLDivElement>(null);
     const launcherRef = useRef<HTMLDivElement>(null);
 
-    // Load notifications when panel opens
+    // 1. Fetch License Status
+    useEffect(() => {
+        getLicenseStatus().then(status => {
+            if (status) {
+                const expiry = new Date(status.expiry_date);
+                const diff = expiry.getTime() - new Date().getTime();
+                setDaysLeft(Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24))));
+            }
+        });
+    }, []);
+
+    // 2. Load notifications when panel opens
     useEffect(() => {
         if (showNotifications) {
             setLoading(true);
@@ -38,7 +58,7 @@ export function Topbar() {
         }
     }, [showNotifications]);
 
-    // Close dropdowns on click outside
+    // 3. Close dropdowns on click outside
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
             if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifications(false);
@@ -55,7 +75,22 @@ export function Topbar() {
                 <GlobalSearch />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+                {/* Software Validity Indicator */}
+                {daysLeft !== null && (
+                    <div className={cn(
+                        "hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all",
+                        daysLeft > 30 ? "bg-emerald-50 border-emerald-100 text-emerald-600" :
+                            daysLeft > 7 ? "bg-amber-50 border-amber-100 text-amber-600 animate-pulse" :
+                                "bg-red-50 border-red-100 text-red-600 animate-bounce"
+                    )}>
+                        <Clock className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+                            Validity: {daysLeft} Days Left
+                        </span>
+                    </div>
+                )}
+
                 {/* Notifications Bell */}
                 <div className="relative" ref={notifRef}>
                     <button

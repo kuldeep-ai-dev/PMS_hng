@@ -6,19 +6,33 @@ import { createClient } from '@/utils/supabase/server';
 import { MobileSidebar } from './MobileSidebar';
 import { SidebarNav } from './SidebarNav';
 
-export async function Sidebar({ className }: { className?: string }) {
+interface SidebarProps {
+    className?: string;
+    role?: string;
+    initials?: string;
+    displayName?: string;
+}
+
+export async function Sidebar({ className, role: propRole, initials: propInitials, displayName: propDisplayName }: SidebarProps) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: profile } = user ? await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single() : { data: null };
+    // Use props if available, otherwise fetch as fallback
+    let role = propRole;
+    let initials = propInitials;
+    let displayName = propDisplayName;
 
-    const role = profile?.role || 'Guest';
-    const initials = profile?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '??';
-    const displayName = profile?.name || user?.email?.split('@')[0] || 'User';
+    if (!role || !initials || !displayName) {
+        const { data: profile } = user ? await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single() : { data: null };
+
+        role = role || profile?.role || 'Guest';
+        initials = initials || profile?.name?.split(' ')?.map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '??';
+        displayName = displayName || profile?.name || user?.email?.split('@')[0] || 'User';
+    }
 
     return (
         <>
@@ -32,7 +46,7 @@ export async function Sidebar({ className }: { className?: string }) {
                     />
                 </div>
 
-                <SidebarNav role={role} />
+                <SidebarNav key={role} role={role!} />
 
                 <div className="mt-auto p-4 border-t border-slate-100 bg-slate-50/50">
                     <div className="flex items-center justify-between">
@@ -40,7 +54,7 @@ export async function Sidebar({ className }: { className?: string }) {
                             <div className="w-9 h-9 rounded-full bg-slate-200 flex shrink-0 items-center justify-center font-bold text-slate-500 text-sm shadow-inner">{initials}</div>
                             <div className="flex flex-col truncate">
                                 <span className="text-sm font-semibold text-slate-700 truncate">{displayName}</span>
-                                <span className="text-[10px] uppercase font-bold text-teal-600 tracking-wider">{role.replace('_', ' ')}</span>
+                                <span className="text-[10px] uppercase font-bold text-teal-600 tracking-wider">{role!.replace('_', ' ')}</span>
                             </div>
                         </div>
                         <form action={logout}>
@@ -57,9 +71,9 @@ export async function Sidebar({ className }: { className?: string }) {
 
             {/* Mobile Sidebar */}
             <MobileSidebar
-                initials={initials}
-                displayName={displayName}
-                role={role}
+                initials={initials!}
+                displayName={displayName!}
+                role={role!}
             />
         </>
     );

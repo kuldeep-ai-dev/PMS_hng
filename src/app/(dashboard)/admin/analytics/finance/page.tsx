@@ -7,11 +7,18 @@ export const dynamic = 'force-dynamic';
 
 export default async function FinanceAnalyticsPage() {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // Parallel Data Fetching: Auth and Initial Data
+    const [
+        { data: { user } },
+        initialData
+    ] = await Promise.all([
+        supabase.auth.getUser(),
+        getFinanceAnalytics('30d')
+    ]);
 
-    if (!user) redirect('/login');
-
-    const initialData = await getFinanceAnalytics('30d');
+    if (!user) {
+        redirect('/login');
+    }
 
     return (
         <div className="p-6 bg-slate-50/30 min-h-screen">

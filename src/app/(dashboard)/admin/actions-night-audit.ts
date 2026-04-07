@@ -5,24 +5,16 @@ import { revalidatePath } from 'next/cache';
 import { getSettings } from '@/app/(dashboard)/settings/actions';
 
 export async function getBusinessDate() {
-    const supabase = await createClient();
-    const { data: latestAudit } = await supabase
-        .from('night_audit_logs')
-        .select('audit_date')
-        .order('audit_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    // Return current date in IST
+    const now = new Date();
+    // Offset for IST (UTC+5:30)
+    // IST is 5.5 hours ahead of UTC
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + istOffset);
 
-    let businessDate = new Date();
-    businessDate.setDate(businessDate.getDate() - 1); // Default to yesterday
-
-    if (latestAudit?.audit_date) {
-        const lastAuditDate = new Date(latestAudit.audit_date + 'T00:00:00Z');
-        businessDate = new Date(lastAuditDate);
-        businessDate.setDate(businessDate.getDate() + 1); // Business Date is Audit + 1
-    }
-    businessDate.setHours(0, 0, 0, 0);
-    return businessDate;
+    // Set to midnight IST
+    istDate.setUTCHours(0, 0, 0, 0);
+    return istDate;
 }
 
 export async function getPreflightStatus(auditDate: string) {

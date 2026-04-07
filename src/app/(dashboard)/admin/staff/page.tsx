@@ -20,30 +20,26 @@ export default async function StaffManagementPage() {
         auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 1. Fetch auth users
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-
-    // 2. Fetch profiles
-    const { data: profiles, error: profilesError } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-    // 3. Fetch latest activity logs to accurately determine login/logout status
-    const { data: activityLogs } = await supabaseAdmin
-        .from('staff_activity_logs')
-        .select('staff_id, action, created_at')
-        .order('created_at', { ascending: false });
-
-    // 4. Fetch Hotel Settings for ID Card rendering
-    let hotelSettings = { hotel_name: 'My Hotel', phone: '', email: '', address: '', logo_url: '' };
-    try {
-        const SETTINGS_PATH = path.resolve(process.cwd(), 'src/data/hotel-settings.json');
-        const data = await fs.readFile(SETTINGS_PATH, 'utf-8');
-        hotelSettings = JSON.parse(data);
-    } catch (e) {
-        console.error('Failed to parse settings');
-    }
+    // 1-4. Parallel Data Fetching: Auth, Profiles, Activity, and Settings
+    const [
+        { data: authData, error: authError },
+        { data: profiles, error: profilesError },
+        { data: activityLogs },
+        hotelSettings
+    ] = await Promise.all([
+        supabaseAdmin.auth.admin.listUsers(),
+        supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false }),
+        supabaseAdmin.from('staff_activity_logs').select('staff_id, action, created_at').order('created_at', { ascending: false }),
+        (async () => {
+            try {
+                const SETTINGS_PATH = path.resolve(process.cwd(), 'src/data/hotel-settings.json');
+                const data = await fs.readFile(SETTINGS_PATH, 'utf-8');
+                return JSON.parse(data);
+            } catch (e) {
+                return { hotel_name: 'My Hotel', phone: '', email: '', address: '', logo_url: '' };
+            }
+        })()
+    ]);
 
     if (authError || profilesError) {
         return (
@@ -63,11 +59,11 @@ export default async function StaffManagementPage() {
     const authUsers = authData?.users || [];
 
     // Merge profiles with their auth emails and latest activity status
-    const staffMembers = (profiles || []).map((profile) => {
-        const authRecord = authUsers.find(u => u.id === profile.id);
+    const staffMembers = (profiles || []).map((profile: any) => {
+        const authRecord = authUsers.find((u: any) => u.id === profile.id);
 
         // Find their most recent log locally
-        const latestLog = activityLogs?.find(l => l.staff_id === profile.id);
+        const latestLog = activityLogs?.find((l: any) => l.staff_id === profile.id);
 
         let isOnline = false;
         let lastActivity = authRecord?.last_sign_in_at || null;
@@ -139,7 +135,7 @@ export default async function StaffManagementPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
-                            {staffMembers.map((staff) => (
+                            {staffMembers.map((staff: any) => (
                                 <tr key={staff.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-6 py-4 shrink-0">
                                         <div className="flex items-center gap-4">

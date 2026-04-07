@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BentoCard } from '@/components/ui/BentoCard';
 import { BedDouble, User, AlertTriangle, Sparkles, UserPlus, X, Loader2, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { getAvailableCleaningStaff, assignCleaningStaff } from '@/app/actions/housekeeping';
 import { unblockRoom } from '@/app/actions/rooms';
@@ -61,6 +62,7 @@ const getRoomHref = (room: Room) => {
 const isClickable = (room: Room) => room.status === 'Available' || (room.status === 'Occupied' && !!room.bookingId);
 
 export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
+    const router = useRouter();
     const [filter, setFilter] = useState<RoomStatus | 'All'>('All');
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [showBlockModal, setShowBlockModal] = useState(false);
@@ -69,8 +71,14 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
     const [cleaningStaff, setCleaningStaff] = useState<any[]>([]);
     const [loadingStaff, setLoadingStaff] = useState(false);
     const [assigningId, setAssigningId] = useState<string | null>(null);
+    const [rooms, setRooms] = useState<Room[]>(initialRooms);
 
-    const filteredRooms = filter === 'All' ? initialRooms : initialRooms.filter(r => r.status === filter);
+    // Synchronize state if props change (e.g. from server refresh)
+    useEffect(() => {
+        setRooms(initialRooms);
+    }, [initialRooms]);
+
+    const filteredRooms = filter === 'All' ? rooms : rooms.filter(r => r.status === filter);
 
     const handleDirtyClick = async (room: Room) => {
         setSelectedRoom(room);
@@ -276,8 +284,12 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                                             setBlocking(true);
                                             try {
                                                 await unblockRoom(selectedRoom.id);
+                                                // Optimistic update
+                                                setRooms(prev => prev.map(r =>
+                                                    r.id === selectedRoom.id ? { ...r, status: 'Available' as RoomStatus } : r
+                                                ));
                                                 setShowBlockModal(false);
-                                                window.location.reload();
+                                                router.refresh();
                                             } catch (e: any) {
                                                 toast.error(e.message);
                                             } finally {
@@ -332,9 +344,13 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                                                 setAssigningId(staff.id);
                                                 try {
                                                     await assignCleaningStaff(selectedRoom.id, staff.id);
+                                                    // Optimistic update
+                                                    setRooms(prev => prev.map(r =>
+                                                        r.id === selectedRoom.id ? { ...r, assignedStaffName: staff.name } : r
+                                                    ));
                                                     toast.success(`Assigned ${staff.name} to Room ${selectedRoom.number}`);
                                                     setShowStaffModal(false);
-                                                    window.location.reload();
+                                                    router.refresh();
                                                 } catch (e: any) {
                                                     toast.error(e.message);
                                                 } finally {

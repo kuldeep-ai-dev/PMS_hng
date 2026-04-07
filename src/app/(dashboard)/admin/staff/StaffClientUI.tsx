@@ -206,6 +206,9 @@ export default function StaffClientUI({ mode, staff }: { mode: 'add' | 'edit'; s
                                         <option value="front_desk">Front Desk</option>
                                         <option value="restaurant_staff">Restaurant Staff</option>
                                         <option value="cleaning_staff">Housekeeping (Cleaning)</option>
+                                        {staff?.role === 'master' && (
+                                            <option value="master">Master (Developer)</option>
+                                        )}
                                     </select>
                                 </div>
 
@@ -252,8 +255,14 @@ export default function StaffClientUI({ mode, staff }: { mode: 'add' | 'edit'; s
                                         disabled={isLoading || isDeleting}
                                         className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
                                     >
-                                        {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                                        {mode === 'add' ? 'Create Staff' : 'Save Changes'}
+                                        {isLoading ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                PROCESSING...
+                                            </>
+                                        ) : (
+                                            mode === 'add' ? 'Create Staff' : 'Save Changes'
+                                        )}
                                     </button>
                                 </div>
                             </div>

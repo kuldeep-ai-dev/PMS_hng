@@ -26,12 +26,12 @@ export async function login(formData: FormData) {
     const recaptchaToken = formData.get('g-recaptcha-response') as string
 
     if (!recaptchaToken) {
-        return redirect('/login?message=Please complete the reCAPTCHA verification')
+        return { success: false, error: "Please complete the reCAPTCHA verification" };
     }
 
     const isValidRecaptcha = await verifyRecaptcha(recaptchaToken);
     if (!isValidRecaptcha) {
-        return redirect('/login?message=reCAPTCHA verification failed. Please try again.')
+        return { success: false, error: "reCAPTCHA verification failed. Please try again." };
     }
 
     const supabase = await createClient();
@@ -44,10 +44,11 @@ export async function login(formData: FormData) {
     const { error } = await supabase.auth.signInWithPassword(data);
 
     if (error) {
-        redirect('/login?message=Invalid login credentials. Please try again.');
+        return { success: false, error: "Invalid login credentials. Please try again." };
     }
 
     revalidatePath('/', 'layout');
+    // Successful login: Use redirect() here, which will be caught as NEXT_REDIRECT by the client
     redirect('/');
 }
 

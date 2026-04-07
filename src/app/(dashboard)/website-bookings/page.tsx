@@ -143,8 +143,13 @@ export default function WebsiteBookingsPage() {
 
             {/* Bookings List */}
             {loading ? (
-                <div className="flex justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                <div className="space-y-6 animate-pulse">
+                    <div className="h-16 bg-white rounded-xl border border-slate-100" />
+                    <div className="space-y-3">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-24 bg-white rounded-xl border border-slate-100" />
+                        ))}
+                    </div>
                 </div>
             ) : filtered.length === 0 ? (
                 <BentoCard className="py-16 text-center">

@@ -49,7 +49,9 @@ export function SharedBillingModal({
             const { data: kotNo } = await supabase.rpc('get_next_restaurant_kot_no');
 
             let custData: any = { id: null };
-            if (customerMobile && customerMobile.length >= 10) {
+            // Only exclude room guests (as per requirement to not save them in restaurant DB)
+            // Table and Walk-in guests should be saved to the customer database for marketing
+            if (orderType !== 'room' && customerMobile && customerMobile.length >= 10) {
                 const { data, error: custErr } = await supabase.from('restaurant_customers').upsert({
                     mobile_number: customerMobile,
                     name: customerName || 'Walk-in Guest',
@@ -160,6 +162,20 @@ export function SharedBillingModal({
             }
 
             setSettledOrder(order);
+
+            // --- AUTO-WHATSAPP (THANK YOU + BILL) ---
+            if (customerMobile && customerMobile.length >= 10) {
+                try {
+                    const { sendRestaurantOrderWhatsApp } = await import('@/app/actions/whatsapp');
+                    // We don't await this to avoid blocking the UI, but we log errors
+                    sendRestaurantOrderWhatsApp(order.id).then((res: any) => {
+                        if (res.success) console.log("[WhatsApp] Order message sent");
+                        else console.warn("[WhatsApp] Failed to send:", res.error || res.message);
+                    });
+                } catch (waErr) {
+                    console.error("WhatsApp trigger failed:", waErr);
+                }
+            }
         } catch (err: any) {
             toast.error(err.message || 'Settlement failed');
         } finally {

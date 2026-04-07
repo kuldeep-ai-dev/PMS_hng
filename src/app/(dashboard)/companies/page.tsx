@@ -109,9 +109,16 @@ export default function CompaniesPage() {
                 </div>
 
                 {loading ? (
-                    <div className="p-12 flex flex-col items-center justify-center gap-3">
-                        <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
-                        <p className="text-slate-500 text-sm font-medium">Fetching corporate data...</p>
+                    <div className="animate-pulse">
+                        <div className="h-12 bg-slate-50 border-b border-slate-100" />
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="h-20 border-b border-slate-50 flex items-center px-6 gap-6">
+                                <div className="h-5 w-1/3 bg-slate-50 rounded" />
+                                <div className="h-5 w-1/4 bg-slate-50 rounded" />
+                                <div className="h-5 w-1/6 bg-slate-50 rounded" />
+                                <div className="h-5 w-10 ml-auto bg-slate-50 rounded" />
+                            </div>
+                        ))}
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="p-12 text-center">

@@ -14,7 +14,8 @@ import {
     Tag,
     Trash2,
     Database,
-    MoreVertical
+    MoreVertical,
+    Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -34,6 +35,7 @@ export default function InventoryItemsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [mounted, setMounted] = useState(false);
+    const [isPending, setIsPending] = useState(false);
 
     // Modal states
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -69,12 +71,22 @@ export default function InventoryItemsPage() {
     const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            setIsPending(true);
             await addInventoryItem(newItem);
             toast.success('Item added successfully');
             setIsAddModalOpen(false);
+            setNewItem({
+                name: '',
+                unit: 'kg',
+                min_threshold: 0,
+                category_id: '',
+                current_stock: 0
+            });
             loadData();
         } catch (error) {
             toast.error('Failed to add item');
+        } finally {
+            setIsPending(false);
         }
     };
 
@@ -329,9 +341,11 @@ export default function InventoryItemsPage() {
 
                             <button
                                 type="submit"
-                                className="w-full py-5 bg-indigo-600 text-white rounded-[20px] font-black text-sm shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all"
+                                disabled={isPending}
+                                className="w-full py-5 bg-indigo-600 text-white rounded-[20px] font-black text-sm shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                             >
-                                SAVE ITEM & INITIALIZE STOCK
+                                {isPending && <Loader2 className="w-5 h-5 animate-spin" />}
+                                {isPending ? 'PROCESSING...' : 'SAVE ITEM & INITIALIZE STOCK'}
                             </button>
                         </form>
                     </div>

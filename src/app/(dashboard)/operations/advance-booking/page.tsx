@@ -68,17 +68,30 @@ export default function AdvanceBookingPage() {
     const [cancelDetails, setCancelDetails] = useState({ refund: 0, reason: '' });
 
     useEffect(() => {
-        getSettings().then(s => setSettings({
-            cgst_rate: s.cgst_rate || 6,
-            sgst_rate: s.sgst_rate || 6,
-            currency: s.currency || 'INR',
-            free_pax_limit: s.free_pax_limit !== undefined ? s.free_pax_limit : 2,
-            extra_bed_rate: s.extra_bed_rate || 0,
-            extra_pax_rate: s.extra_pax_rate || 0,
-            meal_plan_rates: s.meal_plan_rates || { EP: 0, CP: 500, MAP: 1000, AP: 1500, AI: 2500 }
-        }));
-        getCompanies().then(setCompanies);
-        fetchBookings();
+        const loadInitialData = async () => {
+            try {
+                setLoadingBookings(true);
+                const [s, comps] = await Promise.all([
+                    getSettings(),
+                    getCompanies(),
+                    fetchBookings()
+                ]);
+
+                setSettings({
+                    cgst_rate: s.cgst_rate || 6,
+                    sgst_rate: s.sgst_rate || 6,
+                    currency: s.currency || 'INR',
+                    free_pax_limit: s.free_pax_limit !== undefined ? s.free_pax_limit : 2,
+                    extra_bed_rate: s.extra_bed_rate || 0,
+                    extra_pax_rate: s.extra_pax_rate || 0,
+                    meal_plan_rates: s.meal_plan_rates || { EP: 0, CP: 500, MAP: 1000, AP: 1500, AI: 2500 }
+                });
+                setCompanies(comps);
+            } finally {
+                setLoadingBookings(false);
+            }
+        };
+        loadInitialData();
     }, []);
 
     useEffect(() => {
@@ -468,7 +481,26 @@ export default function AdvanceBookingPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {loadingBookings ? (
-                                    <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-400">Loading reservations...</td></tr>
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            <td className="px-6 py-4">
+                                                <div className="h-4 w-32 bg-slate-100 rounded mb-2" />
+                                                <div className="h-3 w-24 bg-slate-50 rounded" />
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="h-8 w-16 bg-slate-100 rounded-lg" />
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="h-4 w-40 bg-slate-100 rounded" />
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="h-4 w-20 bg-slate-100 rounded ml-auto" />
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="h-8 w-24 bg-slate-100 rounded-lg mx-auto" />
+                                            </td>
+                                        </tr>
+                                    ))
                                 ) : bookings.length === 0 ? (
                                     <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-400">No active advance bookings found.</td></tr>
                                 ) : bookings.map(b => (
