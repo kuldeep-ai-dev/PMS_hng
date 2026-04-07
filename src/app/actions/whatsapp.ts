@@ -573,10 +573,10 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
                 `₹${totalAmount}`,
                 billDate
             ],
-            buttonUrlSuffix: trackingId, // Useful if the template has a dynamic URL button
+            buttonUrlSuffix: trackingId,
         });
 
-        console.log('[WhatsApp] Restaurant WhatsApp result:', result);
+        console.log(`[WhatsApp] Restaurant request to ${phone} results:`, JSON.stringify(result));
 
         // Save tracking record if message was sent successfully
         if (result.success && result.messageId) {

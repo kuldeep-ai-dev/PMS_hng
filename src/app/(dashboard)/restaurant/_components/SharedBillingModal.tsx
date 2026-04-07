@@ -75,6 +75,8 @@ export function SharedBillingModal({
                     status: 'billed',
                     payment_mode: paymentMode,
                     bill_no: billNo,
+                    customer_name: customerName,
+                    customer_mobile: customerMobile,
                     loyalty_discount_amount: discount,
                     loyalty_points_redeemed: redeemPoints,
                     waiter_id: selectedWaiterId || null
@@ -169,8 +171,13 @@ export function SharedBillingModal({
                     const { sendRestaurantOrderWhatsApp } = await import('@/app/actions/whatsapp');
                     // We don't await this to avoid blocking the UI, but we log errors
                     sendRestaurantOrderWhatsApp(order.id).then((res: any) => {
-                        if (res.success) console.log("[WhatsApp] Order message sent");
-                        else console.warn("[WhatsApp] Failed to send:", res.error || res.message);
+                        if (res.success) {
+                            console.log("[WhatsApp] Order message sent successfully");
+                            toast.success("WhatsApp bill sent!");
+                        } else {
+                            console.warn("[WhatsApp] Failed to send:", res.error || res.message);
+                            toast.error(`WhatsApp Error: ${res.error || res.message}`);
+                        }
                     });
                 } catch (waErr) {
                     console.error("WhatsApp trigger failed:", waErr);
