@@ -456,7 +456,8 @@ export async function testSendWhatsApp(phoneNumber: string) {
         const result = await sendWhatsAppTemplate({
             to: phone,
             templateName: settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation',
-            headerDocUrl: settings.logo_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            // Use a reliable public PDF for testing. Settings logo might be a data: URI which Meta rejects.
+            headerDocUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
             headerDocFilename: 'Test_Invoice.pdf',
             bodyParams: [
                 'Test Guest',
