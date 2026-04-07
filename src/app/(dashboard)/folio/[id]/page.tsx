@@ -647,7 +647,7 @@ export default function FolioPage() {
                                                                     onClick={async () => {
                                                                         if (confirm('Delete this charge?')) {
                                                                             await deleteExtraCharge(charge.id, bookingId);
-                                                                            setExtraCharges(prev => prev.filter(c => c.id !== charge.id));
+                                                                            setExtraCharges((prev: any) => prev.filter((c: any) => c.id !== charge.id));
                                                                             toast.success('Charge deleted');
                                                                         }
                                                                     }}
@@ -864,7 +864,7 @@ export default function FolioPage() {
                                             guestPhone={booking.guests?.phone || ''}
                                             onUploadComplete={async (url) => {
                                                 await updateGuestIdUrl(booking.guests.id, url);
-                                                setBooking(prev => ({ ...prev, guests: { ...prev.guests, id_image_url: url } })); router.refresh();
+                                                setBooking((prev: any) => ({ ...prev, guests: { ...prev.guests, id_image_url: url } })); router.refresh();
                                             }}
                                         />
                                     </div>
