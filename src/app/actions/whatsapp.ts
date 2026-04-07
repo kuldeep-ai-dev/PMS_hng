@@ -448,18 +448,19 @@ export async function sendCheckoutWhatsApp(bookingId: string) {
  * Send a test WhatsApp message. Used from the Settings page.
  * Sends to the provided phone number using the booking template with sample data.
  */
-export async function testSendWhatsApp(phoneNumber: string) {
+export async function testSendWhatsApp(phoneNumber: string, type: 'check_in' | 'check_out' | 'restaurant' = 'check_in') {
     try {
         const settings = await getSettings();
         const phone = formatPhoneForWhatsApp(phoneNumber);
 
-        const result = await sendWhatsAppTemplate({
-            to: phone,
-            templateName: settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation',
-            // Use a reliable public PDF for testing. Settings logo might be a data: URI which Meta rejects.
-            headerDocUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            headerDocFilename: 'Test_Invoice.pdf',
-            bodyParams: [
+        let templateName = '';
+        let bodyParams: string[] = [];
+        let headerDocFilename = 'Test_Invoice.pdf';
+        let buttonUrlSuffix: string | undefined = undefined;
+
+        if (type === 'check_in') {
+            templateName = settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation';
+            bodyParams = [
                 'Test Guest',
                 settings.hotel_name,
                 'Mon, 07 Apr 2026',
@@ -467,7 +468,40 @@ export async function testSendWhatsApp(phoneNumber: string) {
                 '101 (Deluxe)',
                 '2 Adults',
                 settings.phone || ''
-            ]
+            ];
+            headerDocFilename = 'Test_Provisional_Invoice.pdf';
+        } else if (type === 'check_out') {
+            templateName = settings.whatsapp_checkout_template || process.env.WHATSAPP_CHECKOUT_TEMPLATE || 'checkout_thankyou';
+            bodyParams = [
+                'Test Guest',
+                settings.hotel_name,
+                'Mon, 07 Apr 2026',
+                'Wed, 09 Apr 2026',
+                '101 (Deluxe)'
+            ];
+            headerDocFilename = 'Test_Final_Invoice.pdf';
+            buttonUrlSuffix = 'test_click_tracker';
+        } else if (type === 'restaurant') {
+            templateName = settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'restaurant_thankyou';
+            bodyParams = [
+                'Test Guest',
+                settings.hotel_name,
+                'Order #TEST-123',
+                '₹1,250',
+                '07 Apr 2026'
+            ];
+            headerDocFilename = 'Test_Restaurant_Bill.pdf';
+            buttonUrlSuffix = 'test_rest_tracker';
+        }
+
+        const result = await sendWhatsAppTemplate({
+            to: phone,
+            templateName,
+            // Use a reliable public PDF for testing. Settings logo might be a data: URI which Meta rejects.
+            headerDocUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            headerDocFilename,
+            bodyParams,
+            buttonUrlSuffix
         });
 
         // Save analytics record for test messages too
@@ -478,12 +512,13 @@ export async function testSendWhatsApp(phoneNumber: string) {
                     wamid: result.messageId,
                     booking_id: null,
                     status: 'sent',
-                    template_type: 'check_in',
+                    template_type: type === 'restaurant' ? 'restaurant_bill' : (type === 'check_out' ? 'check_out' : 'check_in'),
                     guest_name: 'Test Guest',
                     guest_phone: phone,
                     sent_at: new Date().toISOString(),
+                    tracking_id: buttonUrlSuffix
                 });
-                console.log('[WhatsApp] Test analytics record saved for wamid:', result.messageId);
+                console.log(`[WhatsApp] Test analytics record (${type}) saved for wamid:`, result.messageId);
             } catch (analyticsErr: any) {
                 console.warn('[WhatsApp] Failed to save test analytics:', analyticsErr.message);
             }

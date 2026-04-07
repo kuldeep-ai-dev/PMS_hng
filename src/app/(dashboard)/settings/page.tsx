@@ -714,8 +714,8 @@ export default function SettingsPage() {
 
                             <div className="bg-green-50/60 border border-green-100 rounded-xl p-5">
                                 <p className="text-sm text-slate-700 font-semibold mb-3">🧪 Test WhatsApp Delivery</p>
-                                <div className="flex gap-3 items-end mb-5">
-                                    <div className="flex-1">
+                                <div className="space-y-4 mb-5">
+                                    <div>
                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Phone Number (with country code)</label>
                                         <input
                                             id="test-wa-phone"
@@ -724,29 +724,80 @@ export default function SettingsPage() {
                                             className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm"
                                         />
                                     </div>
-                                    <button
-                                        disabled={sendingWa}
-                                        onClick={async () => {
-                                            const phone = (document.getElementById('test-wa-phone') as HTMLInputElement).value;
-                                            if (!phone) return alert('Please enter a phone number');
-                                            setSendingWa(true);
-                                            setWaResult(null);
-                                            try {
-                                                await updateSettings(settings);
-                                                const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
-                                                const result = await testSendWhatsApp(phone);
-                                                setWaResult(result);
-                                            } catch (err: any) {
-                                                setWaResult({ success: false, error: err.message });
-                                            } finally {
-                                                setSendingWa(false);
-                                            }
-                                        }}
-                                        className="px-5 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm text-sm disabled:opacity-50 whitespace-nowrap"
-                                    >
-                                        {sendingWa ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
-                                        Send Test
-                                    </button>
+
+                                    <div className="flex flex-wrap gap-3">
+                                        <button
+                                            disabled={sendingWa}
+                                            onClick={async () => {
+                                                const phone = (document.getElementById('test-wa-phone') as HTMLInputElement).value;
+                                                if (!phone) return alert('Please enter a phone number');
+                                                setSendingWa(true);
+                                                setWaResult(null);
+                                                try {
+                                                    await updateSettings(settings);
+                                                    const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
+                                                    const result = await testSendWhatsApp(phone, 'check_in');
+                                                    setWaResult(result);
+                                                } catch (err: any) {
+                                                    setWaResult({ success: false, error: err.message });
+                                                } finally {
+                                                    setSendingWa(false);
+                                                }
+                                            }}
+                                            className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm disabled:opacity-50 whitespace-nowrap"
+                                        >
+                                            {sendingWa ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                                            Test Check-in
+                                        </button>
+
+                                        <button
+                                            disabled={sendingWa}
+                                            onClick={async () => {
+                                                const phone = (document.getElementById('test-wa-phone') as HTMLInputElement).value;
+                                                if (!phone) return alert('Please enter a phone number');
+                                                setSendingWa(true);
+                                                setWaResult(null);
+                                                try {
+                                                    await updateSettings(settings);
+                                                    const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
+                                                    const result = await testSendWhatsApp(phone, 'check_out');
+                                                    setWaResult(result);
+                                                } catch (err: any) {
+                                                    setWaResult({ success: false, error: err.message });
+                                                } finally {
+                                                    setSendingWa(false);
+                                                }
+                                            }}
+                                            className="flex-1 px-4 py-3 bg-slate-800 text-white rounded-xl font-medium hover:bg-slate-900 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm disabled:opacity-50 whitespace-nowrap"
+                                        >
+                                            {sendingWa ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                                            Test Check-out
+                                        </button>
+
+                                        <button
+                                            disabled={sendingWa}
+                                            onClick={async () => {
+                                                const phone = (document.getElementById('test-wa-phone') as HTMLInputElement).value;
+                                                if (!phone) return alert('Please enter a phone number');
+                                                setSendingWa(true);
+                                                setWaResult(null);
+                                                try {
+                                                    await updateSettings(settings);
+                                                    const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
+                                                    const result = await testSendWhatsApp(phone, 'restaurant');
+                                                    setWaResult(result);
+                                                } catch (err: any) {
+                                                    setWaResult({ success: false, error: err.message });
+                                                } finally {
+                                                    setSendingWa(false);
+                                                }
+                                            }}
+                                            className="flex-1 px-4 py-3 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm disabled:opacity-50 whitespace-nowrap"
+                                        >
+                                            {sendingWa ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                                            Test Restaurant
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="p-4 bg-white rounded-lg border border-green-100 space-y-4">
