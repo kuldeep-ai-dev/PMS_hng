@@ -27,9 +27,9 @@ export async function updateSession(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     const pathname = request.nextUrl.pathname;
 
-    // Allow Puppeteer (PDF generation) to access /print-bill without auth
+    // Allow Puppeteer (PDF generation) to access /print- routes without auth
     // by verifying a secret internal token passed as a query parameter
-    if (pathname.startsWith('/print-bill') || pathname.startsWith('/print-receipts') || pathname.startsWith('/print-insights') || pathname.startsWith('/api/migrate-settlement')) {
+    if (pathname.startsWith('/print-') || pathname.startsWith('/api/migrate-settlement')) {
         const token = request.nextUrl.searchParams.get('_token');
         const expectedToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
         if (token === expectedToken) {

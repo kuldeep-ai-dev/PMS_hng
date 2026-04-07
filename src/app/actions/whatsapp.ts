@@ -550,16 +550,21 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
         const phone = formatPhoneForWhatsApp(order.customer_mobile);
         const guestName = (order.customer_name || 'Guest').split(' ')[0];
         const billNo = order.bill_no || 'N/A';
-        const totalAmount = (order.total_amount || 0).toLocaleString('en-IN');
+        const totalAmount = Number(order.total_amount || 0).toLocaleString('en-IN');
         const billDate = formatISTDate(order.order_time);
 
+        console.log(`[WhatsApp] Preparing restaurant bill for ${guestName} (${phone}), Order: ${orderId}, Bill: ${billNo}`);
+
         // Generate & upload PDF
+        console.log(`[WhatsApp] Generating PDF for restaurant order: ${orderId}...`);
         const pdfBuffer = await generateRestaurantBillPDF(orderId);
         const pdfFilename = `Bill_${billNo}_${Date.now()}.pdf`;
+        console.log(`[WhatsApp] Uploading PDF to R2: ${pdfFilename}...`);
         const pdfUrl = await uploadPdfToR2(pdfBuffer, pdfFilename);
 
         // Generate a tracking ID for the "Rate Us" button URL (if supported by template)
         const trackingId = crypto.randomUUID().split('-')[0];
+        console.log(`[WhatsApp] Generated tracking ID: ${trackingId}, PDF URL: ${pdfUrl}`);
 
         const result = await sendWhatsAppTemplate({
             to: phone,

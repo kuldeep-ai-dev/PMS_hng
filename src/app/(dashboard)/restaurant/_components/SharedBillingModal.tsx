@@ -2,16 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { X, CheckCircle2, Wallet, Banknote, CreditCard, Smartphone, Bed, Printer, Info, ChevronRight } from 'lucide-react';
+import { X, CheckCircle2, Wallet, Banknote, CreditCard, Smartphone, User, Bed, Printer, Info, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatCurrencySync } from '@/lib/currency';
 import { deductInventoryForOrder } from '../inventory/actions';
+import { sendRestaurantOrderWhatsApp } from '@/app/actions/whatsapp';
 
 export function SharedBillingModal({
-    isOpen, onClose, customerMobile, customerName, orderType, selectedRoomId, selectedTableId, currentOrderId, isBillToFolio, cart, subtotal, tax, totalRaw: initialTotalRaw, loyaltySettings, onSuccess, selectedWaiterId
+    isOpen, onClose, customerMobile: initialMobile, customerName: initialName, orderType, selectedRoomId, selectedTableId, currentOrderId, isBillToFolio, cart, subtotal, tax, totalRaw: initialTotalRaw, loyaltySettings, onSuccess, selectedWaiterId
 }: any) {
     const supabase = createClient();
+    const [customerMobile, setCustomerMobile] = useState(initialMobile || '');
+    const [customerName, setCustomerName] = useState(initialName || '');
     const [paymentMode, setPaymentMode] = useState<'Cash' | 'Card' | 'Online' | 'Folio'>(isBillToFolio ? 'Folio' : 'Cash');
     const [wallet, setWallet] = useState<any>(null);
     const [redeemPoints, setRedeemPoints] = useState(0);
@@ -166,10 +169,9 @@ export function SharedBillingModal({
             setSettledOrder(order);
 
             // --- AUTO-WHATSAPP (THANK YOU + BILL) ---
-            if (customerMobile && customerMobile.length >= 10) {
+            if (customerMobile && customerMobile.trim().length >= 10) {
                 try {
-                    const { sendRestaurantOrderWhatsApp } = await import('@/app/actions/whatsapp');
-                    // We don't await this to avoid blocking the UI, but we log errors
+                    console.log("[POS] Triggering WhatsApp for order:", order.id, "to:", customerMobile);
                     sendRestaurantOrderWhatsApp(order.id).then((res: any) => {
                         if (res.success) {
                             console.log("[WhatsApp] Order message sent successfully");
@@ -178,10 +180,14 @@ export function SharedBillingModal({
                             console.warn("[WhatsApp] Failed to send:", res.error || res.message);
                             toast.error(`WhatsApp Error: ${res.error || res.message}`);
                         }
+                    }).catch(err => {
+                        console.error("[WhatsApp] Promise rejected:", err);
                     });
                 } catch (waErr) {
-                    console.error("WhatsApp trigger failed:", waErr);
+                    console.error("WhatsApp trigger call failed:", waErr);
                 }
+            } else {
+                console.log("[POS] Skipping WhatsApp - mobile too short or missing:", customerMobile);
             }
         } catch (err: any) {
             toast.error(err.message || 'Settlement failed');
@@ -257,6 +263,33 @@ export function SharedBillingModal({
                             {/* Right: Payment & Loyalty */}
                             <div className="w-full lg:w-[400px] flex flex-col h-full overflow-hidden bg-white">
                                 <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
+                                    {/* Customer Info Section (added for verification) */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 px-1">Customer Verification</h4>
+                                        <div className="space-y-2">
+                                            <div className="relative group">
+                                                <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 group-focus-within:text-teal-500 transition-colors" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="WhatsApp Mobile"
+                                                    value={customerMobile}
+                                                    onChange={(e) => setCustomerMobile(e.target.value)}
+                                                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:bg-white focus:border-teal-500 transition-all text-[11px] font-bold text-slate-900 placeholder:text-slate-400"
+                                                />
+                                            </div>
+                                            <div className="relative group">
+                                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 group-focus-within:text-teal-500 transition-colors" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Guest Name"
+                                                    value={customerName}
+                                                    onChange={(e) => setCustomerName(e.target.value)}
+                                                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:bg-white focus:border-teal-500 transition-all text-[11px] font-bold text-slate-900 placeholder:text-slate-400"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Loyalty Section */}
                                     <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100">
                                         <div className="flex items-center justify-between mb-2">
