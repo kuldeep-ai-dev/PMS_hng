@@ -522,6 +522,9 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
         const guestName = (order.customer_name || 'Guest').split(' ')[0];
         const billNo = order.bill_no || 'N/A';
         const totalAmount = (order.total_amount || 0).toLocaleString('en-IN');
+        const billDate = new Date(order.order_time).toLocaleDateString('en-IN', {
+            day: '2-digit', month: 'short', year: 'numeric'
+        });
 
         // Generate & upload PDF
         const pdfBuffer = await generateRestaurantBillPDF(orderId);
@@ -539,8 +542,9 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
             bodyParams: [
                 guestName,
                 settings.hotel_name,
-                billNo,
-                totalAmount
+                `Order #${billNo}`,
+                `₹${totalAmount}`,
+                billDate
             ],
             buttonUrlSuffix: trackingId, // Useful if the template has a dynamic URL button
         });
