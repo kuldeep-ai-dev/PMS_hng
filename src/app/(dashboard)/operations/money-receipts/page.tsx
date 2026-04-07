@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getMoneyReceiptsData, getReceiptStats, processRefund, settlePOSWithRestaurant } from './actions';
 import { generateInvoiceNo, formatCurrency } from '@/utils/billing';
+import { formatISTDate, formatISTTime } from '@/utils/date';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
@@ -178,7 +179,7 @@ export default function MoneyReceiptsPage() {
                 <h1 className="text-2xl font-black text-slate-900 mb-1 uppercase tracking-tight">Money Receipt Audit Report</h1>
                 <p className="text-sm text-slate-500 font-medium italic">Comprehensive Transaction Ledger for Hotel New Ganga</p>
                 <div className="flex items-center justify-center gap-4 mt-3 text-xs font-bold text-slate-400">
-                    <span>Generated on: {new Date().toLocaleString('en-IN')}</span>
+                    <span>Generated on: {formatISTDate(new Date())} {formatISTTime(new Date())}</span>
                     <span>•</span>
                     <span>Source: Geny PMS Pro Central Audit</span>
                 </div>
@@ -319,7 +320,7 @@ export default function MoneyReceiptsPage() {
                                         <div className="flex flex-col">
                                             <span className="text-sm font-bold text-slate-900 group-hover:text-teal-600 transition-colors">{receipt.regnNo}</span>
                                             <span className="text-[11px] text-slate-400 font-medium">
-                                                {new Date(receipt.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                {formatISTDate(receipt.date)}
                                             </span>
                                         </div>
                                     </td>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { getRestaurantMoneyReceiptsData, getRestaurantReceiptStats, processRestaurantRefund } from './actions';
 import { formatCurrency } from '@/utils/billing';
+import { formatISTDate, formatISTTime } from '@/utils/date';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
@@ -245,7 +246,7 @@ export default function RestaurantMoneyReceiptsPage() {
                                         <div className="flex flex-col">
                                             <span className="text-sm font-bold text-slate-900 group-hover:text-teal-600 transition-colors">{receipt.regnNo}</span>
                                             <span className="text-[11px] text-slate-400 font-medium">
-                                                {new Date(receipt.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                {formatISTDate(receipt.date)} {formatISTTime(receipt.date)}
                                             </span>
                                         </div>
                                     </td>

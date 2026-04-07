@@ -5,6 +5,8 @@ import { BentoCard } from '@/components/ui/BentoCard';
 import { BedDouble, User, AlertTriangle, Sparkles, UserPlus, X, Loader2, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { formatCurrency } from '@/utils/billing';
+import { formatISTDate } from '@/utils/date';
 import { cn } from '@/lib/utils';
 import { getAvailableCleaningStaff, assignCleaningStaff } from '@/app/actions/housekeeping';
 import { unblockRoom } from '@/app/actions/rooms';
@@ -145,7 +147,7 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                                                     new Date() > new Date(room.checkOutDate) ? "bg-red-500 text-white border-red-600 animate-pulse" : "bg-white/80 text-blue-900 border-blue-200"
                                                 )}>
                                                     <LogOut className="w-3 h-3" />
-                                                    {new Date() > new Date(room.checkOutDate) ? "Overstay" : `Out: ${new Date(room.checkOutDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`}
+                                                    {new Date() > new Date(room.checkOutDate) ? "Overstay" : `Out: ${formatISTDate(room.checkOutDate)}`}
                                                 </p>
                                             )}
                                         </div>

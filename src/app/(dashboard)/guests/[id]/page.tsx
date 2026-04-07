@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { BentoCard } from '@/components/ui/BentoCard';
+import { formatISTDate } from '@/utils/date';
 import {
     User,
     Phone,
@@ -98,7 +99,7 @@ export default async function GuestProfilePage({ params }: { params: Promise<{ i
                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Member Since</span>
                                 <div className="flex items-center gap-2 text-slate-900 font-medium">
                                     <Calendar className="w-4 h-4 text-slate-400" />
-                                    {new Date(guest.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    {formatISTDate(guest.created_at, 'long')}
                                 </div>
                             </div>
                         </div>
@@ -174,8 +175,8 @@ export default async function GuestProfilePage({ params }: { params: Promise<{ i
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-slate-700 font-medium">
-                                                    {new Date(booking.check_in_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} -
-                                                    {booking.check_out_date ? new Date(booking.check_out_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Ongoing'}
+                                                    {formatISTDate(booking.check_in_date)} -
+                                                    {booking.check_out_date ? formatISTDate(booking.check_out_date) : 'Ongoing'}
                                                 </div>
                                                 <div className="text-[10px] text-slate-400 font-medium italic">
                                                     Visit Purpose: {booking.purpose_of_visit}
@@ -183,10 +184,10 @@ export default async function GuestProfilePage({ params }: { params: Promise<{ i
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${booking.status === 'Active'
-                                                        ? 'bg-emerald-50 text-emerald-700'
-                                                        : booking.status === 'Checked_Out'
-                                                            ? 'bg-blue-50 text-blue-700'
-                                                            : 'bg-red-50 text-red-700'
+                                                    ? 'bg-emerald-50 text-emerald-700'
+                                                    : booking.status === 'Checked_Out'
+                                                        ? 'bg-blue-50 text-blue-700'
+                                                        : 'bg-red-50 text-red-700'
                                                     }`}>
                                                     {booking.status}
                                                 </span>

@@ -8,6 +8,7 @@ import { cn, calculateAge } from '@/lib/utils';
 import SignatureCanvas from 'react-signature-canvas';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { searchGuests, getAvailableRooms, submitCheckIn, getBookingById, checkRoomConflict } from './actions-client';
+import { formatISTDate } from '@/utils/date';
 import { sendBookingConfirmation } from '@/app/actions/mail';
 import { toast } from 'sonner';
 import { getSettings } from '../settings/actions';
@@ -486,7 +487,7 @@ function CheckInForm() {
                                             <div className="flex-1">
                                                 <p className="font-bold text-sm">Booking Conflict Detected!</p>
                                                 <p className="text-xs mt-1 leading-relaxed">
-                                                    This room is already reserved for <span className="font-bold">{conflict.guests?.name}</span> from <span className="font-bold">{new Date(conflict.check_in_date).toLocaleDateString()}</span> to <span className="font-bold">{new Date(conflict.check_out_date).toLocaleDateString()}</span>.
+                                                    This room is already reserved for <span className="font-bold">{conflict.guests?.name}</span> from <span className="font-bold">{formatISTDate(conflict.check_in_date)}</span> to <span className="font-bold">{formatISTDate(conflict.check_out_date)}</span>.
                                                 </p>
                                             </div>
                                         </div>

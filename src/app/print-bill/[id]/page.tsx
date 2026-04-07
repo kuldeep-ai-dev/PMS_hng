@@ -6,6 +6,7 @@ import PrintButton from './PrintButton';
 import { numberToWords } from '../../../utils/numberToWords';
 import { cn } from '@/lib/utils';
 import { generateInvoiceNo } from '@/utils/billing';
+import { formatISTDate, formatISTTime } from '@/utils/date';
 
 export default async function PrintBillPage({
     params,
@@ -129,11 +130,8 @@ export default async function PrintBillPage({
     const invoiceTitle = isProvisional ? 'Provisional Invoice' : 'Tax Invoice';
     const invoiceNumber = booking.invoice_number || generateInvoiceNo(bookingId, booking.check_in_date);
     const bookingRef = booking.id.slice(0, 8).toUpperCase();
-    const invoiceDate = new Date().toLocaleDateString('en-IN', {
-        day: '2-digit', month: 'short', year: 'numeric'
-    });
-
-    const timeFormatted = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    const invoiceDate = formatISTDate(new Date());
+    const timeFormatted = formatISTTime(new Date());
 
     const formatT = (val: number) => val.toFixed(2);
     const absBalance = Math.abs(balanceDue);
@@ -227,8 +225,8 @@ export default async function PrintBillPage({
                                 <tr><td className="w-24 font-bold text-slate-700">GRC No.</td><td>: <span className="uppercase">GRC-{bookingId.slice(-8).toUpperCase()}</span></td></tr>
                                 <tr><td className="w-24 font-bold text-slate-700">Room No.</td><td>: <span className="font-bold text-slate-900 text-sm">{booking.rooms?.number}</span> <span className="font-medium text-slate-500">({booking.rooms?.type})</span></td></tr>
                                 <tr><td className="w-24 font-bold text-slate-700">Pax</td><td>: {booking.pax_count || (Number(booking.adults || 0) + Number(booking.children || 0))}</td></tr>
-                                <tr><td className="w-24 font-bold text-slate-700">Check-in</td><td>: <span className="text-slate-800 font-medium">{checkIn.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span> <span className="text-slate-400">{checkIn.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></td></tr>
-                                <tr><td className="w-24 font-bold text-slate-700">Check-out</td><td>: <span className="text-slate-800 font-medium">{actualCheckOut.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></td></tr>
+                                <tr><td className="w-24 font-bold text-slate-700">Check-in</td><td>: <span className="text-slate-800 font-medium">{formatISTDate(checkIn)}</span> <span className="text-slate-400">{formatISTTime(checkIn)}</span></td></tr>
+                                <tr><td className="w-24 font-bold text-slate-700">Check-out</td><td>: <span className="text-slate-800 font-medium">{formatISTDate(actualCheckOut)}</span></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -313,7 +311,7 @@ export default async function PrintBillPage({
                                 <tbody className="divide-y divide-slate-100">
                                     {booking.advance_payment > 0 && (
                                         <tr className="bg-white">
-                                            <td className="p-1.5">{checkIn.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
+                                            <td className="p-1.5">{formatISTDate(checkIn)}</td>
                                             <td className="p-1.5 font-bold text-slate-900">{invoiceNumber}</td>
                                             <td className="p-1.5 uppercase font-medium max-w-[80px] truncate">{booking.advance_payment_mode}</td>
                                             <td className="p-1.5 font-bold text-slate-800 text-green-600 print:text-slate-800">{formatT(Number(booking.advance_payment))}</td>
@@ -321,7 +319,7 @@ export default async function PrintBillPage({
                                     )}
                                     {(booking.payments || []).map((p: any, i: number) => (
                                         <tr key={i} className={cn("bg-white", Number(p.amount) < 0 && "bg-red-50")}>
-                                            <td className="p-1.5">{new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
+                                            <td className="p-1.5">{formatISTDate(p.created_at)}</td>
                                             <td className="p-1.5 font-bold text-slate-900">{invoiceNumber}</td>
                                             <td className="p-1.5 uppercase font-medium max-w-[80px] truncate">{p.payment_method}</td>
                                             <td className={cn(

@@ -4,6 +4,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@/utils/supabase/server';
 import puppeteer from 'puppeteer';
 import { getSettings } from '@/app/(dashboard)/settings/actions';
+import { formatISTDate, formatISTTime } from '@/utils/date';
 
 // ─── R2 Client (reuses existing Cloudflare R2 config) ─────────────────────────
 const R2 = new S3Client({
@@ -301,12 +302,8 @@ export async function sendBookingWhatsApp(bookingId: string) {
 
         const phone = formatPhoneForWhatsApp(booking.guests.phone);
         const guestName = booking.guests.name.split(' ')[0];
-        const checkIn = new Date(booking.check_in_date).toLocaleDateString('en-IN', {
-            weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-        });
-        const checkOut = new Date(booking.check_out_date).toLocaleDateString('en-IN', {
-            weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-        });
+        const checkIn = formatISTDate(booking.check_in_date);
+        const checkOut = formatISTDate(booking.check_out_date);
         const room = `${booking.rooms.number} (${booking.rooms.type})`;
         const guests = `${booking.adults} Adults${booking.children > 0 ? `, ${booking.children} Children` : ''}`;
 
@@ -383,12 +380,8 @@ export async function sendCheckoutWhatsApp(bookingId: string) {
 
         const phone = formatPhoneForWhatsApp(booking.guests.phone);
         const guestName = booking.guests.name.split(' ')[0];
-        const checkIn = new Date(booking.check_in_date).toLocaleDateString('en-IN', {
-            weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-        });
-        const checkOut = new Date(booking.check_out_date).toLocaleDateString('en-IN', {
-            weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-        });
+        const checkIn = formatISTDate(booking.check_in_date);
+        const checkOut = formatISTDate(booking.check_out_date);
         const room = `${booking.rooms.number} (${booking.rooms.type})`;
 
         // Generate & upload PDF
@@ -558,9 +551,7 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
         const guestName = (order.customer_name || 'Guest').split(' ')[0];
         const billNo = order.bill_no || 'N/A';
         const totalAmount = (order.total_amount || 0).toLocaleString('en-IN');
-        const billDate = new Date(order.order_time).toLocaleDateString('en-IN', {
-            day: '2-digit', month: 'short', year: 'numeric'
-        });
+        const billDate = formatISTDate(order.order_time);
 
         // Generate & upload PDF
         const pdfBuffer = await generateRestaurantBillPDF(orderId);

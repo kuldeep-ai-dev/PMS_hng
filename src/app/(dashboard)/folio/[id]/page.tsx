@@ -9,6 +9,7 @@ import {
     Banknote, Info, ChevronRight, Hash
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatISTDate, formatISTTime } from '@/utils/date';
 import {
     getBookingFolio, getRestaurantCharges, extendStay, performCheckout,
     updateGuestIdUrl, logPayment, transferRoom, getRoomTransfers, updateRefundPolicy,
@@ -480,7 +481,7 @@ export default function FolioPage() {
                                 {new Date() > new Date(booking.check_out_date) && booking.status === 'Active' && (
                                     <>
                                         <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded animate-pulse">Overstay</span>
-                                        <span className="ml-2 text-[10px] font-bold text-slate-400 italic">(Initial Sch: {new Date(booking.check_out_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })})</span>
+                                        <span className="ml-2 text-[10px] font-bold text-slate-400 italic">(Initial Sch: {formatISTDate(booking.check_out_date)})</span>
                                     </>
                                 )}
                             </div>

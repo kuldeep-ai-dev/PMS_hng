@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getMoneyReceiptsData } from '@/app/(dashboard)/operations/money-receipts/actions';
 import { generateInvoiceNo, formatCurrency } from '@/utils/billing';
+import { formatISTDate, formatISTTime } from '@/utils/date';
 import { cn } from '@/lib/utils';
 
 function PrintReceiptsContent() {
@@ -120,7 +121,7 @@ function PrintReceiptsContent() {
                             Hotel New Ganga • Unit of MediaGeny Tech Solutions • Central Revenue Audit
                         </p>
                         <div className="flex justify-between w-full mt-2 text-[8.5px] font-bold uppercase text-slate-400">
-                            <span>Export Date: {new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                            <span>Export Date: {formatISTDate(new Date())} {formatISTTime(new Date())}</span>
                             <span>Audit Page {pageIdx + 1} of {pages.length}</span>
                         </div>
                     </header>
@@ -143,7 +144,7 @@ function PrintReceiptsContent() {
                                 {pageReceipts.map((r) => (
                                     <tr key={r.id}>
                                         <td className="font-bold text-[7.5pt]">{r.regnNo}</td>
-                                        <td className="text-[7.5pt]">{new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
+                                        <td className="text-[7.5pt]">{formatISTDate(r.date)}</td>
                                         <td className="font-semibold truncate max-w-0" title={r.guestName}>{r.guestName}</td>
                                         <td className="text-center font-bold">{r.roomNo === 'N/A' ? '-' : r.roomNo}</td>
                                         <td className="text-[7pt] font-black uppercase text-center">{r.method}</td>

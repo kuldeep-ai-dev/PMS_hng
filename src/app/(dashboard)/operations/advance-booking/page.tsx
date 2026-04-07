@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { BentoCard } from '@/components/ui/BentoCard';
 import { Search, CheckCircle2, ChevronRight, Loader2, IndianRupee, X, Users, BedDouble, Calendar, CalendarDays, UserPlus } from 'lucide-react';
 import IdDropzone from '@/components/pms/IdDropzone';
+import { formatCurrency } from '@/utils/billing';
+import { formatISTDate } from '@/utils/date';
 import { cn, calculateAge } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { searchGuests } from '../../check-in/actions-client';
@@ -518,12 +520,12 @@ export default function AdvanceBookingPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2 text-sm">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-700">{new Date(b.check_in_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+                                                    <span className="font-bold text-slate-700">{formatISTDate(b.check_in_date)}</span>
                                                     <span className="text-[10px] uppercase font-black text-slate-400">Arrival</span>
                                                 </div>
                                                 <ChevronRight className="w-3 h-3 text-slate-300" />
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-700">{new Date(b.check_out_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+                                                    <span className="font-bold text-slate-700">{formatISTDate(b.check_out_date)}</span>
                                                     <span className="text-[10px] uppercase font-black text-slate-400">Departure</span>
                                                 </div>
                                             </div>

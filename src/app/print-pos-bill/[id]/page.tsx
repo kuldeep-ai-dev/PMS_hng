@@ -6,6 +6,7 @@ import { numberToWords } from '@/utils/numberToWords';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/billing';
 import { formatCurrencySync } from '@/lib/currency';
+import { formatISTDate, formatISTTime } from '@/utils/date';
 
 export default async function PrintPOSBillPage({
     params,
@@ -50,12 +51,8 @@ export default async function PrintPOSBillPage({
 
     if (error || !order) return notFound();
 
-    const billDate = new Date(order.order_time).toLocaleDateString('en-IN', {
-        day: '2-digit', month: 'short', year: 'numeric'
-    });
-    const billTime = new Date(order.order_time).toLocaleTimeString('en-IN', {
-        hour: '2-digit', minute: '2-digit', hour12: true
-    });
+    const billDate = formatISTDate(order.order_time);
+    const billTime = formatISTTime(order.order_time);
 
     const subtotal = Number(order.subtotal || 0);
     const tax = Number(order.tax || 0);

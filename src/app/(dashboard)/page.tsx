@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 
 import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
 import { getISTTodayRange } from '@/utils/date-utils';
+import { formatISTDate } from '@/utils/date';
 
 export const dynamic = 'force-dynamic';
 
@@ -354,7 +355,7 @@ export default async function Dashboard() {
                       </span>
                     </td>
                     <td className="py-4 px-4 text-slate-600 font-medium">
-                      {format(new Date(booking.check_in_date), 'MMM dd, yyyy')}
+                      {formatISTDate(booking.check_in_date, 'dashboard')}
                     </td>
                     <td className="py-4 px-4 text-right">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${booking.status === 'Active' ? 'bg-emerald-100 text-emerald-700' :

@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 import puppeteer from 'puppeteer';
 import { getSettings } from '@/app/(dashboard)/settings/actions';
 import { sendBookingWhatsApp, sendCheckoutWhatsApp } from './whatsapp';
+import { formatISTDate, formatISTTime } from '@/utils/date';
 
 const transporter = nodemailer.createTransport({
     // Using Hostinger Business Mail SMTP - Switching to port 465 (SSL/TLS) for higher reliability
@@ -309,8 +310,8 @@ export async function sendBookingConfirmation(bookingId: string) {
                     `We are delighted to host you and ensure you have a wonderful stay.`
                 ],
                 stayDetails: {
-                    checkIn: new Date(booking.check_in_date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
-                    checkOut: new Date(booking.check_out_date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+                    checkIn: formatISTDate(booking.check_in_date),
+                    checkOut: formatISTDate(booking.check_out_date),
                     room: `${booking.rooms.number} (${booking.rooms.type})`,
                     guests: `${booking.adults} Adults ${booking.children > 0 ? `, ${booking.children} Children` : ''}`
                 },
@@ -390,8 +391,8 @@ export async function sendCheckoutMail(bookingId: string) {
                         heroImage: 'https://res.cloudinary.com/dqoqr3rss/image/upload/v1772958306/IMG20241223170000_b4rf8p.jpg',
                         guestName: booking.guests.name.split(' ')[0],
                         stayDetails: {
-                            checkIn: new Date(booking.check_in_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-                            checkOut: new Date(booking.check_out_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                            checkIn: formatISTDate(booking.check_in_date),
+                            checkOut: formatISTDate(booking.check_out_date),
                             room: booking.rooms.number,
                             guests: `${booking.adults + (booking.children || 0)} PAX`
                         },
@@ -427,8 +428,8 @@ export async function sendCheckoutMail(bookingId: string) {
                             `<strong>Payment Status:</strong> Pending Corporate Settlement.`
                         ],
                         stayDetails: {
-                            checkIn: new Date(booking.check_in_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-                            checkOut: new Date(booking.check_out_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                            checkIn: formatISTDate(booking.check_in_date),
+                            checkOut: formatISTDate(booking.check_out_date),
                             room: `${booking.rooms.number} (${booking.rooms.type})`,
                             guests: `Employee: ${booking.guests.name}`
                         },
@@ -492,8 +493,8 @@ export async function sendSettlementMail(bookingId: string) {
                     `Please find the settled invoice attached for your records.`
                 ],
                 stayDetails: {
-                    checkIn: new Date(booking.check_in_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-                    checkOut: new Date(booking.check_out_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                    checkIn: formatISTDate(booking.check_in_date),
+                    checkOut: formatISTDate(booking.check_out_date),
                     room: `${booking.rooms.number} (${booking.rooms.type})`,
                     guests: `Folio Settled: ₹${Number(booking.total_bill).toLocaleString()}`
                 },
@@ -555,8 +556,8 @@ export async function testSendBookingConfirmation(targetEmail: string) {
                     `We are delighted to host you and ensure you have a wonderful stay.`
                 ],
                 stayDetails: {
-                    checkIn: new Date(fullBooking.check_in_date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
-                    checkOut: new Date(fullBooking.check_out_date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+                    checkIn: formatISTDate(fullBooking.check_in_date),
+                    checkOut: formatISTDate(fullBooking.check_out_date),
                     room: `${fullBooking.rooms.number} (${fullBooking.rooms.type})`,
                     guests: `${fullBooking.adults} Adults ${fullBooking.children > 0 ? `, ${fullBooking.children} Children` : ''}`
                 },

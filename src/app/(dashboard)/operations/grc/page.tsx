@@ -16,6 +16,8 @@ import { getCheckedInBookings, getArchiveBookings } from './actions';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
+import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
+import { formatISTDate } from '@/utils/date';
 import { BentoCard } from '@/components/ui/BentoCard';
 
 export default function GRCPage() {
@@ -161,7 +163,7 @@ export default function GRCPage() {
                                     <div className="flex items-center justify-between text-sm py-2 border-y border-slate-50">
                                         <div className="flex items-center gap-2 text-slate-600">
                                             <Calendar className="w-4 h-4 text-slate-400" />
-                                            <span>Arr: {new Date(b.check_in_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                            <span>Arr: {formatISTDate(b.check_in_date)}</span>
                                         </div>
                                         <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold">
                                             {b.food_plan || 'EP'}
