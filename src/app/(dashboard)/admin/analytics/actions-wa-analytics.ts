@@ -84,8 +84,16 @@ export async function getWhatsAppAnalytics(range: DateRange = '7d') {
         deliveredAt: r.delivered_at,
         readAt: r.read_at,
         clickedAt: r.clicked_at,
-        roomNumber: (r.bookings as any)?.rooms?.number || (r.restaurant_orders as any)?.bill_no ? `Bill #${(r.restaurant_orders as any).bill_no}` : null,
-        roomType: (r.bookings as any)?.rooms?.type || (r.restaurant_orders as any)?.total_amount ? `₹${(r.restaurant_orders as any).total_amount}` : null,
+        roomNumber: (r.bookings as any)?.rooms?.number
+            ? `Room ${(r.bookings as any).rooms.number}`
+            : (r.restaurant_orders as any)?.bill_no
+                ? `Bill #${(r.restaurant_orders as any).bill_no}`
+                : '—',
+        roomType: (r.bookings as any)?.rooms?.type
+            ? (r.bookings as any).rooms.type
+            : (r.restaurant_orders as any)?.total_amount
+                ? `₹${(r.restaurant_orders as any).total_amount}`
+                : '—',
     }));
 
     const hotelTimeline = mapTimeline(hotelRecords);
@@ -242,8 +250,16 @@ export async function exportInsightsData(range: DateRange = '3m') {
         guestDetails: all.map(r => ({
             guest: r.guest_name,
             phone: r.guest_phone,
-            room: (r.bookings as any)?.rooms?.number || '—',
-            roomType: (r.bookings as any)?.rooms?.type || '—',
+            room: (r.bookings as any)?.rooms?.number
+                ? `Room ${(r.bookings as any).rooms.number}`
+                : (r.restaurant_orders as any)?.bill_no
+                    ? `Bill #${(r.restaurant_orders as any).bill_no}`
+                    : '—',
+            roomType: (r.bookings as any)?.rooms?.type
+                ? (r.bookings as any).rooms.type
+                : (r.restaurant_orders as any)?.total_amount
+                    ? `₹${(r.restaurant_orders as any).total_amount}`
+                    : '—',
             type: r.template_type,
             status: r.status,
             sentAt: r.sent_at,
