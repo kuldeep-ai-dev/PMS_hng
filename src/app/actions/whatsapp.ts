@@ -586,21 +586,26 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
         // Save tracking record if message was sent successfully
         if (result.success && result.messageId) {
             try {
-                await supabase.from('whatsapp_analytics').insert({
+                const { error: insError } = await supabase.from('whatsapp_analytics').insert({
                     wamid: result.messageId,
-                    booking_id: null, // Restaurant order doesn't always have a room booking
+                    booking_id: null,
                     restaurant_order_id: orderId,
                     status: 'sent',
-                    template_type: 'restaurant_bill',
-                    guest_name: order.customer_name || 'Guest',
+                    template_type: 'restaurant_order',
+                    guest_name: (order.customer_name || 'Guest'),
                     guest_phone: phone,
-                    destination_url: settings.google_review_url || null,
+                    destination_url: null,
                     tracking_id: trackingId,
                     sent_at: new Date().toISOString(),
                 });
-                console.log('[WhatsApp] Analytics record saved for restaurant message:', result.messageId);
-            } catch (analyticsErr: any) {
-                console.warn('[WhatsApp] Failed to save restaurant analytics:', analyticsErr.message);
+
+                if (insError) {
+                    console.error(`[WhatsApp] Analytics insert failed:`, insError.message);
+                } else {
+                    console.log(`[WhatsApp] Analytics record saved for restaurant message: ${result.messageId}`);
+                }
+            } catch (err) {
+                console.error("[WhatsApp] Analytics save error:", err);
             }
         }
 

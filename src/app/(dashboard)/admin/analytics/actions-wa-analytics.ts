@@ -35,7 +35,7 @@ export async function getWhatsAppAnalytics(range: DateRange = '7d') {
 
     // Split records by module
     const hotelRecords = all.filter((r: any) => ['check_in', 'check_out', 'test'].includes(r.template_type));
-    const restaurantRecords = all.filter((r: any) => r.template_type === 'restaurant_bill');
+    const restaurantRecords = all.filter((r: any) => r.template_type === 'restaurant_order' || r.restaurant_order_id !== null);
 
     const calculateStats = (records: any[]) => {
         const total = records.length;
@@ -49,7 +49,7 @@ export async function getWhatsAppAnalytics(range: DateRange = '7d') {
         const checkOutCount = records.filter(r => r.template_type === 'check_out').length;
 
         // CTR only if message has a link (checkout or restaurant order with link)
-        const linkEnabledMessages = records.filter(r => ['check_out', 'restaurant_bill'].includes(r.template_type));
+        const linkEnabledMessages = records.filter(r => ['check_out', 'restaurant_order'].includes(r.template_type));
         const linkRead = linkEnabledMessages.filter(r => ['read', 'clicked'].includes(r.status)).length;
         const clicked = linkEnabledMessages.filter(r => r.status === 'clicked').length;
 
