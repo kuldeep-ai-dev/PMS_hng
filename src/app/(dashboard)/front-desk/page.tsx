@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { RoomGrid } from '@/components/pms/RoomGrid';
 import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function FrontDeskPage() {
     const supabase = await createClient();
@@ -11,7 +11,11 @@ export default async function FrontDeskPage() {
     const { data: rooms } = await supabase
         .from('rooms')
         .select(`
-            *,
+            id,
+            number,
+            type,
+            status,
+            blocked_reason,
             bookings (
                 id,
                 status,
@@ -47,12 +51,12 @@ export default async function FrontDeskPage() {
             number: room.number,
             type: room.type,
             status: room.status,
-            guestName: activeBooking?.guests?.name,
+            guestName: (activeBooking?.guests as any)?.name,
             bookingId: activeBooking?.id,
             paxCount: activeBooking?.pax_count,
             checkOutDate: activeBooking?.check_out_date,
-            idPending: room.status === 'Occupied' && !activeBooking?.guests?.id_image_url,
-            assignedStaffName: activeAssignment?.profiles?.name,
+            idPending: room.status === 'Occupied' && !(activeBooking?.guests as any)?.id_image_url,
+            assignedStaffName: (activeAssignment?.profiles as any)?.name,
             assignmentId: activeAssignment?.id,
             blockedReason: room.blocked_reason,
             foodPlan: activeBooking?.food_plan,

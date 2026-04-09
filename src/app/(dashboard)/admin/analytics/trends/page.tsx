@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getTrendAnalytics } from '../actions-trends';
 import TrendDashboardClient from './TrendDashboardClient';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function TrendAnalyticsPage() {
     const supabase = await createClient();

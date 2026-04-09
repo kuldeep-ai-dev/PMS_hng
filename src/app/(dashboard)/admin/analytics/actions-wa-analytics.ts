@@ -34,8 +34,11 @@ export async function getWhatsAppAnalytics(range: DateRange = '7d') {
     const all = records || [];
 
     // Split records by module
-    const hotelRecords = all.filter((r: any) => ['check_in', 'check_out', 'test'].includes(r.template_type));
-    const restaurantRecords = all.filter((r: any) => r.template_type === 'restaurant_order' || r.restaurant_order_id !== null);
+    const hotelRecords = all.filter((r: any) => ['check_in', 'check_out'].includes(r.template_type) && r.restaurant_order_id === null);
+    const restaurantRecords = all.filter((r: any) =>
+        ['restaurant_order', 'restaurant_bill'].includes(r.template_type) ||
+        r.restaurant_order_id !== null
+    );
 
     const calculateStats = (records: any[]) => {
         const total = records.length;

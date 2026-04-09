@@ -206,9 +206,6 @@ export default function StaffClientUI({ mode, staff }: { mode: 'add' | 'edit'; s
                                         <option value="front_desk">Front Desk</option>
                                         <option value="restaurant_staff">Restaurant Staff</option>
                                         <option value="cleaning_staff">Housekeeping (Cleaning)</option>
-                                        {staff?.role === 'master' && (
-                                            <option value="master">Master (Developer)</option>
-                                        )}
                                     </select>
                                 </div>
 

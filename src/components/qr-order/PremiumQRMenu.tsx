@@ -21,6 +21,13 @@ type RestaurantInfo = {
     restaurant_name: string;
     logo_url: string;
     tagline: string;
+    geofencing_enabled?: boolean;
+    rest_latitude?: number;
+    rest_longitude?: number;
+    rest_radius?: number;
+    hotel_latitude?: number;
+    hotel_longitude?: number;
+    hotel_radius?: number;
 };
 
 type Props = {
@@ -40,6 +47,11 @@ export default function PremiumQRMenu({ type, id }: Props) {
     const [locationName, setLocationName] = useState('');
     const [locationError, setLocationError] = useState<string | null>(null);
 
+    // Geofencing State
+    const [isLocationValid, setIsLocationValid] = useState(true);
+    const [locationChecking, setLocationChecking] = useState(false);
+    const [distance, setDistance] = useState<number | null>(null);
+
     // Branding State
     const [restaurantInfo, setRestaurantInfo] = useState<RestaurantInfo | null>(null);
     const [showSplash, setShowSplash] = useState(true);
@@ -48,7 +60,14 @@ export default function PremiumQRMenu({ type, id }: Props) {
 
     useEffect(() => {
         const initData = async () => {
-            await Promise.all([fetchMenu(), fetchLocation(), fetchBranding()]);
+            await fetchMenu();
+            await fetchLocation();
+            const settings = await fetchBranding();
+
+            if (settings?.geofencing_enabled) {
+                await checkGeofencing(settings);
+            }
+
             // Hold the splash screen for at least 2.5 seconds for a premium feel
             setTimeout(() => {
                 setShowSplash(false);
@@ -67,7 +86,66 @@ export default function PremiumQRMenu({ type, id }: Props) {
 
         if (data) {
             setRestaurantInfo(data);
+            return data;
         }
+        return null;
+    };
+
+    const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371e3; // Earth radius in meters
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c; // in meters
+    };
+
+    const checkGeofencing = async (settings: RestaurantInfo) => {
+        const targetLat = type === 'room' ? settings.hotel_latitude : settings.rest_latitude;
+        const targetLong = type === 'room' ? settings.hotel_longitude : settings.rest_longitude;
+        const radius = (type === 'room' ? settings.hotel_radius : settings.rest_radius) || 100;
+
+        if (!targetLat || !targetLong) return; // No coordinates set, skip guard
+
+        setLocationChecking(true);
+
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                setIsLocationValid(false);
+                setLocationChecking(false);
+                resolve(false);
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const dist = getDistance(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        targetLat,
+                        targetLong
+                    );
+                    setDistance(dist);
+                    const valid = dist <= radius;
+                    setIsLocationValid(valid);
+                    setLocationChecking(false);
+                    resolve(valid);
+                },
+                (error) => {
+                    console.error('Location error:', error);
+                    setIsLocationValid(false);
+                    setLocationChecking(false);
+                    resolve(false);
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        });
     };
 
     const fetchLocation = async () => {
@@ -171,15 +249,16 @@ export default function PremiumQRMenu({ type, id }: Props) {
 
     if (locationError) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
-                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-10 rounded-[40px] shadow-2xl">
-                    <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-8 z-[100]">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.1),transparent)]" />
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-slate-900/40 backdrop-blur-3xl border border-white/5 p-10 rounded-[48px] shadow-2xl max-w-sm w-full text-center relative z-10">
+                    <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-8">
                         <X className="w-10 h-10 text-red-500" />
                     </div>
-                    <h1 className="text-2xl font-black text-white mb-2">Location Not Found</h1>
-                    <p className="text-slate-400 mb-4">Please scan the QR code again or contact staff.</p>
-                    <div className="bg-red-500/10 text-red-400 text-[10px] sm:text-xs p-3 rounded-xl border border-red-500/20 break-all text-left">
-                        Error: {locationError}
+                    <h1 className="text-2xl font-black text-white mb-3 tracking-tight leading-none uppercase">Connection Lost</h1>
+                    <p className="text-slate-400 mb-8 text-sm font-medium">Please scan the physical QR code again or contact our service staff for assistance.</p>
+                    <div className="bg-white/5 text-red-400 text-[10px] p-4 rounded-2xl border border-white/5 font-mono break-all text-left">
+                        ERR_CODE: {locationError}
                     </div>
                 </motion.div>
             </div>
@@ -194,70 +273,93 @@ export default function PremiumQRMenu({ type, id }: Props) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }}
-                    transition={{ duration: 0.8, ease: "easeInOut" }}
-                    className="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-6 overflow-hidden"
+                    className="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-6"
                 >
-                    {/* Glowing background orchestrations */}
-                    <motion.div
-                        animate={{
-                            scale: [1, 1.2, 1],
-                            opacity: [0.3, 0.6, 0.3]
-                        }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                    >
-                        <div className="w-[60vw] h-[60vw] bg-indigo-500/20 blur-[120px] rounded-full mix-blend-screen"></div>
-                        <div className="w-[50vw] h-[50vw] bg-purple-500/20 blur-[100px] rounded-full mix-blend-screen -ml-[20vw]"></div>
-                    </motion.div>
-
                     <motion.div
                         initial={{ y: 30, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.3, duration: 0.8, type: "spring" }}
                         className="relative z-10 flex flex-col items-center"
                     >
                         {restaurantInfo?.logo_url ? (
-                            <motion.img
-                                initial={{ scale: 0.8, rotate: -5 }}
-                                animate={{ scale: 1, rotate: 0 }}
-                                transition={{ type: "spring", damping: 15, stiffness: 200, delay: 0.4 }}
-                                src={restaurantInfo.logo_url}
-                                alt="Restaurant Logo"
-                                className="w-32 h-32 md:w-48 md:h-48 object-contain drop-shadow-2xl mb-8"
-                            />
+                            <img src={restaurantInfo.logo_url} alt="Logo" className="w-32 h-32 md:w-48 md:h-48 object-contain mb-8" />
                         ) : (
-                            <motion.div
-                                initial={{ scale: 0.8, rotate: -5 }}
-                                animate={{ scale: 1, rotate: 0 }}
-                                transition={{ type: "spring", damping: 15, stiffness: 200, delay: 0.4 }}
-                                className="w-32 h-32 md:w-48 md:h-48 bg-slate-800/80 backdrop-blur-md rounded-[32px] flex items-center justify-center border border-white/10 shadow-2xl mb-8"
-                            >
-                                <Utensils className="w-12 h-12 md:w-16 md:h-16 text-white/50" />
-                            </motion.div>
+                            <div className="w-32 h-32 md:w-48 md:h-48 bg-slate-800/80 rounded-[32px] flex items-center justify-center border border-white/10 mb-8">
+                                <Utensils className="w-12 h-12 text-white/50" />
+                            </div>
                         )}
-                        <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tight text-center mb-3">
-                            {restaurantInfo?.restaurant_name || 'Welcome'}
+                        <h1 className="text-3xl font-black text-white text-center mb-3 tracking-tight italic">
+                            {restaurantInfo?.restaurant_name || 'Loading...'}
                         </h1>
-                        <p className="text-sm md:text-base text-slate-400 font-medium tracking-widest uppercase text-center max-w-[80%]">
-                            {restaurantInfo?.tagline || 'Experience Culinary Excellence'}
-                        </p>
+                        <p className="text-xs text-indigo-400 font-bold tracking-widest uppercase text-center">{restaurantInfo?.tagline || 'Exquisite Experience'}</p>
                     </motion.div>
 
-                    {/* Loader */}
-                    <div className="absolute bottom-24 flex flex-col items-center gap-3">
+                    <div className="absolute bottom-24 flex flex-col items-center gap-4">
                         <div className="flex gap-2">
                             {[0, 1, 2].map((i) => (
                                 <motion.div
                                     key={i}
-                                    animate={{ y: [0, -10, 0] }}
-                                    transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
-                                    className="w-2.5 h-2.5 bg-white/40 rounded-full"
+                                    animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
+                                    transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                                    className="w-2.5 h-2.5 bg-indigo-500 rounded-full"
                                 />
                             ))}
                         </div>
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                            {locationChecking ? 'Verifying Secure Location' : 'Establishing Secure Session'}
+                        </span>
                     </div>
                 </motion.div>
             </AnimatePresence>
+        );
+    }
+
+    if (!isLocationValid) {
+        return (
+            <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-8 z-[100] overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.1),transparent)]" />
+
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="w-full max-w-sm text-center space-y-8 relative z-10"
+                >
+                    <div className="relative mx-auto w-24 h-24">
+                        <div className="absolute inset-0 bg-red-500/20 rounded-full animate-ping" />
+                        <div className="relative w-24 h-24 bg-slate-900 border border-white/10 rounded-full flex items-center justify-center shadow-2xl">
+                            <X className="w-12 h-12 text-red-500" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h1 className="text-3xl font-black text-white tracking-tighter leading-none uppercase italic">Proximity Error</h1>
+                        <p className="text-slate-400 font-medium leading-relaxed text-sm">
+                            To ensure order accuracy, this menu is only accessible from within the
+                            <span className="text-indigo-400 font-bold ml-1">{type === 'room' ? 'Hotel Property' : 'Restaurant Premises'}</span>.
+                        </p>
+                    </div>
+
+                    <div className="p-8 bg-slate-900/50 backdrop-blur-2xl rounded-[40px] border border-white/10 space-y-6 text-left">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-8 h-8 rounded-2xl bg-indigo-500/10 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                                    <span className="text-[10px] font-black text-indigo-400">01</span>
+                                </div>
+                                <p className="text-xs text-slate-300 font-bold uppercase tracking-wide">Enable High Accuracy GPS</p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="w-8 h-8 rounded-2xl bg-indigo-500/10 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                                    <span className="text-[10px] font-black text-indigo-400">02</span>
+                                </div>
+                                <p className="text-xs text-slate-300 font-bold uppercase tracking-wide">Connect to Guest Wi-Fi</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">
+                        Area Restrict Mode Active • ID_{id.slice(-6)}
+                    </p>
+                </motion.div>
+            </div>
         );
     }
 

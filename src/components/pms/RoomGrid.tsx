@@ -137,39 +137,45 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                                     </div>
                                 </div>
 
-                                <div className="mt-auto">
-                                    <div className="flex justify-between items-end mb-1">
-                                        <div className="flex flex-col gap-0.5">
-                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-75 leading-none drop-shadow-sm">{room.status}</p>
-                                            {room.status === 'Occupied' && room.checkOutDate && (
-                                                <p className={cn(
-                                                    "text-[10px] font-bold px-1.5 py-0.5 rounded mt-1.5 inline-flex items-center gap-1 w-fit shadow-sm border",
-                                                    new Date() > new Date(room.checkOutDate) ? "bg-red-500 text-white border-red-600 animate-pulse" : "bg-white/80 text-blue-900 border-blue-200"
-                                                )}>
-                                                    <LogOut className="w-3 h-3" />
-                                                    {new Date() > new Date(room.checkOutDate) ? "Overstay" : `Out: ${formatISTDate(room.checkOutDate)}`}
-                                                </p>
-                                            )}
-                                        </div>
-                                        {room.status === 'Occupied' && (
-                                            <div className="flex gap-1 items-center">
-                                                {room.bookingSource && (
-                                                    <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded uppercase shadow-sm border", room.bookingSource === 'OTA' ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-slate-100 text-slate-600 border-slate-200")}>
-                                                        {room.bookingSource}
-                                                    </span>
-                                                )}
-                                                {room.foodPlan && (
-                                                    <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded uppercase shadow-sm border", room.foodPlan === 'EP' ? "bg-slate-50 text-slate-500 border-slate-200" : "bg-orange-50 text-orange-700 border-orange-200")}>
-                                                        {room.foodPlan}
-                                                    </span>
-                                                )}
-                                                <span className="text-xs font-black bg-white/80 text-blue-900 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm border border-blue-200">
-                                                    <User className="w-3 h-3" /> {room.paxCount || 1}
-                                                </span>
+                                <div className="mt-auto flex flex-col gap-1.5 px-0.5">
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        {room.status === 'Occupied' && room.checkOutDate && (
+                                            <div className={cn(
+                                                "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border transition-all",
+                                                new Date() > new Date(room.checkOutDate) ? "bg-rose-600 text-white border-rose-700 animate-pulse shadow-rose-200" : "bg-white text-blue-950 border-blue-200/50"
+                                            )}>
+                                                <LogOut className="w-2.5 h-2.5" />
+                                                <span>{new Date() > new Date(room.checkOutDate) ? "Overstay" : formatISTDate(room.checkOutDate)}</span>
                                             </div>
                                         )}
+
+                                        {room.bookingSource && (
+                                            <div className={cn(
+                                                "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
+                                                room.bookingSource === 'OTA' ? "bg-indigo-50 text-indigo-700 border-indigo-100 shadow-indigo-50" : "bg-slate-50 text-slate-600 border-slate-200"
+                                            )}>
+                                                {room.bookingSource}
+                                            </div>
+                                        )}
+
+                                        {room.foodPlan && (
+                                            <div className={cn(
+                                                "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
+                                                room.foodPlan === 'EP' ? "bg-slate-50 text-slate-500 border-slate-200" : "bg-orange-50 text-orange-700 border-orange-100 shadow-orange-50"
+                                            )}>
+                                                {room.foodPlan}
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-1 bg-white text-blue-950 px-1.5 py-0.5 rounded-md text-[9px] font-black shadow-sm border border-blue-100">
+                                            <User className="w-2.5 h-2.5" /> {room.paxCount || 1}
+                                        </div>
                                     </div>
-                                    <p className="text-[15px] font-bold truncate tracking-tight mt-1 drop-shadow-sm">{room.guestName || room.type}</p>
+
+                                    <div className="flex flex-col gap-0.5">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-[#1a365d]/50 leading-none">{room.status}</p>
+                                        <p className="text-[15px] font-bold truncate tracking-tight text-[#1a365d] drop-shadow-sm">{room.guestName || room.type}</p>
+                                    </div>
                                 </div>
                             </BentoCard>
                         </Link>
@@ -210,21 +216,13 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                                     </div>
                                 )}
 
-                                <div className="mt-auto transition-transform group-hover:translate-y-1">
-                                    <div className={cn(
-                                        "p-2 rounded-xl border",
-                                        {
-                                            'bg-white/60 border-[#F0924A]/10': room.status === 'Dirty',
-                                            'bg-white/60 border-[#E33B32]/10': room.status === 'Maintenance',
-                                            'bg-slate-800 border-slate-700': room.status === 'Blocked',
-                                            'bg-slate-50 border-slate-200': room.status === 'Available'
-                                        }
-                                    )}>
+                                <div className="mt-auto flex flex-col gap-1 px-0.5 transition-transform group-hover:translate-y-1">
+                                    <div className="flex flex-col">
                                         <p className={cn(
-                                            "text-[9px] font-black uppercase tracking-widest mb-1",
+                                            "text-[9px] font-black uppercase tracking-widest leading-none mb-1",
                                             {
-                                                'text-[#F0924A]/70': room.status === 'Dirty',
-                                                'text-[#E33B32]/70': room.status === 'Maintenance',
+                                                'text-[#F0924A]': room.status === 'Dirty',
+                                                'text-[#E33B32]': room.status === 'Maintenance',
                                                 'text-slate-400': room.status === 'Blocked' || room.status === 'Available'
                                             }
                                         )}>
@@ -232,26 +230,18 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                                                 room.status === 'Maintenance' ? 'Under Maintenance' :
                                                     room.status === 'Blocked' ? 'Blocked Offline' : 'Ready'}
                                         </p>
-                                        <div className="flex flex-col gap-0.5">
-                                            <p className={cn(
-                                                "text-sm font-bold truncate",
-                                                {
-                                                    'text-slate-800': room.status !== 'Blocked',
-                                                    'text-slate-300 shadow-none': room.status === 'Blocked'
-                                                }
-                                            )}>
-                                                {room.status === 'Blocked' ? (room.blockedReason || 'Isolated by Admin') : (room.guestName || room.type)}
-                                            </p>
-                                            <p className={cn(
-                                                "text-xs font-semibold",
-                                                {
-                                                    'text-slate-400': room.status !== 'Blocked',
-                                                    'text-slate-500': room.status === 'Blocked'
-                                                }
-                                            )}>
-                                                {room.assignedStaffName ? `Assigned to ${room.assignedStaffName}` : 'Unassigned'}
-                                            </p>
-                                        </div>
+                                        <p className={cn(
+                                            "text-[15px] font-bold truncate tracking-tight drop-shadow-sm leading-tight",
+                                            {
+                                                'text-[#1a365d]': room.status !== 'Blocked',
+                                                'text-slate-400': room.status === 'Blocked'
+                                            }
+                                        )}>
+                                            {room.status === 'Blocked' ? (room.blockedReason || 'Isolated by Admin') : (room.guestName || room.type)}
+                                        </p>
+                                        <p className="text-[11px] font-semibold text-slate-500/60 leading-tight mt-0.5">
+                                            {room.assignedStaffName ? room.assignedStaffName : 'No Staff'}
+                                        </p>
                                     </div>
                                 </div>
                             </BentoCard>

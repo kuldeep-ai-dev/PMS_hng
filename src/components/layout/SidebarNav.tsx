@@ -36,10 +36,7 @@ interface SidebarNavProps {
 
 export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
     const pathname = usePathname();
-    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-        'Operations': true,
-        'Property': true
-    });
+    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     const toggleGroup = (label: string) => {
         setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
     };
@@ -70,9 +67,6 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
             items: [
                 { label: role === 'front_desk' ? 'Manage Rooms' : 'Rooms Grid', href: '/rooms', iconName: 'LayoutGrid' },
                 { label: 'Restaurant POS', href: '/restaurant/pos', iconName: 'Utensils' },
-                { label: 'Rest. History', href: '/restaurant/order-history', iconName: 'History' },
-                { label: 'Rest. Receipts', href: '/restaurant/money-receipts', iconName: 'Coins' },
-                { label: 'Inventory & Stock', href: '/restaurant/inventory', iconName: 'PackageSearch' },
                 { label: 'Website Bookings', href: '/website-bookings', iconName: 'Globe' },
                 { label: 'Restaurant Guide', href: '/help', iconName: 'HelpCircle' },
             ]
@@ -85,7 +79,6 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                 { label: 'Restaurant Master', href: '/admin/restaurant-master', iconName: 'UtensilsCrossed' },
                 { label: 'Audit Archives', href: '/admin/audit-logs', iconName: 'History' },
                 { label: 'Admin Panel', href: '/admin', iconName: 'Settings' },
-                { label: 'Staff Management', href: '/admin/staff', iconName: 'UserCheck' },
                 { label: 'WhatsApp Hub', href: '/admin/whatsapp', iconName: 'MessageCircle' },
                 { label: 'Software License', href: '/admin/license', iconName: 'ShieldCheck' },
                 { label: 'Housekeeping Monitor', href: '/admin/housekeeping', iconName: 'Brush' },
@@ -106,6 +99,7 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
             ]
         }] : []),
         ...(isAdmin ? [{ label: 'Settings', iconName: 'Settings', href: '/settings' }] : []),
+        ...(isAdmin ? [{ label: 'Staff Management', iconName: 'UserCheck', href: '/admin/staff' }] : []),
         { label: 'User Guide', iconName: 'HelpCircle', href: '/help' },
     ];
 
@@ -220,8 +214,6 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                                 isOpen ? "max-h-[600px] opacity-100 mt-1" : "max-h-0 opacity-0"
                             )}
                         >
-                            {/* Vertical Connector Line */}
-                            <div className="absolute left-[23px] top-0 bottom-4 w-px bg-slate-200" />
 
                             <div className="pl-8 pr-1 pb-2 flex flex-col gap-1">
                                 {group.items?.map(sub => {
@@ -240,11 +232,6 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                                                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium"
                                             )}
                                         >
-                                            {/* Horizontal connector stub */}
-                                            <div className={cn(
-                                                "absolute -left-[14px] top-1/2 -translate-y-1/2 w-3 h-px bg-slate-200",
-                                                isSubActive && "bg-teal-200 w-4 shadow-[0_0_8px_rgba(20,184,166,0.3)]"
-                                            )} />
 
                                             <SubIcon className={cn(
                                                 "w-4 h-4 transition-all duration-300",

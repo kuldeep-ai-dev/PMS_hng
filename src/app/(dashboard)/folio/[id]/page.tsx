@@ -444,45 +444,52 @@ export default function FolioPage() {
                                     {booking.status.replace(/_/g, ' ')}
                                 </span>
                             </div>
-                            <div className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-1">
-                                <Hash className="w-3 h-3" /> {invoiceNumber}
-                                <span className="mx-2">•</span>
+                            <div className="text-[11px] font-bold text-slate-400 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <div className="flex items-center gap-1 bg-slate-100/50 px-1.5 py-0.5 rounded border border-slate-200/50">
+                                    <Hash className="w-3 h-3" /> <span>{invoiceNumber}</span>
+                                </div>
+
                                 <button
                                     onClick={() => setShowEditStayModal(true)}
-                                    className="flex items-center gap-1 hover:text-blue-600 transition-colors group"
+                                    className="flex items-center gap-1.5 hover:text-blue-600 transition-colors group bg-blue-50/30 px-2 py-0.5 rounded border border-blue-100/50"
                                 >
-                                    <User className="w-3 h-3" /> {booking.pax_count} Pax
-                                    <span className="mx-2 text-slate-300 group-hover:text-blue-200">/</span>
-                                    <UtensilsCrossed className="w-3 h-3" /> {booking.food_plan} Plan
-                                    <Plus className="w-2.5 h-2.5 ml-1 bg-blue-100 text-blue-600 rounded-full p-0.5" />
+                                    <User className="w-3 h-3 text-blue-400" /> {booking.pax_count} Pax
+                                    <span className="text-slate-300 mx-0.5">/</span>
+                                    <UtensilsCrossed className="w-3 h-3 text-blue-400" /> {booking.food_plan}
+                                    <Plus className="w-2.5 h-2.5 ml-0.5 bg-blue-500 text-white rounded-full p-0.5" />
                                 </button>
+
                                 {Number(booking.extra_beds) > 0 && (
-                                    <>
-                                        <span className="mx-2">•</span>
-                                        <Plus className="w-3 h-3" /> {booking.extra_beds} Extra Bed(s)
-                                    </>
+                                    <div className="flex items-center gap-1 bg-indigo-50/30 px-1.5 py-0.5 rounded border border-indigo-100/50 text-indigo-600">
+                                        <Plus className="w-3 h-3" /> {booking.extra_beds} Bed(s)
+                                    </div>
                                 )}
-                                <span className="mx-2">•</span>
-                                <Calendar className="w-3 h-3" />
-                                <span className="font-bold flex items-center gap-1">
-                                    {new Date(booking.check_in_date).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}
-                                    <ArrowRightLeft className="w-3 h-3 mx-1 text-slate-300" />
-                                    <span className={cn(
-                                        new Date() > new Date(booking.check_out_date) && booking.status === 'Active' ? "text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200" : ""
-                                    )}>
-                                        {new Date() > new Date(booking.check_out_date) && booking.status === 'Active'
-                                            ? new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
-                                            : new Date(booking.check_out_date).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
-                                        }
+
+                                <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                                    <Calendar className="w-3 h-3 text-slate-400" />
+                                    <span className="flex items-center gap-1">
+                                        {new Date(booking.check_in_date).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}
+                                        <ArrowRightLeft className="w-2.5 h-2.5 mx-1 text-slate-300" />
+                                        <span className={cn(
+                                            new Date() > new Date(booking.check_out_date) && booking.status === 'Active' ? "text-amber-600 font-black" : ""
+                                        )}>
+                                            {new Date() > new Date(booking.check_out_date) && booking.status === 'Active'
+                                                ? new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
+                                                : new Date(booking.check_out_date).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
+                                            }
+                                        </span>
                                     </span>
-                                </span>
-                                <span className="mx-2">•</span>
-                                <Clock className="w-3 h-3" /> {billingData.totalNights} Night(s)
+                                </div>
+
+                                <div className="flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded shadow-sm">
+                                    <Clock className="w-3 h-3" /> {billingData.totalNights} Night(s)
+                                </div>
+
                                 {new Date() > new Date(booking.check_out_date) && booking.status === 'Active' && (
-                                    <>
-                                        <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded animate-pulse">Overstay</span>
-                                        <span className="ml-2 text-[10px] font-bold text-slate-400 italic">(Initial Sch: {formatISTDate(booking.check_out_date)})</span>
-                                    </>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="px-1.5 py-0.5 bg-amber-500 text-white text-[9px] font-black uppercase rounded shadow-sm animate-pulse">Overstay</span>
+                                        <span className="text-[10px] font-bold text-slate-400 italic">(Sch: {formatISTDate(booking.check_out_date)})</span>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -518,7 +525,7 @@ export default function FolioPage() {
 
                     {/* Professional Ledger Section */}
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                                 <Wallet className="w-4 h-4 text-slate-500" /> Folio Ledger
                             </h2>
@@ -712,7 +719,7 @@ export default function FolioPage() {
 
                     {/* Payment History Section */}
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                        <div className="p-5 border-b border-slate-100 bg-emerald-50/10">
+                        <div className="p-4 border-b border-slate-100 bg-emerald-50/10">
                             <h2 className="text-sm font-black text-emerald-900 uppercase tracking-widest flex items-center gap-2">
                                 <CreditCard className="w-4 h-4 text-emerald-600" /> Payment Reconciliation
                             </h2>
@@ -756,7 +763,7 @@ export default function FolioPage() {
 
                                 <div className="flex flex-col">
                                     <div className={cn(
-                                        "flex-1 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-6 transition-all",
+                                        "flex-1 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-4 transition-all",
                                         billingData.balanceDue > 1 ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"
                                     )}>
                                         <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-2", billingData.balanceDue > 1 ? "text-red-500" : "text-emerald-600")}>

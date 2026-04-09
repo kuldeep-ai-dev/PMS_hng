@@ -6,7 +6,7 @@ import { getWhatsAppTemplates } from '@/app/actions/whatsapp-templates';
 import { WhatsAppClientPage } from './WhatsAppClientPage';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function WhatsAppControlCenterPage() {
     const supabase = await createClient();

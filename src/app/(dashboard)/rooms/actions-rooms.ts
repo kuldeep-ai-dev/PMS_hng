@@ -6,7 +6,7 @@ export async function fetchRooms() {
     const supabase = createClient();
     const { data, error } = await supabase
         .from('rooms')
-        .select('*')
+        .select('id, number, type, status, base_rate, updated_at')
         .order('number', { ascending: true });
     if (error) throw error;
     return data || [];

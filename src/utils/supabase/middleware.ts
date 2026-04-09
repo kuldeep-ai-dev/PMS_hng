@@ -4,6 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Routes that restaurant staff ARE allowed to access
 const RESTAURANT_ALLOWED = ['/restaurant', '/qr-order', '/auth', '/login', '/_next', '/api', '/print-pos-bill', '/print-kot', '/help'];
 
+// Static paths that never need DB role-based routing — skip profile fetch entirely
+const SKIP_PROFILE_PREFIXES = ['/_next/', '/favicon', '/api/', '/print-', '/.well-known'];
+
 export async function updateSession(request: NextRequest) {
     let supabaseResponse = NextResponse.next({ request });
 
@@ -46,33 +49,38 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // For authenticated users, enforce role-based route access
+    // For authenticated users, enforce role-based route access.
+    // Skip the profile DB fetch for static assets and API routes — they never need role checks.
     if (user) {
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
+        const isStaticPath = SKIP_PROFILE_PREFIXES.some(prefix => pathname.startsWith(prefix));
+        if (!isStaticPath) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
 
-        const role = profile?.role;
+            const role = profile?.role;
 
-        // ── MASTER ROLE: redirect to master control ──
-        if (role === 'master' && pathname === '/') {
-            const url = request.nextUrl.clone();
-            url.pathname = '/master-control';
-            return NextResponse.redirect(url);
-        }
-
-        // ── RESTAURANT STAFF: can ONLY access /restaurant/* routes ──
-        if (role === 'restaurant_staff') {
-            const isAllowed = RESTAURANT_ALLOWED.some(prefix => pathname.startsWith(prefix));
-            if (!isAllowed) {
+            // ── MASTER ROLE: redirect to master control ──
+            if (role === 'master' && pathname === '/') {
                 const url = request.nextUrl.clone();
-                url.pathname = '/restaurant/pos';
+                url.pathname = '/master-control';
                 return NextResponse.redirect(url);
+            }
+
+            // ── RESTAURANT STAFF: can ONLY access /restaurant/* routes ──
+            if (role === 'restaurant_staff') {
+                const isAllowed = RESTAURANT_ALLOWED.some(prefix => pathname.startsWith(prefix));
+                if (!isAllowed) {
+                    const url = request.nextUrl.clone();
+                    url.pathname = '/restaurant/pos';
+                    return NextResponse.redirect(url);
+                }
             }
         }
     }
 
     return supabaseResponse;
 }
+

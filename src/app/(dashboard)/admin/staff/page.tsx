@@ -5,11 +5,12 @@ import Link from 'next/link';
 import StaffClientUI from './StaffClientUI';
 import ActivityLogsModal from './ActivityLogsModal';
 import IdCardModal from './IdCardModal';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
+import { getDailyAttendanceStats } from './actions-attendance';
 import fs from 'fs/promises';
 import path from 'path';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function StaffManagementPage() {
     // We use the admin client to fetch user emails (which are strictly in the auth schema)
@@ -25,11 +26,13 @@ export default async function StaffManagementPage() {
         { data: authData, error: authError },
         { data: profiles, error: profilesError },
         { data: activityLogs },
+        { stats: attendanceStats },
         hotelSettings
     ] = await Promise.all([
         supabaseAdmin.auth.admin.listUsers(),
         supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false }),
         supabaseAdmin.from('staff_activity_logs').select('staff_id, action, created_at').order('created_at', { ascending: false }),
+        getDailyAttendanceStats(),
         (async () => {
             try {
                 const SETTINGS_PATH = path.resolve(process.cwd(), 'src/data/hotel-settings.json');
@@ -70,13 +73,17 @@ export default async function StaffManagementPage() {
 
         if (latestLog) {
             lastActivity = latestLog.created_at;
-            // If the last thing they did was login in the last 60 minutes, they're online
-            // If it was logout, or older than 60 mins, they are offline
-            if (latestLog.action === 'login') {
-                const diffInMinutes = (new Date().getTime() - new Date(latestLog.created_at).getTime()) / 1000 / 60;
-                isOnline = diffInMinutes < 60;
+            if (latestLog.action === 'logout') {
+                // Explicit logout = definitely offline
+                isOnline = false;
+            } else if (latestLog.action === 'login') {
+                // Still in an active login session (no logout since)
+                const diffInHours = (new Date().getTime() - new Date(latestLog.created_at).getTime()) / 1000 / 3600;
+                isOnline = diffInHours < 12; // Session older than 12h is considered expired
             } else {
-                isOnline = false; // logout or other actions
+                // Any other activity (page visit, action, etc.) within 90 mins = online
+                const diffInMinutes = (new Date().getTime() - new Date(latestLog.created_at).getTime()) / 1000 / 60;
+                isOnline = diffInMinutes < 90;
             }
         } else {
             // Fallback to auth record if no custom logs exist yet
@@ -92,7 +99,7 @@ export default async function StaffManagementPage() {
             last_activity_at: lastActivity,
             isOnline,
         };
-    });
+    }).filter((staff: any) => staff.role !== 'master');
 
     // Role display mapping
     const roleLabels: Record<string, string> = {
@@ -121,6 +128,26 @@ export default async function StaffManagementPage() {
                     </h1>
                     <p className="text-sm text-slate-500 mt-1">Manage team members, roles, and access credentials.</p>
                 </div>
+            </div>
+
+            {/* Attendance Analytics */}
+            <div className="grid grid-cols-4 gap-4">
+                <BentoCard className="p-4 flex flex-col gap-1 bg-white">
+                    <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Staff</span>
+                    <span className="text-2xl font-bold text-slate-900">{staffMembers.length}</span>
+                </BentoCard>
+                <BentoCard className="p-4 flex flex-col gap-1 bg-emerald-50 border-emerald-100 shadow-sm">
+                    <span className="text-xs text-emerald-600 font-medium uppercase tracking-wider">Present Today</span>
+                    <span className="text-2xl font-bold text-emerald-700">{attendanceStats?.present || 0}</span>
+                </BentoCard>
+                <BentoCard className="p-4 flex flex-col gap-1 bg-amber-50 border-amber-100 shadow-sm">
+                    <span className="text-xs text-amber-600 font-medium uppercase tracking-wider">Late / Half Day</span>
+                    <span className="text-2xl font-bold text-amber-700">{(attendanceStats?.late || 0) + (attendanceStats?.half_day || 0)}</span>
+                </BentoCard>
+                <BentoCard className="p-4 flex flex-col gap-1 bg-rose-50 border-rose-100 shadow-sm">
+                    <span className="text-xs text-rose-600 font-medium uppercase tracking-wider">Absent</span>
+                    <span className="text-2xl font-bold text-rose-700">{attendanceStats?.absent || 0}</span>
+                </BentoCard>
             </div>
 
             <BentoCard className="p-0 shadow-sm relative z-0">
@@ -164,30 +191,24 @@ export default async function StaffManagementPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col gap-1.5">
-                                            {staff.status === 'active' ? (
-                                                <span className="inline-flex w-fit items-center text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                                                    <BadgeCheck className="w-3.5 h-3.5 mr-1" /> Active
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex w-fit items-center text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                                                    Inactive
-                                                </span>
-                                            )}
-
-                                            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500">
+                                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
                                                 <ActivityLogsModal
                                                     staffId={staff.id}
                                                     staffName={staff.name}
                                                     trigger={
                                                         staff.isOnline ? (
-                                                            <span className="flex items-center gap-1 text-teal-600 font-medium whitespace-nowrap">
-                                                                <Circle className="w-2.5 h-2.5 fill-current" /> Online
+                                                            <span className="flex items-center gap-1.5 text-emerald-600 font-semibold whitespace-nowrap">
+                                                                <span className="relative flex h-2 w-2">
+                                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                                                </span>
+                                                                Online
                                                             </span>
                                                         ) : (
                                                             <span className="flex items-center gap-1 whitespace-nowrap hover:text-teal-600 transition-colors">
                                                                 <Clock className="w-3 h-3" />
                                                                 {staff.last_activity_at
-                                                                    ? formatDistanceToNow(new Date(staff.last_activity_at), { addSuffix: true })
+                                                                    ? format(new Date(staff.last_activity_at), "MMM d, yyyy - hh:mm a")
                                                                     : 'Never logged in'}
                                                             </span>
                                                         )

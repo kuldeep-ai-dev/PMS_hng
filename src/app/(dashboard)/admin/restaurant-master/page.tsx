@@ -15,7 +15,14 @@ export default function RestaurantMasterPage() {
     const [formData, setFormData] = useState({
         restaurant_name: '',
         tagline: '',
-        logo_url: ''
+        logo_url: '',
+        geofencing_enabled: false,
+        rest_latitude: null as number | null,
+        rest_longitude: null as number | null,
+        rest_radius: 100,
+        hotel_latitude: null as number | null,
+        hotel_longitude: null as number | null,
+        hotel_radius: 100
     });
 
     useEffect(() => {
@@ -36,10 +43,42 @@ export default function RestaurantMasterPage() {
             setFormData({
                 restaurant_name: data.restaurant_name || '',
                 tagline: data.tagline || '',
-                logo_url: data.logo_url || ''
+                logo_url: data.logo_url || '',
+                geofencing_enabled: !!data.geofencing_enabled,
+                rest_latitude: data.rest_latitude,
+                rest_longitude: data.rest_longitude,
+                rest_radius: data.rest_radius || 100,
+                hotel_latitude: data.hotel_latitude,
+                hotel_longitude: data.hotel_longitude,
+                hotel_radius: data.hotel_radius || 100
             });
         }
         setLoading(false);
+    };
+
+    const captureLocation = (type: 'rest' | 'hotel') => {
+        if (!navigator.geolocation) {
+            toast.error('Geolocation is not supported by your browser');
+            return;
+        }
+
+        toast.info(`Fetching current ${type === 'rest' ? 'Restaurant' : 'Hotel'} GPS coordinates...`);
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                setFormData(prev => ({
+                    ...prev,
+                    [`${type}_latitude`]: latitude,
+                    [`${type}_longitude`]: longitude
+                }));
+                toast.success(`${type === 'rest' ? 'Restaurant' : 'Hotel'} coordinates captured!`);
+            },
+            (error) => {
+                toast.error(`Error capturing location: ${error.message}`);
+            },
+            { enableHighAccuracy: true }
+        );
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,26 +101,31 @@ export default function RestaurantMasterPage() {
         setSaving(true);
 
         try {
+            const payload = {
+                restaurant_name: formData.restaurant_name,
+                tagline: formData.tagline,
+                logo_url: formData.logo_url,
+                geofencing_enabled: formData.geofencing_enabled,
+                rest_latitude: formData.rest_latitude,
+                rest_longitude: formData.rest_longitude,
+                rest_radius: formData.rest_radius,
+                hotel_latitude: formData.hotel_latitude,
+                hotel_longitude: formData.hotel_longitude,
+                hotel_radius: formData.hotel_radius,
+                updated_at: new Date().toISOString()
+            };
+
             if (settingsId) {
                 const { error } = await supabase
                     .from('restaurant_settings')
-                    .update({
-                        restaurant_name: formData.restaurant_name,
-                        tagline: formData.tagline,
-                        logo_url: formData.logo_url,
-                        updated_at: new Date().toISOString()
-                    })
+                    .update(payload)
                     .eq('id', settingsId);
 
                 if (error) throw error;
             } else {
                 const { error } = await supabase
                     .from('restaurant_settings')
-                    .insert([{
-                        restaurant_name: formData.restaurant_name,
-                        tagline: formData.tagline,
-                        logo_url: formData.logo_url
-                    }]);
+                    .insert([payload]);
 
                 if (error) throw error;
             }
@@ -172,18 +216,140 @@ export default function RestaurantMasterPage() {
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="bg-slate-50 px-8 py-5 flex justify-end border-t border-slate-100">
-                    <motion.button
-                        whileTap={{ scale: 0.98 }}
-                        type="submit"
-                        disabled={saving}
-                        className="flex items-center gap-2 px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
-                    >
-                        {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                        {saving ? 'Saving Changes...' : 'Save Settings'}
-                    </motion.button>
+                    <div className="pt-8 border-t border-slate-100 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900 tracking-tight">Geofencing & Security</h3>
+                                <p className="text-xs text-slate-500 font-medium mt-1">Restrict QR ordering to the physical premises of your restaurant or hotel.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, geofencing_enabled: !formData.geofencing_enabled })}
+                                className={`relative w-14 h-7 rounded-full transition-colors duration-200 ${formData.geofencing_enabled ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                            >
+                                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-200 ${formData.geofencing_enabled ? 'translate-x-7' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+
+                        {formData.geofencing_enabled && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Restaurant Zone */}
+                                <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-200/60 flex flex-col gap-4">
+                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                                        Restaurant Zone
+                                    </h4>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Latitude</label>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                value={formData.rest_latitude || ''}
+                                                onChange={(e) => setFormData({ ...formData, rest_latitude: parseFloat(e.target.value) || 0 })}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-mono"
+                                                placeholder="0.0000"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Longitude</label>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                value={formData.rest_longitude || ''}
+                                                onChange={(e) => setFormData({ ...formData, rest_longitude: parseFloat(e.target.value) || 0 })}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-mono"
+                                                placeholder="0.0000"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Allowed Radius (Meters)</label>
+                                        <input
+                                            type="number"
+                                            value={formData.rest_radius}
+                                            onChange={(e) => setFormData({ ...formData, rest_radius: parseInt(e.target.value) || 0 })}
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => captureLocation('rest')}
+                                        className="mt-2 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        Capture Current GPS
+                                    </button>
+                                </div>
+
+                                {/* Hotel Zone */}
+                                <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-200/60 flex flex-col gap-4">
+                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                        Hotel/Rooms Zone
+                                    </h4>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Latitude</label>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                value={formData.hotel_latitude || ''}
+                                                onChange={(e) => setFormData({ ...formData, hotel_latitude: parseFloat(e.target.value) || 0 })}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-mono"
+                                                placeholder="0.0000"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Longitude</label>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                value={formData.hotel_longitude || ''}
+                                                onChange={(e) => setFormData({ ...formData, hotel_longitude: parseFloat(e.target.value) || 0 })}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-mono"
+                                                placeholder="0.0000"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Allowed Radius (Meters)</label>
+                                        <input
+                                            type="number"
+                                            value={formData.hotel_radius}
+                                            onChange={(e) => setFormData({ ...formData, hotel_radius: parseInt(e.target.value) || 0 })}
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => captureLocation('hotel')}
+                                        className="mt-2 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        Capture Current GPS
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-slate-50 px-8 py-5 flex justify-end border-t border-slate-100">
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            type="submit"
+                            disabled={saving}
+                            className="flex items-center gap-2 px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
+                        >
+                            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                            {saving ? 'Saving Changes...' : 'Save Settings'}
+                        </motion.button>
+                    </div>
                 </div>
             </form>
         </div>

@@ -2,7 +2,7 @@ import { getOrdersData } from './actions';
 import OrdersClient from './OrdersClient';
 import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 20;
 
 export default async function RestaurantOrdersPage() {
   const res = await getOrdersData();

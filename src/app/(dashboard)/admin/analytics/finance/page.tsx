@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getFinanceAnalytics } from '../actions-finance';
 import FinanceDashboardClient from './FinanceDashboardClient';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function FinanceAnalyticsPage() {
     const supabase = await createClient();

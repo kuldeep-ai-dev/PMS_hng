@@ -24,7 +24,8 @@ export async function getPreflightStatus(auditDate: string) {
     const { count: unpaidPos, error: err1 } = await supabase
         .from('restaurant_orders')
         .select('*', { count: 'exact', head: true })
-        .eq('payment_status', 'unpaid');
+        .eq('payment_status', 'unpaid')
+        .neq('status', 'cancelled');
 
     // 2. Guests overstayed checkout (Active but check_out_date is in the past OR belongs to exactly the audit date)
     const { count: overstayedGuests, error: err2 } = await supabase

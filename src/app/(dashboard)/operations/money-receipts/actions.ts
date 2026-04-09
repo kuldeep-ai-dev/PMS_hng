@@ -36,7 +36,8 @@ export async function getMoneyReceiptsData() {
             *,
             is_settled_with_restaurant,
             guests (id, name),
-            rooms (id, number)
+            rooms (id, number),
+            table:restaurant_tables (table_number)
         `)
         .in('payment_status', ['paid', 'charged_to_room']) // Include both!
         .in('status', ['preparing', 'ready', 'served', 'completed'])

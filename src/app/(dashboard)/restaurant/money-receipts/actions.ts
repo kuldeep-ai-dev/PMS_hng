@@ -16,7 +16,8 @@ export async function getRestaurantMoneyReceiptsData() {
             guests (id, name),
             rooms (id, number),
             bookings (id, check_in_date),
-            restaurant_customers (id, name)
+            restaurant_customers (id, name),
+            table:restaurant_tables (table_number)
         `)
         .in('payment_status', ['paid', 'charged_to_room'])
         .eq('is_refund', false)

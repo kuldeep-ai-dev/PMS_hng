@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getStaffAnalytics } from '../actions-staff';
 import StaffDashboardClient from './StaffDashboardClient';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function StaffAnalyticsPage() {
     const supabase = await createClient();

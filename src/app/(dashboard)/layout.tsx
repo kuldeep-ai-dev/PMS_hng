@@ -9,6 +9,7 @@ import { getSettings } from './settings/actions';
 import { AlertTriangle, Lock } from 'lucide-react';
 import { GlobalNotificationListener } from '@/components/restaurant/GlobalNotificationListener';
 import { isSystemValid } from '@/app/actions/license';
+import { SessionTimeoutProvider } from '@/components/layout/SessionTimeoutProvider';
 
 export default async function DashboardLayout({
     children,
@@ -16,26 +17,29 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }) {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+
+    // Batch 1: Auth + Settings (fully parallel — settings is now cached)
+    const [{ data: { user } }, settings] = await Promise.all([
+        supabase.auth.getUser(),
+        getSettings(),
+    ]);
 
     if (!user) {
         redirect('/login');
     }
 
-    const [{ data: profile }, settings] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        getSettings(),
+    // Batch 2: Profile + License check (parallel — license is now cached)
+    const [{ data: profile }, licenseResult] = await Promise.all([
+        supabase.from('profiles').select('id, name, role').eq('id', user.id).single(),
+        isSystemValid(),
     ]);
 
     const role = profile?.role || 'Guest';
 
     // 2. STRICT LICENSE CHECK
     // Only 'master' role can bypass the expiry check
-    if (role !== 'master') {
-        const { valid } = await isSystemValid();
-        if (!valid) {
-            redirect('/license-expired');
-        }
+    if (role !== 'master' && !licenseResult.valid) {
+        redirect('/license-expired');
     }
 
     const initials = profile?.name?.split(' ')?.map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '??';
@@ -67,6 +71,7 @@ export default async function DashboardLayout({
                         <Toaster position="top-center" richColors />
                     </div>
                 </div>
+                <SessionTimeoutProvider userId={user.id} />
             </DashboardShell>
         );
     }
@@ -98,6 +103,7 @@ export default async function DashboardLayout({
                 {role === 'restaurant_staff' && (
                     <GlobalNotificationListener userRole={role} />
                 )}
+                <SessionTimeoutProvider userId={user.id} />
             </DashboardShell>
         );
     }
@@ -122,6 +128,7 @@ export default async function DashboardLayout({
             {role === 'restaurant_staff' && (
                 <GlobalNotificationListener userRole={role} />
             )}
+            <SessionTimeoutProvider userId={user.id} />
         </DashboardShell>
     );
 }

@@ -8,7 +8,7 @@ import { BookingTapeChart } from './BookingTapeChart';
 import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
 import { Suspense } from 'react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function AdminDashboardPage() {
     const supabase = await createClient();

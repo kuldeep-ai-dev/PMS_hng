@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { logout } from '@/app/login/actions';
+import { LogoutButton } from './LogoutButton';
 import { createClient } from '@/utils/supabase/server';
 import { MobileSidebar } from './MobileSidebar';
 import { SidebarNav } from './SidebarNav';
@@ -57,11 +56,7 @@ export async function Sidebar({ className, role: propRole, initials: propInitial
                                 <span className="text-[10px] uppercase font-bold text-teal-600 tracking-wider">{role!.replace('_', ' ')}</span>
                             </div>
                         </div>
-                        <form action={logout}>
-                            <button title="Sign Out" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                <LogOut className="w-4 h-4" />
-                            </button>
-                        </form>
+                        <LogoutButton />
                     </div>
                 </div>
             </aside>

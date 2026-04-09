@@ -542,7 +542,7 @@ export default function POSTerminal() {
         <div className="flex-1 flex flex-col min-h-0 bg-slate-100/50">
 
           {/* Scrollable Cart Items */}
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 custom-scrollbar min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar min-h-0">
             {cart.length > 0 && (
               <div className="flex items-center justify-between px-1 shrink-0">
                 <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Order Items</h4>
@@ -560,27 +560,26 @@ export default function POSTerminal() {
             ) : (
               <div className="space-y-3">
                 {cart.map((item) => (
-                  <div key={item.id} className="bg-white p-4 rounded-[22px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-slate-200/60 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex justify-between items-start gap-3">
+                  <div key={item.id} className="bg-white p-3 rounded-[18px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-slate-200/60 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex justify-between items-start gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
                           <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", item.is_veg ? "bg-emerald-500" : "bg-red-500")} />
-                          <h4 className="font-black text-slate-800 text-[13px] leading-tight truncate uppercase tracking-tight">{item.name}</h4>
+                          <h4 className="font-black text-slate-800 text-[12px] leading-tight truncate uppercase tracking-tight">{item.name}</h4>
                         </div>
-                        <p className="text-slate-400 font-bold text-[10px] tracking-wider uppercase">₹{item.price}</p>
+                        <p className="text-slate-400 font-bold text-[9px] tracking-wider uppercase">₹{item.price}</p>
                       </div>
-                      <button onClick={() => updateQuantity(item.id, -item.quantity)} className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0">
+                      <button onClick={() => updateQuantity(item.id, -item.quantity)} className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-
-                    <div className="flex items-center justify-between gap-3 pt-1">
-                      <div className="flex items-center bg-slate-100/80 rounded-xl p-0.5 gap-0.5">
-                        <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 flex items-center justify-center bg-white shadow-sm rounded-lg transition-all text-slate-600 hover:text-teal-600 active:scale-90"><Minus className="w-3.5 h-3.5" /></button>
-                        <span className="w-8 text-center text-[11px] font-black text-slate-900 tabular-nums">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 flex items-center justify-center bg-white shadow-sm rounded-lg transition-all text-slate-600 hover:text-teal-600 active:scale-90"><Plus className="w-3.5 h-3.5" /></button>
+                    <div className="flex items-center justify-between gap-3 pt-0.5">
+                      <div className="flex items-center bg-slate-100/80 rounded-lg p-0.5 gap-0.5">
+                        <button onClick={() => updateQuantity(item.id, -1)} className="w-6 h-6 flex items-center justify-center bg-white shadow-sm rounded-md transition-all text-slate-600 hover:text-teal-600 active:scale-90"><Minus className="w-3 h-3" /></button>
+                        <span className="w-7 text-center text-[10px] font-black text-slate-900 tabular-nums">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.id, 1)} className="w-6 h-6 flex items-center justify-center bg-white shadow-sm rounded-md transition-all text-slate-600 hover:text-teal-600 active:scale-90"><Plus className="w-3 h-3" /></button>
                       </div>
-                      <span className="font-black text-slate-900 text-[14px] tracking-tighter">₹{item.price * item.quantity}</span>
+                      <span className="font-black text-slate-900 text-[13px] tracking-tighter">₹{item.price * item.quantity}</span>
                     </div>
                   </div>
                 ))}
@@ -589,48 +588,48 @@ export default function POSTerminal() {
           </div>
 
           {/* Fixed Bottom Section */}
-          <div className="shrink-0 p-6 pt-0 space-y-4">
+          <div className="shrink-0 p-4 pt-0 space-y-3">
             {/* Pricing Card */}
-            <div className="bg-white rounded-[24px] p-5 border border-slate-200/60 shadow-[0_12px_36px_rgba(0,0,0,0.06)] space-y-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-0.5">
+            <div className="bg-white rounded-[20px] p-4 border border-slate-200/60 shadow-[0_8px_24px_rgba(0,0,0,0.04)] space-y-2">
+              <div className="space-y-1">
+                <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest px-0.5">
                   <span>Subtotal</span>
                   <span className="text-slate-700 tabular-nums">{formatCurrencySync(subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-0.5">
+                <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest px-0.5">
                   <span>Tax (GST 5%)</span>
                   <span className="text-slate-700 tabular-nums">{formatCurrencySync(tax)}</span>
                 </div>
               </div>
 
-              <div className="h-px bg-slate-100" />
+              <div className="h-px bg-slate-50" />
 
-              <div className="flex justify-between items-center py-1 px-0.5">
-                <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Total Payable</span>
+              <div className="flex justify-between items-center py-0.5 px-0.5">
+                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Total Payable</span>
                 <div className="flex items-baseline gap-0.5">
-                  <span className="text-xs font-black text-slate-900 tracking-tighter">₹</span>
-                  <span className="text-3xl font-black text-slate-900 tracking-tighter tabular-nums">{formatCurrencySync(totalRaw).replace('₹', '')}</span>
+                  <span className="text-[11px] font-black text-slate-900 tracking-tighter">₹</span>
+                  <span className="text-2xl font-black text-slate-900 tracking-tighter tabular-nums">{formatCurrencySync(totalRaw).replace('₹', '')}</span>
                 </div>
               </div>
             </div>
 
             {/* Checkout Buttons */}
-            <div className="flex gap-3 pb-2">
+            <div className="flex gap-2 pb-1">
               <button
                 onClick={handleSaveKOT}
                 disabled={cart.length === 0 || isKOTSaving}
-                className="flex-1 h-[60px] bg-[#0f172a] hover:bg-black disabled:bg-slate-200/50 disabled:text-slate-400 text-white font-black text-[11px] uppercase tracking-[0.25em] rounded-[22px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-slate-200/50"
+                className="flex-1 h-[52px] bg-[#0f172a] hover:bg-black disabled:bg-slate-200/50 disabled:text-slate-400 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-[18px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-slate-200/50"
               >
                 <span className="shrink-0">{isKOTSaving ? 'SAVING...' : 'KITCHEN'}</span>
-                <Utensils className={cn("w-4 h-4 shrink-0", isKOTSaving ? "text-white/40" : "text-orange-400")} />
+                <Utensils className={cn("w-3.5 h-3.5 shrink-0", isKOTSaving ? "text-white/40" : "text-orange-400")} />
               </button>
               <button
                 onClick={handleCheckout}
                 disabled={cart.length === 0}
-                className="flex-[1.5] h-[60px] bg-teal-500 hover:bg-teal-600 disabled:bg-slate-100 disabled:text-slate-300 text-white font-black text-[11px] uppercase tracking-[0.25em] rounded-[22px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-teal-500/20"
+                className="flex-[1.5] h-[52px] bg-teal-500 hover:bg-teal-600 disabled:bg-slate-100 disabled:text-slate-300 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-[18px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-teal-500/20"
               >
                 <span>SETTLE BILL</span>
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
               </button>
             </div>
           </div>

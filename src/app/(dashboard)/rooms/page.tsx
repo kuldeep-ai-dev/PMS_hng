@@ -222,9 +222,9 @@ export default function RoomsPage() {
             )}
 
             {/* Room Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {rooms.map((room) => (
-                    <BentoCard key={room.id} className="p-6 relative group">
+                    <BentoCard key={room.id} className="p-4 relative group">
                         {/* Delete Button (top-right, hidden for occupied rooms) */}
                         {room.status !== 'Occupied' && userRole === 'admin' && (
                             <button

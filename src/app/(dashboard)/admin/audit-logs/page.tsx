@@ -3,7 +3,7 @@ import { BentoCard } from '@/components/ui/BentoCard';
 import { FileJson, FileText, Calendar, Building2, User, Hash } from 'lucide-react';
 import { format } from 'date-fns';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function AuditLogsPage() {
     const supabase = await createClient();

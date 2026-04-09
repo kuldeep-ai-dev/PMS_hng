@@ -79,7 +79,9 @@ export default function RestaurantMoneyReceiptsPage() {
 
         // Map order source for display
         let sourceLabel = 'POS Walk-in';
-        if (p.order_source?.startsWith('qr_')) sourceLabel = 'QR Menu';
+        if (p.order_source === 'qr_table') sourceLabel = `QR - Table ${p.table?.table_number || '?'}`;
+        else if (p.order_source === 'qr_room') sourceLabel = `QR - Room ${p.rooms?.number || '?'}`;
+        else if (p.order_source === 'qr_menu') sourceLabel = 'QR Menu'; // Generic QR
         else if (p.payment_status === 'charged_to_room') sourceLabel = 'Room Order';
 
         return {

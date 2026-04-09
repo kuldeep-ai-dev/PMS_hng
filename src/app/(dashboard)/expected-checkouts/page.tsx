@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function ExpectedCheckoutsPage() {
     const supabase = await createClient();

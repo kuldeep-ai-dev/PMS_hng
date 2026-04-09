@@ -1,10 +1,19 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Printer, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function POSPrintActions() {
     const router = useRouter();
+
+    useEffect(() => {
+        // Delay slightly to ensure fonts and styles are loaded
+        const timer = setTimeout(() => {
+            window.print();
+        }, 800);
+        return () => clearTimeout(timer);
+    }, []);
 
     return (
         <div className="w-[80mm] mb-4 flex justify-end gap-2 print:hidden relative z-50">

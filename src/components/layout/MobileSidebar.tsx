@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { logout } from '@/app/login/actions';
+import { LogoutButton } from './LogoutButton';
 import { SidebarNav } from './SidebarNav';
 
 interface MobileSidebarProps {
@@ -65,11 +65,7 @@ export function MobileSidebar({ initials, displayName, role }: MobileSidebarProp
                             <span className="text-[10px] uppercase font-bold text-teal-600 tracking-wider">{role.replace('_', ' ')}</span>
                         </div>
                     </div>
-                    <form action={logout}>
-                        <button title="Sign Out" className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                            <LogOut className="w-4 h-4" />
-                        </button>
-                    </form>
+                    <LogoutButton />
                 </div>
             </div>
         </>

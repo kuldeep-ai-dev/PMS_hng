@@ -12,17 +12,21 @@ import { cn } from '@/lib/utils';
 import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
 import { getISTTodayRange } from '@/utils/date-utils';
 import { formatISTDate } from '@/utils/date';
+import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
+import { getAdminDashboardStats } from '@/app/actions/admin-dashboard';
 
-export const dynamic = 'force-dynamic';
+// Revalidate every 30 seconds — fast enough for live operations, avoids full re-render every visit
+export const revalidate = 30;
 
 export default async function Dashboard() {
   const supabase = await createClient();
 
-  // Check user role
+  // Auth + role check — layout already handles redirect if no user,
+  // we just need the role for conditional rendering.
   const { data: { user } } = await supabase.auth.getUser();
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, role, name')
     .eq('id', user?.id)
     .single();
 
@@ -36,9 +40,15 @@ export default async function Dashboard() {
   }
 
   const isHousekeeping = profile?.role === 'cleaning_staff' || profile?.role === 'housekeeping' || profile?.role?.toLowerCase().includes('clean');
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'owner' || profile?.role === 'manager';
 
   if (isHousekeeping) {
-    return <StaffDashboard staffId={profile.id} staffName={profile.name} />;
+    return <StaffDashboard staffId={profile?.id ?? ''} staffName={profile?.name ?? ''} />;
+  }
+
+  if (isAdmin) {
+    const adminStats = await getAdminDashboardStats();
+    return <AdminDashboard stats={adminStats} />;
   }
 
   const { start: istStart, end: istEnd } = getISTTodayRange();
@@ -214,8 +224,8 @@ export default async function Dashboard() {
 
           const cardContent = (
             <div key={stat.label} className={cn(
-              "relative bg-white border border-slate-200 shadow-sm rounded-[24px] p-6 h-full transition-all duration-500",
-              "hover:shadow-2xl hover:shadow-slate-200/50 hover:border-slate-300 hover:-translate-y-2 group overflow-hidden bg-gradient-to-br",
+              "relative bg-white border border-slate-200 shadow-sm rounded-[20px] p-5 h-full transition-all duration-500",
+              "hover:shadow-2xl hover:shadow-slate-200/50 hover:border-slate-300 hover:-translate-y-1.5 group overflow-hidden bg-gradient-to-br",
               activeGradient,
               stat.href && "cursor-pointer"
             )}>
@@ -237,11 +247,11 @@ export default async function Dashboard() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1 group-hover:text-slate-500 transition-colors">{stat.label}</p>
                   <div className="flex items-baseline gap-2">
                     <h3 className={cn(
-                      "text-3xl font-black tracking-tighter text-slate-900 group-hover:scale-105 transition-transform duration-500 origin-left tabular-nums",
+                      "text-2xl font-black tracking-tighter text-slate-900 group-hover:scale-105 transition-transform duration-500 origin-left tabular-nums",
                       isRevenue && "text-teal-600"
                     )}>
                       {stat.value}
@@ -282,7 +292,7 @@ export default async function Dashboard() {
       </div>
 
       {/* Quick Actions (Moves next to Chart on Desktop) */}
-      <div className="lg:col-span-3 p-6 bg-white border border-slate-200 shadow-sm rounded-xl min-h-[400px]">
+      <div className="lg:col-span-3 p-5 bg-white border border-slate-200 shadow-sm rounded-xl min-h-[400px]">
         <h2 className="text-md font-semibold mb-6 text-slate-800 uppercase tracking-wide text-xs">Quick Actions</h2>
         <div className="space-y-3">
           <Link href="/check-in" className="group flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-teal-50 hover:bg-teal-100 border border-teal-100 transition-all">

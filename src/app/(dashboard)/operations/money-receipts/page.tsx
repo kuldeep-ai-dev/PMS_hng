@@ -103,6 +103,11 @@ export default function MoneyReceiptsPage() {
             guestName: p.guests?.name || p.customer_name || 'Walk-in',
             roomNo: p.rooms?.number || 'N/A',
             source: 'Restaurant POS',
+            sourceDetail: p.order_source === 'qr_table'
+                ? `QR - Table ${p.table?.table_number || '?'}`
+                : p.order_source === 'qr_room'
+                    ? `QR - Room ${p.rooms?.number || '?'}`
+                    : null,
             amount: p.total_amount,
             method: p.payment_status === 'charged_to_room' ? 'Billed to Folio' : (p.payment_mode || 'Paid'),
             status: p.is_refund ? 'Refunded' : 'Paid',
@@ -341,7 +346,12 @@ export default function MoneyReceiptsPage() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-5">
-                                        <span className="text-xs font-medium text-slate-500">{receipt.source}</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-medium text-slate-500">{receipt.source}</span>
+                                            {receipt.sourceDetail && (
+                                                <span className="text-[10px] text-teal-600 font-bold uppercase tracking-tight">{receipt.sourceDetail}</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-5 text-right font-bold text-slate-900">
                                         {formatCurrency(receipt.amount)}

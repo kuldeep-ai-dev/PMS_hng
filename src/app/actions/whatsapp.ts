@@ -2,6 +2,7 @@
 
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import puppeteer from 'puppeteer';
 import { getSettings } from '@/app/(dashboard)/settings/actions';
 import { formatISTDate, formatISTTime } from '@/utils/date';
@@ -178,7 +179,7 @@ async function generateRestaurantBillPDF(orderId: string): Promise<Uint8Array> {
 async function sendWhatsAppTemplate({
     to,
     templateName,
-    languageCode = 'en',
+    languageCode = 'en_US',
     headerDocUrl,
     headerDocFilename,
     bodyParams,
@@ -413,14 +414,15 @@ export async function sendCheckoutWhatsApp(bookingId: string) {
         // Save tracking record if message was sent successfully
         if (result.success && result.messageId) {
             try {
-                await supabase.from('whatsapp_analytics').insert({
+                const adminSupabase = createAdminClient();
+                const { error: insError } = await adminSupabase.from('whatsapp_analytics').insert({
                     wamid: result.messageId,
                     booking_id: bookingId,
                     status: 'sent',
                     template_type: 'check_out',
                     guest_name: booking.guests.name,
                     guest_phone: phone,
-                    destination_url: settings.google_review_url || null,
+                    destination_url: settings.google_review_url,
                     tracking_id: trackingId,
                     sent_at: new Date().toISOString(),
                 });
@@ -475,16 +477,15 @@ export async function testSendWhatsApp(phoneNumber: string, type: 'check_in' | '
             headerDocFilename = 'Test_Final_Invoice.pdf';
             buttonUrlSuffix = 'test_click_tracker';
         } else if (type === 'restaurant') {
-            templateName = settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'restaurant_thankyou';
+            templateName = settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'food_confirm';
             bodyParams = [
-                'Test Guest',
-                settings.hotel_name,
-                'Order #TEST-123',
+                settings.hotel_name || 'Restaurant',
+                'TEST-123',
                 '₹1,250',
                 '07 Apr 2026'
             ];
             headerDocFilename = 'Test_Restaurant_Bill.pdf';
-            buttonUrlSuffix = 'test_rest_tracker';
+            // Important: we do not set buttonUrlSuffix because food_confirm uses a static button URL
         }
 
         const result = await sendWhatsAppTemplate({
@@ -500,14 +501,15 @@ export async function testSendWhatsApp(phoneNumber: string, type: 'check_in' | '
         // Save analytics record for test messages too
         if (result.success && result.messageId) {
             try {
-                const supabase = await createClient();
-                await supabase.from('whatsapp_analytics').insert({
+                const adminSupabase = createAdminClient();
+                await adminSupabase.from('whatsapp_analytics').insert({
                     wamid: result.messageId,
                     booking_id: null,
                     status: 'sent',
-                    template_type: type === 'restaurant' ? 'restaurant_bill' : (type === 'check_out' ? 'check_out' : 'check_in'),
+                    template_type: type === 'restaurant' ? 'restaurant_order' : (type === 'check_out' ? 'check_out' : 'check_in'),
                     guest_name: 'Test Guest',
                     guest_phone: phone,
+                    destination_url: settings.google_review_url,
                     sent_at: new Date().toISOString(),
                     tracking_id: buttonUrlSuffix
                 });
@@ -568,17 +570,15 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
 
         const result = await sendWhatsAppTemplate({
             to: phone,
-            templateName: settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'restaurant_thankyou',
+            templateName: settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'food_confirm',
             headerDocUrl: pdfUrl,
             headerDocFilename: `Bill_${billNo}.pdf`,
             bodyParams: [
-                guestName,
-                settings.hotel_name,
-                `Order #${billNo}`,
+                settings.hotel_name || 'Restaurant',
+                billNo,
                 `₹${totalAmount}`,
                 billDate
-            ],
-            buttonUrlSuffix: trackingId,
+            ]
         });
 
         console.log(`[WhatsApp] Restaurant request to ${phone} results:`, JSON.stringify(result));
@@ -586,7 +586,8 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
         // Save tracking record if message was sent successfully
         if (result.success && result.messageId) {
             try {
-                const { error: insError } = await supabase.from('whatsapp_analytics').insert({
+                const adminSupabase = createAdminClient();
+                const { error: insError } = await adminSupabase.from('whatsapp_analytics').insert({
                     wamid: result.messageId,
                     booking_id: null,
                     restaurant_order_id: orderId,
@@ -594,7 +595,7 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
                     template_type: 'restaurant_order',
                     guest_name: (order.customer_name || 'Guest'),
                     guest_phone: phone,
-                    destination_url: null,
+                    destination_url: settings.google_review_url,
                     tracking_id: trackingId,
                     sent_at: new Date().toISOString(),
                 });

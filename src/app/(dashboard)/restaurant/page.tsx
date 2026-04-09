@@ -3,7 +3,7 @@ import RestaurantDashboardClient from './RestaurantDashboardClient';
 import { formatCurrency } from '@/lib/currency';
 import { TrendingUp, Landmark, Receipt, UtensilsCrossed, Users } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function RestaurantDashboardPage() {
   const res = await getRestaurantInsights();

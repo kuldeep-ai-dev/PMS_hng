@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 import { logSystemEvent } from './activity';
 
 export type LicenseStatus = {
@@ -17,26 +17,34 @@ export type LicenseStatus = {
 
 /**
  * Fetch the system-wide license status.
- * This is a singleton table, so we always take the first record.
+ * Cached for 5 minutes — license rarely changes.
  */
-export async function getLicenseStatus(): Promise<LicenseStatus | null> {
-    try {
-        const supabase = await createClient();
-        const { data, error } = await supabase
-            .from('system_license')
-            .select('*')
-            .single();
+import { createAdminClient } from '@/utils/supabase/admin';
 
-        if (error) {
-            console.error('[License] Error fetching status:', error.message);
+const _fetchLicenseStatus = unstable_cache(
+    async (): Promise<LicenseStatus | null> => {
+        try {
+            const supabase = createAdminClient();
+            const { data, error } = await supabase
+                .from('system_license')
+                .select('id, is_active, expiry_date, is_trial, is_revoked, revocation_reason, renewal_amount, last_updated')
+                .single();
+            if (error) {
+                console.error('[License] Cache fetch error:', error);
+                return null;
+            }
+            return data as LicenseStatus;
+        } catch (err) {
+            console.error('[License] Cache fetch exception:', err);
             return null;
         }
+    },
+    ['system-license'],
+    { revalidate: 300, tags: ['license'] } // 5-minute TTL
+);
 
-        return data as LicenseStatus;
-    } catch (err) {
-        console.error('[License] Error:', err);
-        return null;
-    }
+export async function getLicenseStatus(): Promise<LicenseStatus | null> {
+    return _fetchLicenseStatus();
 }
 
 /**

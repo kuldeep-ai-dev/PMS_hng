@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getGrowthAnalytics } from '../actions-growth';
 import GrowthDashboardClient from './GrowthDashboardClient';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30; // ISR for performance
 
 export default async function GrowthAnalyticsPage() {
     const supabase = await createClient();
