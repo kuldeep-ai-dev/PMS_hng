@@ -88,16 +88,14 @@ export async function assignCleaningStaff(roomId: string, staffId: string) {
         .from('cleaning_assignments')
         .select('id')
         .eq('room_id', roomId)
-        .filter('status', 'in', '("pending","in_progress")')
-        .order('assigned_at', { ascending: false })
+        .in('status', ['pending', 'in_progress'])
+        .order('assigned_at', { descending: false })
         .limit(1)
         .single();
 
     if (currentAssignment) {
         console.log('[Housekeeping] Triggering WhatsApp for assignment:', currentAssignment.id);
-        sendHousekeepingAssignmentWhatsApp(currentAssignment.id).catch(err => {
-            console.error('[Housekeeping] WhatsApp notify failed:', err.message);
-        });
+        await sendHousekeepingAssignmentWhatsApp(currentAssignment.id);
     }
 
     revalidatePath('/front-desk');
