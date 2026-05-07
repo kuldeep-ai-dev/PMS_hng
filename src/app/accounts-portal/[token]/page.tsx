@@ -12,21 +12,15 @@ export const metadata = {
     }
 };
 
-function verifyToken(token: string) {
+function verifyToken(b64Payload: string, signature: string) {
     try {
-        console.log('[AccountsPortal] Verifying token length:', token?.length);
-        const lastDot = token.lastIndexOf('.');
-        if (lastDot === -1) {
-            console.error('[AccountsPortal] No dot separator found in token');
+        if (!b64Payload || !signature) {
+            console.error('[AccountsPortal] Missing payload or signature');
             return null;
         }
-        const b64Payload = token.substring(0, lastDot);
-        const signature = token.substring(lastDot + 1);
 
         const secret = process.env.INTERNAL_PDF_TOKEN || 'fallback-secret-2026';
         const expectedSignature = crypto.createHmac('sha256', secret).update(b64Payload).digest('base64url');
-
-        console.log('[AccountsPortal] Signature match:', signature === expectedSignature);
 
         if (signature !== expectedSignature) {
             console.error('[AccountsPortal] Signature mismatch');
@@ -75,17 +69,33 @@ export default async function AccountsPortalPage({
     params: Promise<{ token: string }>;
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    // Support both URL path token (/accounts-portal/TOKEN) and query param (?t=TOKEN)
+    // Support both URL path token (legacy), query param 't' (legacy dot-separated), 
+    // and the new robust format with separate 'p' (payload) and 's' (signature).
     const { token: pathToken } = await params;
     const qs = await searchParams;
-    const queryToken = typeof qs.t === 'string' ? qs.t : undefined;
+    const queryTokenT = typeof qs.t === 'string' ? qs.t : undefined;
+    const queryTokenP = typeof qs.p === 'string' ? qs.p : undefined;
+    const queryTokenS = typeof qs.s === 'string' ? qs.s : undefined;
 
-    // Use whichever token is available, prefer query param (more reliable)
-    const rawToken = queryToken || pathToken;
+    let payload = null;
+    let rawToken = '';
 
-    if (!rawToken) return <InvalidLink />;
+    if (queryTokenP && queryTokenS) {
+        // New robust format
+        payload = verifyToken(queryTokenP, queryTokenS);
+        rawToken = `${queryTokenP}.${queryTokenS}`; // reconstructed for internal use
+    } else {
+        // Legacy formats (dot-separated)
+        const legacyToken = queryTokenT || pathToken;
+        if (legacyToken && legacyToken.includes('.')) {
+            const lastDot = legacyToken.lastIndexOf('.');
+            const p = legacyToken.substring(0, lastDot);
+            const s = legacyToken.substring(lastDot + 1);
+            payload = verifyToken(p, s);
+            rawToken = legacyToken;
+        }
+    }
 
-    const payload = verifyToken(rawToken);
     if (!payload || !payload.startDate || !payload.endDate) return <InvalidLink />;
 
     const { startDate, endDate } = payload;

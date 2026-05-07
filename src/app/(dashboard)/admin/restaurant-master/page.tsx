@@ -16,6 +16,7 @@ export default function RestaurantMasterPage() {
         restaurant_name: '',
         tagline: '',
         logo_url: '',
+        notification_whatsapp_number: '',
         geofencing_enabled: false,
         rest_latitude: null as number | null,
         rest_longitude: null as number | null,
@@ -44,6 +45,7 @@ export default function RestaurantMasterPage() {
                 restaurant_name: data.restaurant_name || '',
                 tagline: data.tagline || '',
                 logo_url: data.logo_url || '',
+                notification_whatsapp_number: data.notification_whatsapp_number || '',
                 geofencing_enabled: !!data.geofencing_enabled,
                 rest_latitude: data.rest_latitude,
                 rest_longitude: data.rest_longitude,
@@ -105,6 +107,7 @@ export default function RestaurantMasterPage() {
                 restaurant_name: formData.restaurant_name,
                 tagline: formData.tagline,
                 logo_url: formData.logo_url,
+                notification_whatsapp_number: formData.notification_whatsapp_number,
                 geofencing_enabled: formData.geofencing_enabled,
                 rest_latitude: formData.rest_latitude,
                 rest_longitude: formData.rest_longitude,
@@ -213,6 +216,18 @@ export default function RestaurantMasterPage() {
                                     onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-900 placeholder:text-slate-400"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-900 mb-2">Notification WhatsApp Number</label>
+                                <input
+                                    type="tel"
+                                    placeholder="e.g. +919876543210"
+                                    value={formData.notification_whatsapp_number}
+                                    onChange={(e) => setFormData({ ...formData, notification_whatsapp_number: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium"
+                                />
+                                <p className="text-xs text-slate-500 mt-2">Automated order alerts will be sent to this number.</p>
                             </div>
                         </div>
                     </div>

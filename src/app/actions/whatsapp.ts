@@ -659,6 +659,82 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
     }
 }
 
+/**
+ * Notify restaurant staff of a new order placed via QR menu.
+ */
+export async function notifyRestaurantOrderStaff(orderId: string) {
+    try {
+        const supabase = await createClient();
+        const { data: order, error: orderError } = await supabase
+            .from('restaurant_orders')
+            .select(`
+                *,
+                room:rooms(number),
+                table:restaurant_tables(table_number)
+            `)
+            .eq('id', orderId)
+            .single();
+
+        if (orderError || !order) {
+            console.error('[WhatsApp] Staff Notify: Order not found:', orderId);
+            return { success: false, message: 'Order not found' };
+        }
+
+        // Fetch order items separately to ensure we get item names
+        const { data: items, error: itemsError } = await supabase
+            .from('restaurant_order_items')
+            .select(`
+                quantity,
+                menu_item:restaurant_menu_items(name)
+            `)
+            .eq('order_id', orderId);
+
+        if (itemsError) throw itemsError;
+
+        const { data: settings, error: setErr } = await supabase
+            .from('restaurant_settings')
+            .select('*')
+            .limit(1)
+            .single();
+
+        if (setErr || !settings?.notification_whatsapp_number) {
+            console.log('[WhatsApp] Staff Notify: No destination number configured.');
+            return { success: false, message: 'No notification number' };
+        }
+
+        const phone = formatPhoneForWhatsApp(settings.notification_whatsapp_number);
+        const location = order.room?.number ? `Room ${order.room.number}` : (order.table?.table_number ? `Table ${order.table.table_number}` : 'Unknown');
+        const itemsList = items?.map((i: any) => `${i.quantity}x ${i.menu_item?.name || 'Item'}`).join(', ') || 'No Items';
+        const totalAmount = Number(order.total_amount || 0).toLocaleString('en-IN');
+        const orderTime = formatISTTime(order.order_time);
+
+        console.log(`[WhatsApp] Notifying staff at ${phone} for new order from ${location}`);
+
+        // Using the newly created 'qr_order_alert' utility template
+        // Params: 1: Location, 2: Items, 3: Total, 4: Time
+        const result = await sendWhatsAppTemplate({
+            to: phone,
+            templateName: 'qr_order_alert',
+            languageCode: 'en',
+            bodyParams: [
+                location,
+                itemsList.substring(0, 1024),
+                `₹${totalAmount}`,
+                orderTime
+            ]
+        });
+
+        if (result.success && result.messageId) {
+            console.log(`[WhatsApp] Staff notification sent: ${result.messageId}`);
+        }
+
+        return result;
+    } catch (err: any) {
+        console.error('[WhatsApp] Error in notifyRestaurantOrderStaff:', err.message);
+        return { success: false, message: err.message };
+    }
+}
+
 
 /**
  * Fetch WhatsApp Phone Number Account status and details from Meta.

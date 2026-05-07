@@ -162,11 +162,9 @@ export async function generateAndSendAccountsLink(startDate: string, endDate: st
         const b64Payload = Buffer.from(payload).toString('base64url');
         const secret = process.env.INTERNAL_PDF_TOKEN || 'fallback-secret-2026';
         const signature = crypto.createHmac('sha256', secret).update(b64Payload).digest('base64url');
-
-        const token = `${b64Payload}.${signature}`;
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        // Use query param ?t= so Next.js doesn't interpret the token's dot as a file extension
-        const link = `${appUrl}/accounts-portal/view?t=${encodeURIComponent(token)}`;
+        // Use separate query params for payload and signature to avoid URL parsing issues with dots in emails
+        const link = `${appUrl}/accounts-portal/view?p=${b64Payload}&s=${signature}`;
 
         const result = await sendAccountsPortalEmail(
             startDate,

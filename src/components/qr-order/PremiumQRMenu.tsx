@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { notifyRestaurantOrderStaff } from '@/app/actions/whatsapp';
 import { ShoppingCart, Plus, Minus, ChevronLeft, Utensils, CheckCircle, Home, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -237,6 +238,13 @@ export default function PremiumQRMenu({ type, id }: Props) {
 
             if (type === 'table') {
                 await supabase.from('restaurant_tables').update({ status: 'Occupied' }).eq('id', id);
+            }
+
+            // Trigger WhatsApp notification for staff
+            try {
+                await notifyRestaurantOrderStaff(order.id);
+            } catch (notifyErr) {
+                console.error('Failed to notify staff:', notifyErr);
             }
 
             setOrderPlaced(true);
