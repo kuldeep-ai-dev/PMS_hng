@@ -5,12 +5,14 @@ import {
     subMonths, format, startOfMonth, endOfMonth,
     eachMonthOfInterval, differenceInDays, subDays
 } from 'date-fns';
+import { getISTDate } from '@/utils/date';
 
 export async function getTrendAnalytics() {
     const supabase = await createClient();
 
     // 1. Fetch bookings for the last 6 months
-    const sixMonthsAgo = subMonths(new Date(), 6).toISOString();
+    const today = getISTDate();
+    const sixMonthsAgo = subMonths(today, 6).toISOString();
 
     const { data: bookings, error: bError } = await supabase
         .from('bookings')
@@ -41,8 +43,8 @@ export async function getTrendAnalytics() {
 
     // 3. Occupancy Trends (Last 6 Months)
     const sixMonthsInterval = eachMonthOfInterval({
-        start: subMonths(new Date(), 5),
-        end: new Date()
+        start: subMonths(getISTDate(), 5),
+        end: getISTDate()
     });
 
     const occupancyTrends = sixMonthsInterval.map(month => {

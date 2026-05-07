@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { RoomGrid } from '@/components/pms/RoomGrid';
 import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
+import { getTodayIST } from '@/utils/date';
 
 // Real-time synchronization is handled via a client-side subscription.
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,7 @@ export default async function FrontDeskPage() {
 
     // Map the database structure to the expected Room interface
     // Note: We use a robust YYYY-MM-DD comparison for the India timezone.
-    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    const todayStr = getTodayIST();
 
     const formattedRooms = (rooms || []).map(room => {
         // Find active booking for guest name

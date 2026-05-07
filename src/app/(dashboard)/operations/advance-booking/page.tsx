@@ -5,7 +5,7 @@ import { BentoCard } from '@/components/ui/BentoCard';
 import { Search, CheckCircle2, ChevronRight, Loader2, IndianRupee, X, Users, BedDouble, Calendar, CalendarDays, UserPlus } from 'lucide-react';
 import IdDropzone from '@/components/pms/IdDropzone';
 import { formatCurrency } from '@/utils/billing';
-import { formatISTDate } from '@/utils/date';
+import { formatISTDate, getTodayIST, getISTDate, getISTTodayRange } from '@/utils/date';
 import { cn, calculateAge } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { searchGuests } from '../../check-in/actions-client';
@@ -44,8 +44,16 @@ export default function AdvanceBookingPage() {
         room_id: '', room_number: '', room_base_rate: 0,
         advance_payment: 0, advance_payment_mode: 'Cash',
         gst_type: 'B2C', gstin: '',
-        check_in_date: new Date(new Date().getTime() + 86400000).toISOString().split('T')[0], // Default: Tomorrow
-        check_out_date: new Date(new Date().getTime() + 172800000).toISOString().split('T')[0], // Tomorrow + 1
+        check_in_date: (() => {
+            const tomorrow = getISTDate();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            return tomorrow.toISOString().split('T')[0];
+        })(),
+        check_out_date: (() => {
+            const nextDay = getISTDate();
+            nextDay.setDate(nextDay.getDate() + 2);
+            return nextDay.toISOString().split('T')[0];
+        })(),
         id_document_url: '',
         guest_type: 'Standard',
         pin_code: '', city: '', state: '', country: 'India',
@@ -117,8 +125,16 @@ export default function AdvanceBookingPage() {
         if (searchParams.get('prefill') === 'true') {
             const checkIn = searchParams.get('check_in');
             const checkOut = searchParams.get('check_out');
-            const tomorrow = new Date(new Date().getTime() + 86400000).toISOString().split('T')[0];
-            const nextDay = new Date(new Date().getTime() + 172800000).toISOString().split('T')[0];
+            const tomorrow = (() => {
+                const d = getISTDate();
+                d.setDate(d.getDate() + 1);
+                return d.toISOString().split('T')[0];
+            })();
+            const nextDay = (() => {
+                const d = getISTDate();
+                d.setDate(d.getDate() + 2);
+                return d.toISOString().split('T')[0];
+            })();
 
             setFormData(prev => ({
                 ...prev,
@@ -306,7 +322,7 @@ export default function AdvanceBookingPage() {
                                         <input
                                             type="date"
                                             value={formData.check_in_date}
-                                            min={new Date().toISOString().split('T')[0]}
+                                            min={getTodayIST()}
                                             onChange={e => {
                                                 const newIn = e.target.value;
                                                 const inDate = new Date(newIn);
@@ -316,7 +332,9 @@ export default function AdvanceBookingPage() {
                                                 if (outDate <= inDate) {
                                                     const nextDay = new Date(inDate);
                                                     nextDay.setDate(nextDay.getDate() + 1);
-                                                    newOut = nextDay.toISOString().split('T')[0];
+                                                    const d = new Date(newIn);
+                                                    d.setDate(d.getDate() + 1);
+                                                    newOut = d.toISOString().split('T')[0];
                                                 }
 
                                                 setFormData({ ...formData, check_in_date: newIn, check_out_date: newOut });
@@ -329,7 +347,11 @@ export default function AdvanceBookingPage() {
                                         <input
                                             type="date"
                                             value={formData.check_out_date}
-                                            min={new Date(new Date(formData.check_in_date).getTime() + 86400000).toISOString().split('T')[0]}
+                                            min={(() => {
+                                                const d = new Date(formData.check_in_date);
+                                                d.setDate(d.getDate() + 1);
+                                                return d.toISOString().split('T')[0];
+                                            })()}
                                             onChange={e => setFormData({ ...formData, check_out_date: e.target.value })}
                                             className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none"
                                         />
@@ -558,7 +580,7 @@ export default function AdvanceBookingPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
-                                                    disabled={new Date(b.check_in_date).toISOString().split('T')[0] !== new Date().toISOString().split('T')[0]}
+                                                    disabled={b.check_in_date !== getTodayIST()}
                                                     onClick={() => router.push(`/check-in?bookingId=${b.id}`)}
                                                     className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-black/10 disabled:opacity-30 disabled:cursor-not-allowed"
                                                 >

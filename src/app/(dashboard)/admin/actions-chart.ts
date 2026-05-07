@@ -1,7 +1,7 @@
 'use client';
 
 import { createClient } from '@/utils/supabase/client';
-import { addDays, startOfDay } from 'date-fns';
+import { getISTDate } from '@/utils/date';
 
 export interface TapeChartRoom {
     id: string;
@@ -22,8 +22,10 @@ export interface TapeChartBooking {
 
 export async function fetchBookingChartData() {
     const supabase = createClient();
-    const today = startOfDay(new Date());
-    const windowEnd = addDays(today, 14);
+    const today = getISTDate();
+    today.setHours(0, 0, 0, 0);
+    const windowEnd = new Date(today);
+    windowEnd.setDate(windowEnd.getDate() + 14);
 
     // 1. Fetch all rooms
     const { data: rooms, error: roomsError } = await supabase

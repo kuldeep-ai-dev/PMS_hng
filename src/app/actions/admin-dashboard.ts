@@ -1,17 +1,15 @@
 'use server';
 
 import { createAdminClient } from '@/utils/supabase/admin';
-import { getISTTodayRange, getTodayIST } from '@/utils/date';
-import { startOfDay, subDays, format, eachDayOfInterval } from 'date-fns';
+import { getISTTodayRange, getTodayIST, getISTDate, formatISTShort } from '@/utils/date';
+import { startOfDay, subDays, eachDayOfInterval } from 'date-fns';
 
 export async function getAdminDashboardStats() {
     const supabase = createAdminClient();
     const { start: todayStart, end: todayEnd } = getISTTodayRange();
     const todayIST = getTodayIST();
-    // Use a fixed 7-day range for consistency
-    const weekStartDate = new Date();
-    weekStartDate.setDate(weekStartDate.getDate() - 7);
-    const weekStart = weekStartDate.toISOString();
+    // Use getISTDate to handle the rolling window relative to India
+    const weekStart = subDays(getISTDate(), 7).toISOString();
 
     // Parallel fetching for performance
     const [
@@ -53,21 +51,21 @@ export async function getAdminDashboardStats() {
     // 4. Chart Data (Last 7 Days)
     const chartDataMap = new Map<string, number>();
     const interval = eachDayOfInterval({
-        start: subDays(new Date(), 6),
-        end: new Date()
+        start: subDays(getISTDate(), 6),
+        end: getISTDate()
     });
 
     interval.forEach(day => {
-        chartDataMap.set(format(day, 'MMM dd'), 0);
+        chartDataMap.set(formatISTShort(day), 0);
     });
 
     weekPayments?.forEach(p => {
-        const d = format(new Date(p.created_at), 'MMM dd');
+        const d = formatISTShort(p.created_at);
         if (chartDataMap.has(d)) chartDataMap.set(d, chartDataMap.get(d)! + Number(p.amount));
     });
 
     weekRestOrders?.forEach(o => {
-        const d = format(new Date(o.order_time), 'MMM dd');
+        const d = formatISTShort(o.order_time);
         if (chartDataMap.has(d)) chartDataMap.set(d, chartDataMap.get(d)! + Number(o.total_amount));
     });
 

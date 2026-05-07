@@ -8,6 +8,7 @@ import { BentoCard } from '@/components/ui/BentoCard';
 import StatusButtons from './StatusButtons';
 import { createClient } from '@/utils/supabase/client';
 import { getHousekeepingLogs } from '@/app/actions/housekeeping';
+import { getTodayIST, formatISTDate } from '@/utils/date';
 
 interface HousekeepingLog {
     id: string;
@@ -83,7 +84,11 @@ export default function HousekeepingMonitorClient({ initialLogs }: { initialLogs
     const stats = {
         pending: logs.filter(l => l.status?.toLowerCase() === 'pending').length,
         inProgress: logs.filter(l => l.status?.toLowerCase().replace('-', '_') === 'in_progress').length,
-        completedToday: logs.filter(l => l.status?.toLowerCase() === 'completed' && l.completed_at && new Date(l.completed_at).toDateString() === new Date().toDateString()).length,
+        completedToday: logs.filter(l => {
+            if (!l.completed_at || l.status?.toLowerCase() !== 'completed') return false;
+            const completedIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(l.completed_at));
+            return completedIST === getTodayIST();
+        }).length,
     };
 
     return (

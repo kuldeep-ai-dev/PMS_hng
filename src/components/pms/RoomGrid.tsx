@@ -6,7 +6,7 @@ import { BedDouble, User, AlertTriangle, Sparkles, UserPlus, X, Loader2, LogOut 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/utils/billing';
-import { formatISTDate } from '@/utils/date';
+import { formatISTDate, getISTNow } from '@/utils/date';
 import { cn } from '@/lib/utils';
 import { getAvailableCleaningStaff, assignCleaningStaff } from '@/app/actions/housekeeping';
 import { unblockRoom, getRoomGridData } from '@/app/actions/rooms';
@@ -179,10 +179,10 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                                         {room.status === 'Occupied' && room.checkOutDate && (
                                             <div className={cn(
                                                 "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border transition-all",
-                                                new Date() > new Date(room.checkOutDate) ? "bg-rose-600 text-white border-rose-700 animate-pulse shadow-rose-200" : "bg-white text-blue-950 border-blue-200/50"
+                                                getISTNow() > new Date(room.checkOutDate) ? "bg-rose-600 text-white border-rose-700 animate-pulse shadow-rose-200" : "bg-white text-blue-950 border-blue-200/50"
                                             )}>
                                                 <LogOut className="w-2.5 h-2.5" />
-                                                <span>{new Date() > new Date(room.checkOutDate) ? "Overstay" : formatISTDate(room.checkOutDate)}</span>
+                                                <span>{getISTNow() > new Date(room.checkOutDate) ? "Overstay" : formatISTDate(room.checkOutDate)}</span>
                                             </div>
                                         )}
 

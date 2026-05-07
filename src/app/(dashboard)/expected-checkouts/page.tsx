@@ -1,21 +1,16 @@
 import { BentoCard } from '@/components/ui/BentoCard';
 import { ArrowLeft, Calendar, BedDouble, User2, Phone, Mail, Clock } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
+import { formatISTDate, getTodayIST, getISTDate, getISTNow, getISTTodayRange } from '@/utils/date';
 import Link from 'next/link';
-import { format } from 'date-fns';
 
-export const revalidate = 30;
+export const dynamic = 'force-dynamic';
 
 export default async function ExpectedCheckoutsPage() {
     const supabase = await createClient();
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayIso = today.toISOString();
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowIso = tomorrow.toISOString();
+    const todayStr = getTodayIST();
+    const { start: todayStartUTC, end: tomorrowStartUTC } = getISTTodayRange();
 
     // Build query to fetch active bookings expected to check out before tomorrow
     let bookingsQuery = supabase
@@ -38,7 +33,7 @@ export default async function ExpectedCheckoutsPage() {
           email
         )
       `)
-        .lt('check_out_date', tomorrowIso)
+        .lt('check_out_date', tomorrowStartUTC)
         .eq('status', 'Active')
         .order('check_out_date', { ascending: true });
 
@@ -60,7 +55,7 @@ export default async function ExpectedCheckoutsPage() {
                         Expected Checkouts
                     </h1>
                     <p className="text-sm text-slate-500 mt-1">
-                        Guests scheduled for checkout today — {format(today, 'MMMM dd, yyyy')}
+                        Guests scheduled for checkout today — {formatISTDate(getTodayIST())}
                     </p>
                 </div>
                 <div className="ml-auto px-4 py-2 bg-rose-50 border border-rose-200 rounded-xl">
@@ -74,24 +69,29 @@ export default async function ExpectedCheckoutsPage() {
             {validCheckouts && validCheckouts.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {validCheckouts.map((booking: any) => {
-                        const checkIn = new Date(booking.check_in_date);
-                        const checkOut = new Date(booking.check_out_date);
+                        const checkInDate = booking.check_in_date;
+                        const checkOutDate = booking.check_out_date;
 
-                        const ciMidnight = new Date(checkIn); ciMidnight.setHours(0, 0, 0, 0);
-                        const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
-                        let actualNights = Math.max(0, Math.floor((todayMidnight.getTime() - ciMidnight.getTime()) / (1000 * 60 * 60 * 24)));
-                        if (actualNights > 0 && new Date().getHours() >= 12) actualNights += 1;
+                        // Logic for nights calculation (Check-in to Today-IST)
+                        const d1 = new Date(checkInDate); // Date-only strings are UTC, fine for diff
+                        const d2 = getISTDate();
+                        d2.setHours(0, 0, 0, 0);
 
-                        const scheduledNights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
+                        let actualNights = Math.max(0, Math.floor((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
+                        // If it's past 12:00 PM IST, it's another night
+                        if (actualNights > 0 && getISTNow().getHours() >= 12) actualNights += 1;
+
+                        const scheduledDiff = new Date(checkOutDate).getTime() - new Date(checkInDate).getTime();
+                        const scheduledNights = Math.max(1, Math.round(scheduledDiff / (1000 * 60 * 60 * 24)));
                         const totalNights = Math.max(scheduledNights, actualNights, 1);
 
-                        const dynamicCheckOutDate = new Date(checkIn);
+                        const dynamicCheckOutDate = new Date(checkInDate);
                         dynamicCheckOutDate.setDate(dynamicCheckOutDate.getDate() + totalNights);
 
                         let dynamicBill = Number(booking.total_bill) || 0;
                         if (booking.rooms?.base_rate && totalNights > scheduledNights) {
                             const extraNights = totalNights - scheduledNights;
-                            dynamicBill += (extraNights * Number(booking.rooms.base_rate)) * 1.12; // Base + 12% est. GST proxy
+                            dynamicBill += (extraNights * Number(booking.rooms.base_rate)) * 1.12;
                         }
 
                         return (
@@ -156,9 +156,9 @@ export default async function ExpectedCheckoutsPage() {
                                     <div className="flex items-center gap-3 text-slate-700">
                                         <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
                                         <span>
-                                            {format(checkIn, 'MMM dd')} →{' '}
+                                            {formatISTDate(checkInDate)} →{' '}
                                             <span className="font-semibold text-rose-600">
-                                                {format(dynamicCheckOutDate, 'MMM dd, yyyy')}
+                                                {formatISTDate(dynamicCheckOutDate.toISOString().split('T')[0])}
                                             </span>
                                             {totalNights > scheduledNights && <span className="text-xs font-bold text-rose-500 ml-2">(Auto-Extended)</span>}
                                         </span>

@@ -5,10 +5,12 @@ import {
     subMonths, format, eachMonthOfInterval,
     startOfMonth, endOfMonth, differenceInDays
 } from 'date-fns';
+import { getISTDate } from '@/utils/date';
 
 export async function getGrowthAnalytics() {
     const supabase = await createClient();
-    const twelveMonthsAgo = subMonths(new Date(), 12).toISOString();
+    const today = getISTDate();
+    const twelveMonthsAgo = subMonths(today, 12).toISOString();
 
     // 1. Fetch bookings & Rooms for growth trends
     const { data: bookings, error } = await supabase
@@ -29,8 +31,8 @@ export async function getGrowthAnalytics() {
 
     // 2. Monthly Metrics (RevPAR, ADR)
     const monthInterval = eachMonthOfInterval({
-        start: subMonths(new Date(), 11),
-        end: new Date()
+        start: subMonths(getISTDate(), 11),
+        end: getISTDate()
     });
 
     const monthlyGrowth = monthInterval.map(month => {

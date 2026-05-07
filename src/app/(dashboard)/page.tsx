@@ -10,12 +10,11 @@ import { StaffDashboard } from '@/components/dashboard/StaffDashboard';
 import { cn } from '@/lib/utils';
 
 import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
-import { formatISTDate, getISTTodayRange, getTodayIST } from '@/utils/date';
+import { formatISTDate, getISTTodayRange, getTodayIST, getISTDate, formatISTShort } from '@/utils/date';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { getAdminDashboardStats } from '@/app/actions/admin-dashboard';
 
-// Revalidate every 30 seconds — fast enough for live operations, avoids full re-render every visit
-export const revalidate = 30;
+export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -51,7 +50,7 @@ export default async function Dashboard() {
   }
 
   const { start: istStart, end: istEnd } = getISTTodayRange();
-  const sevenDaysAgo = subDays(new Date(), 6).toISOString();
+  const sevenDaysAgo = subDays(getISTDate(), 6).toISOString();
 
   // Parallel Data Fetching
   const [
@@ -83,8 +82,8 @@ export default async function Dashboard() {
   const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
   // --- Process Business Date ---
-  const businessDateDisplay = formatISTDate(new Date(), 'dashboard');
-  const today = new Date();
+  const businessDateDisplay = formatISTDate(getTodayIST(), 'dashboard');
+  const today = getISTDate();
   today.setHours(0, 0, 0, 0);
 
   // --- Process Revenue ---
@@ -103,20 +102,21 @@ export default async function Dashboard() {
   const chartDataMap = new Map<string, number>();
   for (let i = 6; i >= 0; i--) {
     const d = subDays(today, i);
-    chartDataMap.set(format(d, 'MMM dd'), 0);
+    chartDataMap.set(formatISTShort(d), 0);
   }
 
   recentPaymentsData?.forEach(p => {
-    const dateStr = format(new Date(p.created_at), 'MMM dd');
-    if (chartDataMap.has(dateStr)) {
-      chartDataMap.set(dateStr, chartDataMap.get(dateStr)! + Number(p.amount || 0));
+    const dateStrIST = formatISTShort(p.created_at);
+
+    if (chartDataMap.has(dateStrIST)) {
+      chartDataMap.set(dateStrIST, chartDataMap.get(dateStrIST)! + Number(p.amount || 0));
     }
   });
 
   recentRestaurantRevenueData?.forEach(order => {
-    const dateStr = format(new Date(order.order_time), 'MMM dd');
-    if (chartDataMap.has(dateStr)) {
-      chartDataMap.set(dateStr, chartDataMap.get(dateStr)! + Number(order.total_amount || 0));
+    const dateStrIST = formatISTShort(order.order_time);
+    if (chartDataMap.has(dateStrIST)) {
+      chartDataMap.set(dateStrIST, chartDataMap.get(dateStrIST)! + Number(order.total_amount || 0));
     }
   });
 

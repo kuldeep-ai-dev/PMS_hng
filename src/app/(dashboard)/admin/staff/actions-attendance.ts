@@ -10,6 +10,8 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
 });
 
+import { getTodayIST } from '@/utils/date';
+
 export type AttendanceRecord = {
     id: string;
     staff_id: string;
@@ -40,7 +42,7 @@ export async function getStaffAttendanceLogs(staffId: string) {
 export async function getDailyAttendanceStats(dateStr?: string) {
     try {
         // use today if no date provided
-        const targetDate = dateStr || new Date().toISOString().split('T')[0];
+        const targetDate = dateStr || getTodayIST();
 
         const { data, error } = await supabaseAdmin
             .from('staff_attendance')

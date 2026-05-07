@@ -1,15 +1,17 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { startOfDay, subDays, format, eachDayOfInterval } from 'date-fns';
+import { getISTDate, getTodayIST, formatISTDate } from '@/utils/date';
+import { subDays, eachDayOfInterval, format } from 'date-fns';
 
 export type FinanceRange = '7d' | '30d' | '90d' | 'all';
 
 export async function getFinanceAnalytics(range: FinanceRange = '30d') {
     const supabase = await createClient();
 
+    const today = getISTDate();
     const startDate = range !== 'all'
-        ? subDays(new Date(), range === '7d' ? 7 : range === '30d' ? 30 : 90).toISOString()
+        ? subDays(today, range === '7d' ? 7 : range === '30d' ? 30 : 90).toISOString()
         : null;
 
     let query = supabase.from('payments').select('*');
@@ -45,8 +47,8 @@ export async function getFinanceAnalytics(range: FinanceRange = '30d') {
     if (range !== 'all') {
         const days = range === '7d' ? 7 : range === '30d' ? 30 : 90;
         const interval = eachDayOfInterval({
-            start: subDays(new Date(), days - 1),
-            end: new Date()
+            start: subDays(getISTDate(), days - 1),
+            end: getISTDate()
         });
         interval.forEach(day => {
             const d = format(day, 'yyyy-MM-dd');
@@ -58,8 +60,9 @@ export async function getFinanceAnalytics(range: FinanceRange = '30d') {
         const dateObj = new Date(p.created_at);
         if (isNaN(dateObj.getTime())) return; // Skip invalid dates
 
-        const dayKey = format(dateObj, 'yyyy-MM-dd');
-        const displayDay = format(dateObj, 'dd MMM');
+        // Get IST grouping key (yyyy-MM-dd)
+        const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(dateObj);
+        const displayDay = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' }).format(dateObj);
 
         if (!dailyData[dayKey]) {
             dailyData[dayKey] = { date: displayDay, revenue: 0, refunds: 0, net: 0 };

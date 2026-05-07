@@ -5,6 +5,7 @@ import { getSettings } from '@/app/(dashboard)/settings/actions';
 import { revalidatePath } from 'next/cache';
 import { getAvailableCleaningStaff, assignCleaningStaff } from '@/app/actions/housekeeping';
 import { sendCheckoutMail } from '@/app/actions/mail';
+import { getISTNow, getISTDate } from '@/utils/date';
 
 export async function getBookingFolio(bookingId: string) {
     try {
@@ -99,11 +100,11 @@ export async function extendStay(bookingId: string, additionalNights: number) {
         if (fetchErr) throw fetchErr;
 
         // 2. Calculate new check-out date
-        const now = new Date();
+        const nowIST = getISTNow();
         const dbCheckout = new Date(booking.check_out_date);
 
         // If the scheduled checkout has passed, start extension from now
-        const currentCheckout = (dbCheckout < now) ? now : dbCheckout;
+        const currentCheckout = (dbCheckout < nowIST) ? nowIST : dbCheckout;
         currentCheckout.setDate(currentCheckout.getDate() + additionalNights);
 
         // 3. Update booking
@@ -222,7 +223,7 @@ export async function transferRoom(
 
         const segmentStartDate = lastTransfer ? new Date(lastTransfer.transferred_at) : new Date(booking.check_in_date);
         const nightsInOldRoom = Math.max(1, Math.ceil(
-            (new Date().getTime() - segmentStartDate.getTime()) / (1000 * 60 * 60 * 24)
+            (getISTNow().getTime() - segmentStartDate.getTime()) / (1000 * 60 * 60 * 24)
         ));
         const { data: fromRoom } = await supabase.from('rooms').select('number, base_rate, status').eq('id', fromRoomId).single();
         const { data: toRoom } = await supabase.from('rooms').select('number, base_rate, status').eq('id', toRoomId).single();

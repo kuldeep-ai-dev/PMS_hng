@@ -8,7 +8,7 @@ import { cn, calculateAge } from '@/lib/utils';
 import SignatureCanvas from 'react-signature-canvas';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { searchGuests, getAvailableRooms, submitCheckIn, getBookingById, checkRoomConflict } from './actions-client';
-import { formatISTDate } from '@/utils/date';
+import { formatISTDate, getTodayIST, getISTDate } from '@/utils/date';
 import { sendBookingConfirmation } from '@/app/actions/mail';
 import { toast } from 'sonner';
 import { getSettings } from '../settings/actions';
@@ -53,8 +53,12 @@ function CheckInForm() {
         room_id: '', room_number: initialRoom || '', room_base_rate: 0,
         advance_payment: 0, advance_payment_mode: 'Cash',
         gst_type: 'B2C', gstin: '',
-        check_in_date: new Date().toISOString().split('T')[0],
-        check_out_date: new Date(new Date().getTime() + 86400000).toISOString().split('T')[0],
+        check_in_date: getTodayIST(),
+        check_out_date: (() => {
+            const tomorrow = getISTDate();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            return tomorrow.toISOString().split('T')[0];
+        })(),
         early_check_in: false, total_bill: 0, id_document_url: '',
         guest_type: 'Standard',
         pin_code: '', city: '', state: '', country: 'India',
