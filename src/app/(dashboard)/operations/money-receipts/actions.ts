@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 
 export async function getMoneyReceiptsData() {
     const supabase = await createClient();
@@ -162,7 +163,13 @@ export async function generateAndSendAccountsLink(startDate: string, endDate: st
         const b64Payload = Buffer.from(payload).toString('base64url');
         const secret = process.env.INTERNAL_PDF_TOKEN || 'fallback-secret-2026';
         const signature = crypto.createHmac('sha256', secret).update(b64Payload).digest('base64url');
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+        // Dynamically determine the application URL from headers if NEXT_PUBLIC_APP_URL is missing
+        const headerList = await headers();
+        const host = headerList.get('host');
+        const proto = headerList.get('x-forwarded-proto') || 'http';
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+
         // Use separate query params for payload and signature to avoid URL parsing issues with dots in emails
         const link = `${appUrl}/accounts-portal/view?p=${b64Payload}&s=${signature}`;
 
