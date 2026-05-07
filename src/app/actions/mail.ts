@@ -42,7 +42,13 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean) {
         browser = await getBrowser();
         page = await browser.newPage();
 
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+        const response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+
+        // Check for 404 or other failure
+        if (response && response.status() === 404) {
+            console.error('[Mailer] PDF Route 404:', url);
+            throw new Error(`Invoice page not found (404). URL: ${url}`);
+        }
 
         // Generate PDF buffer
         const rawPdfBuffer = await page.pdf({
@@ -103,7 +109,10 @@ function generateEmailHTML({
     const currentYear = new Date().getFullYear();
 
     // Extract actual static image URL if it's a Next.js optimized link (email clients block _next/image)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hotelnewganga.in';
     let finalLogoUrl = settings.logo_url;
+
+    // Handle Next.js image optimization URLs
     if (finalLogoUrl && finalLogoUrl.includes('_next/image')) {
         try {
             const urlObj = new URL(finalLogoUrl);
@@ -112,6 +121,17 @@ function generateEmailHTML({
                 finalLogoUrl = urlObj.origin + actualPath;
             }
         } catch (e) { }
+    }
+
+    // ENFORCE ABSOLUTE URL for Logo
+    if (finalLogoUrl && finalLogoUrl.startsWith('/')) {
+        finalLogoUrl = `${baseUrl}${finalLogoUrl}`;
+    }
+
+    // ENFORCE ABSOLUTE URL for Hero Image
+    let finalHeroImage = heroImage;
+    if (finalHeroImage && finalHeroImage.startsWith('/')) {
+        finalHeroImage = `${baseUrl}${finalHeroImage}`;
     }
 
     const logoHtml = finalLogoUrl
@@ -210,7 +230,7 @@ function generateEmailHTML({
                     <h2 style="margin: 0 0 25px 0; font-size: 28px; color: #0f172a !important; line-height: 1.3; font-weight: 800; letter-spacing: -0.5px;">
                         ${title}
                     </h2>
-                    ${heroImage ? `<img class="hero-img" src="${heroImage}" alt="${settings.hotel_name}" style="width: 100%; max-width: 450px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" />` : ''}
+                    ${finalHeroImage ? `<img class="hero-img" src="${finalHeroImage}" alt="${settings.hotel_name}" style="width: 100%; max-width: 450px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" />` : ''}
                 </div>
 
                 <!-- Body Content -->

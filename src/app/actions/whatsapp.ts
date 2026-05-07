@@ -102,7 +102,13 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Pr
         browser = await getBrowser();
         page = await browser.newPage();
 
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+        const response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+
+        // 404 check
+        if (response && response.status() === 404) {
+            console.error('[WhatsApp] PDF Route 404:', url);
+            throw new Error(`Invoice page not found (404). URL: ${url}`);
+        }
 
         const rawPdfBuffer = await page.pdf({
             format: 'A4',
@@ -136,7 +142,8 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Pr
  */
 async function generateRestaurantBillPDF(orderId: string): Promise<Uint8Array> {
     const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
-    const url = `http://localhost:3000/print-pos-bill/${orderId}?_token=${pdfToken}`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hotelnewganga.in';
+    const url = `${baseUrl}/print-pos-bill/${orderId}?_token=${pdfToken}`;
 
     console.log('[WhatsApp] Generating Restaurant PDF for:', url);
     let browser;
@@ -148,12 +155,11 @@ async function generateRestaurantBillPDF(orderId: string): Promise<Uint8Array> {
         // Emulate thermal printer width if needed, but the page already has 80mm CSS
         await page.setViewport({ width: 400, height: 800 });
 
-        try {
-            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-        } catch (e) {
-            console.warn('[WhatsApp] Localhost failed, trying 127.0.0.1...');
-            const fallbackUrl = url.replace('localhost', '127.0.0.1');
-            await page.goto(fallbackUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        const response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+
+        if (response && response.status() === 404) {
+            console.error('[WhatsApp] Restaurant Bill 404:', url);
+            throw new Error(`Restaurant Bill page not found (404). URL: ${url}`);
         }
 
         const rawPdfBuffer = await page.pdf({
