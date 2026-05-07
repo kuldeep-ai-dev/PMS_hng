@@ -7,6 +7,7 @@ import { DashboardShell } from '@/components/layout/DashboardShell';
 import { getSettings } from './settings/actions';
 import { isSystemValid } from '@/app/actions/license';
 import { SessionTimeoutProvider } from '@/components/layout/SessionTimeoutProvider';
+import { WebsiteBookingSyncProvider } from '@/components/layout/WebsiteBookingSyncProvider';
 import { SandboxBanner } from '@/components/layout/SandboxBanner';
 import { syncSystemDateAction } from '@/app/actions/audit';
 
@@ -66,6 +67,7 @@ export default async function DashboardLayout({
                     </div>
                 </div>
                 <SessionTimeoutProvider userId={user.id} />
+                <WebsiteBookingSyncProvider role={role} />
             </DashboardShell>
         );
     }
@@ -88,6 +90,7 @@ export default async function DashboardLayout({
                 </div>
             </div>
             <SessionTimeoutProvider userId={user.id} />
+            <WebsiteBookingSyncProvider role={role} />
         </DashboardShell>
     );
 }
