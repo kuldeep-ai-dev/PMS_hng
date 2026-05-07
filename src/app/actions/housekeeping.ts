@@ -64,8 +64,9 @@ export async function assignCleaningStaff(roomId: string, staffId: string) {
             .from('cleaning_assignments')
             .update({
                 staff_id: staffId,
-                status: 'pending',
-                assigned_at: new Date().toISOString()
+                status: 'in_progress',
+                assigned_at: new Date().toISOString(),
+                started_at: new Date().toISOString()
             })
             .eq('id', existing.id);
         if (error) throw error;
@@ -75,8 +76,9 @@ export async function assignCleaningStaff(roomId: string, staffId: string) {
             .insert({
                 room_id: roomId,
                 staff_id: staffId,
-                status: 'pending',
-                assigned_at: new Date().toISOString()
+                status: 'in_progress',
+                assigned_at: new Date().toISOString(),
+                started_at: new Date().toISOString()
             });
         if (error) throw error;
     }
@@ -137,7 +139,6 @@ export async function getStaffTasks(staffId: string) {
 }
 
 export async function updateCleaningStatus(assignmentId: string, status: string) {
-    const supabase = await createClient();
     const cleanStatus = status.toLowerCase().trim().replace('-', '_');
     const updateData: any = { status: cleanStatus };
 
@@ -147,24 +148,36 @@ export async function updateCleaningStatus(assignmentId: string, status: string)
     } else if (cleanStatus === 'completed') {
         updateData.completed_at = new Date().toISOString();
 
-        // Also update the room status back to Available
-        const { data: assignment } = await supabase
+        // Also update the room status back to Available using admin client to bypass RLS
+        const { data: assignment } = await supabaseAdmin
             .from('cleaning_assignments')
             .select('room_id')
             .eq('id', assignmentId)
             .single();
 
         if (assignment) {
-            await supabase.from('rooms').update({ status: 'Available' }).eq('id', assignment.room_id);
+            console.log('[Housekeeping] Marking room Available for assignment:', assignmentId);
+            const { error: roomErr } = await supabaseAdmin
+                .from('rooms')
+                .update({ status: 'Available' })
+                .eq('id', assignment.room_id);
+            if (roomErr) {
+                console.error('[Housekeeping] Failed to update room status:', roomErr);
+                throw roomErr;
+            }
         }
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
         .from('cleaning_assignments')
         .update(updateData)
         .eq('id', assignmentId);
 
-    if (error) throw error;
+    if (error) {
+        console.error('[Housekeeping] Failed to update assignment status:', error);
+        throw error;
+    }
+
     revalidatePath('/front-desk');
     revalidatePath('/admin/housekeeping');
     revalidatePath('/');
