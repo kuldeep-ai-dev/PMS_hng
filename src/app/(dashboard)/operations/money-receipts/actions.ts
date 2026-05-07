@@ -4,11 +4,10 @@ import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 
-export async function getMoneyReceiptsData() {
+export async function getMoneyReceiptsData(startDate?: string, endDate?: string) {
     const supabase = await createClient();
 
-    // 1. Fetch all payments with booking and guest details
-    const { data: payments, error } = await supabase
+    let query = supabase
         .from('payments')
         .select(`
             *,
@@ -22,8 +21,12 @@ export async function getMoneyReceiptsData() {
                 rooms (id, number),
                 companies (id, name)
             )
-        `)
-        .order('created_at', { ascending: false });
+        `);
+
+    if (startDate) query = query.gte('created_at', startDate);
+    if (endDate) query = query.lte('created_at', endDate + 'T23:59:59');
+
+    const { data: payments, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
         console.error('[Receipts] Error fetching room payments:', error);
@@ -31,7 +34,7 @@ export async function getMoneyReceiptsData() {
     }
 
     // 2. Fetch restaurant payments (Both direct and folio)
-    const { data: restaurantPayments, error: posError } = await supabase
+    let posQuery = supabase
         .from('restaurant_orders')
         .select(`
             *,
@@ -40,9 +43,13 @@ export async function getMoneyReceiptsData() {
             rooms (id, number),
             table:restaurant_tables (table_number)
         `)
-        .in('payment_status', ['paid', 'charged_to_room']) // Include both!
-        .in('status', ['preparing', 'ready', 'served', 'completed'])
-        .order('order_time', { ascending: false });
+        .in('payment_status', ['paid', 'charged_to_room'])
+        .in('status', ['preparing', 'ready', 'served', 'completed']);
+
+    if (startDate) posQuery = posQuery.gte('order_time', startDate);
+    if (endDate) posQuery = posQuery.lte('order_time', endDate + 'T23:59:59');
+
+    const { data: restaurantPayments, error: posError } = await posQuery.order('order_time', { ascending: false });
 
     if (posError) {
         console.error('[Receipts] Error fetching POS payments:', posError);
@@ -54,26 +61,31 @@ export async function getMoneyReceiptsData() {
     };
 }
 
-export async function getReceiptStats() {
+export async function getReceiptStats(startDate?: string, endDate?: string) {
     const supabase = await createClient();
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Total today (Room)
+    const filterStart = startDate ? new Date(startDate).toISOString() : today.toISOString();
+    const filterEnd = endDate ? new Date(endDate + 'T23:59:59').toISOString() : new Date().toISOString();
+
+    // Total in range (Room)
     const { data: todayRoom } = await supabase
         .from('payments')
         .select('amount')
-        .gte('created_at', today.toISOString());
+        .gte('created_at', filterStart)
+        .lte('created_at', filterEnd);
 
-    // Total today (Restaurant - Both direct and folio)
+    // Total in range (Restaurant - Both direct and folio)
     const { data: todayPOS } = await supabase
         .from('restaurant_orders')
         .select('total_amount, payment_status')
         .eq('is_refund', false)
         .in('payment_status', ['paid', 'charged_to_room'])
         .in('status', ['preparing', 'ready', 'served', 'completed'])
-        .gte('order_time', today.toISOString());
+        .gte('order_time', filterStart)
+        .lte('order_time', filterEnd);
 
     const roomTotal = todayRoom?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
@@ -161,7 +173,7 @@ export async function generateAndSendAccountsLink(startDate: string, endDate: st
         // Generate a secure JWT-like token without requiring DB schema changes
         const payload = JSON.stringify({ startDate, endDate, iat: Date.now() });
         const b64Payload = Buffer.from(payload).toString('base64url');
-        const secret = process.env.INTERNAL_PDF_TOKEN || 'fallback-secret-2026';
+        const secret = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
         const signature = crypto.createHmac('sha256', secret).update(b64Payload).digest('base64url');
 
         // Dynamically determine the application URL from headers if NEXT_PUBLIC_APP_URL is missing

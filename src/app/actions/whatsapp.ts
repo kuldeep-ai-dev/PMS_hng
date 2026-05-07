@@ -89,7 +89,7 @@ async function uploadPdfToR2(pdfBuffer: Uint8Array, filename: string): Promise<s
  * Generate invoice PDF using Puppeteer (same logic as mail.ts).
  */
 async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Promise<Uint8Array> {
-    const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
+    const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
     if (isProvisional) params.set('type', 'provisional');
     const url = `http://localhost:3000/print-bill/${bookingId}?${params.toString()}`;

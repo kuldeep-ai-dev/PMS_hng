@@ -35,7 +35,7 @@ export async function updateSession(request: NextRequest) {
     if (pathname.startsWith('/print-') || pathname.startsWith('/api/migrate-settlement')) {
         const internalToken = request.nextUrl.searchParams.get('_token');
         const accountsToken = request.nextUrl.searchParams.get('accounts_token');
-        const expectedToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
+        const expectedToken = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
         if (internalToken === expectedToken || accountsToken) {
             return supabaseResponse; // Allow through without auth
         }

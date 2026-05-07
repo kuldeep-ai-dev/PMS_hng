@@ -42,6 +42,8 @@ export default function MoneyReceiptsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterMethod, setFilterMethod] = useState('All');
     const [filterSource, setFilterSource] = useState('All');
+    const [mainStartDate, setMainStartDate] = useState('');
+    const [mainEndDate, setMainEndDate] = useState('');
 
     // Accounts send states
     const [isAdmin, setIsAdmin] = useState(false);
@@ -51,22 +53,22 @@ export default function MoneyReceiptsPage() {
     const [isSendingAccounts, setIsSendingAccounts] = useState(false);
 
     useEffect(() => {
-        loadData();
+        loadData(mainStartDate, mainEndDate);
 
         // Realtime Subscription
         const supabase = createClient();
         const channel = supabase
             .channel('money_receipts_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => loadData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_orders' }, () => loadData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => loadData(mainStartDate, mainEndDate))
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_orders' }, () => loadData(mainStartDate, mainEndDate))
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [mainStartDate, mainEndDate]);
 
-    const loadData = async () => {
+    const loadData = async (s?: string, e?: string) => {
         try {
             setLoading(true);
             const supabase = createClient();
@@ -79,8 +81,8 @@ export default function MoneyReceiptsPage() {
             }
 
             const [receipts, statistics] = await Promise.all([
-                getMoneyReceiptsData(),
-                getReceiptStats()
+                getMoneyReceiptsData(s, e),
+                getReceiptStats(s, e)
             ]);
             setData(receipts);
             setStats(statistics);
@@ -221,7 +223,7 @@ export default function MoneyReceiptsPage() {
                                 search: searchTerm,
                                 method: filterMethod,
                                 source: filterSource,
-                                _token: '__geny_pms_internal_pdf_2026__'
+                                _token: '__GENY_PMS_INTERNAL_SECRET_2026__'
                             });
                             window.open(`/print-receipts?${params.toString()}`, '_blank');
                         }}
@@ -240,7 +242,7 @@ export default function MoneyReceiptsPage() {
                         </button>
                     )}
                     <button
-                        onClick={loadData}
+                        onClick={() => loadData(mainStartDate, mainEndDate)}
                         className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-all font-medium text-sm shadow-sm active:scale-95"
                     >
                         <Calendar className="w-4 h-4" />
@@ -327,6 +329,41 @@ export default function MoneyReceiptsPage() {
                     <option value="Room Booking">Room Booking</option>
                     <option value="Restaurant POS">Restaurant POS</option>
                 </select>
+
+                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-2 px-2">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <input
+                            type="date"
+                            value={mainStartDate}
+                            onChange={(e) => setMainStartDate(e.target.value)}
+                            max={new Date().toISOString().split('T')[0]}
+                            className="bg-transparent border-none text-[13px] font-bold text-slate-700 outline-none"
+                        />
+                    </div>
+                    <span className="text-slate-300 font-bold">→</span>
+                    <div className="px-2">
+                        <input
+                            type="date"
+                            value={mainEndDate}
+                            onChange={(e) => setMainEndDate(e.target.value)}
+                            max={new Date().toISOString().split('T')[0]}
+                            className="bg-transparent border-none text-[13px] font-bold text-slate-700 outline-none"
+                        />
+                    </div>
+                    {(mainStartDate || mainEndDate) && (
+                        <button
+                            onClick={() => {
+                                setMainStartDate('');
+                                setMainEndDate('');
+                            }}
+                            className="p-1 px-2 hover:bg-white rounded-lg text-slate-400 hover:text-red-500 transition-colors"
+                            title="Clear Dates"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Main Table */}

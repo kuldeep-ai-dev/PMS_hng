@@ -19,7 +19,7 @@ function verifyToken(b64Payload: string, signature: string) {
             return null;
         }
 
-        const secret = process.env.INTERNAL_PDF_TOKEN || 'fallback-secret-2026';
+        const secret = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
         const expectedSignature = crypto.createHmac('sha256', secret).update(b64Payload).digest('base64url');
 
         if (signature !== expectedSignature) {

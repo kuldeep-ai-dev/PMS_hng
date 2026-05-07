@@ -24,31 +24,35 @@ export async function getBrowser(): Promise<Browser> {
     const isDev = process.env.NODE_ENV === 'development';
 
     // 2. Logic to decide between Remote (Browserless) vs Local
-    // ON MAC / DEVELOPMENT: Prioritize local Chrome even if token exists (faster + avoids localhost tunnel issues)
-    if (isMac || (isDev && !browserlessToken)) {
-        console.log('[Puppeteer] Launching local Google Chrome on macOS...');
-        const standardMacChromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-        
-        globalForPuppeteer.browser = await puppeteer.launch({
-            headless: true,
-            executablePath: standardMacChromePath,
-            args: [
-                '--no-sandbox', 
-                '--disable-setuid-sandbox', 
-                '--disable-dev-shm-usage',
-                '--disable-web-security',
-                '--disable-features=IsolateOrigins,site-per-process'
-            ]
-        });
-        return globalForPuppeteer.browser!;
-    }
-
-    // 3. Remote Execution (Production / Cloud)
+    // PRODUCTION / CLOUD: Always prioritize Remote Execution if token exists
     if (browserlessToken) {
         console.log('[Puppeteer] Connecting to Browserless.io...');
         globalForPuppeteer.browser = await puppeteer.connect({
             browserWSEndpoint: `wss://chrome.browserless.io?token=${browserlessToken}`,
         });
+        return globalForPuppeteer.browser!;
+    }
+
+    // 3. ON MAC / LOCAL DEV: Fallback to local Google Chrome
+    if (isMac || isDev) {
+        console.log('[Puppeteer] Launching local Google Chrome...');
+        const standardMacChromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+
+        // Try to launch with standard Mac path if it exists, else let puppeteer find its bundled one
+        const launchOptions: any = {
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage'
+            ]
+        };
+
+        if (isMac) {
+            launchOptions.executablePath = standardMacChromePath;
+        }
+
+        globalForPuppeteer.browser = await puppeteer.launch(launchOptions);
         return globalForPuppeteer.browser!;
     }
 
@@ -58,6 +62,6 @@ export async function getBrowser(): Promise<Browser> {
         headless: true,
         args: ['--no-sandbox']
     });
-    
+
     return globalForPuppeteer.browser!;
 }

@@ -29,7 +29,7 @@ const transporter = nodemailer.createTransport({
 // Helper to generate PDF using Puppeteer
 async function generateInvoicePDF(bookingId: string, isProvisional: boolean) {
     // Internal token to bypass auth middleware for PDF generation
-    const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
+    const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
     if (isProvisional) params.set('type', 'provisional');
     const url = `http://localhost:3000/print-bill/${bookingId}?${params.toString()}`;

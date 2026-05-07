@@ -20,7 +20,7 @@ export default async function PrintBillPage({
     const isProvisional = provisional === 'true' || type === 'provisional';
 
     const pdfToken = _token || token;
-    const expectedToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
+    const expectedToken = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
 
     // Verify Accounts Token if present
     let isAccountsVerified = false;
