@@ -7,159 +7,187 @@ import { getAvailableCleaningStaff } from '@/app/actions/housekeeping';
 import { sendCheckoutMail } from '@/app/actions/mail';
 
 export async function getBookingFolio(bookingId: string) {
-    const supabase = await createClient();
+    try {
+        const supabase = await createClient();
 
-    // Fetch the booking with guest, room details, and payments
-    const { data: booking, error } = await supabase
-        .from('bookings')
-        .select(`
-            *,
-            guests (*),
-            rooms (*),
-            payments (*),
-            companies (*)
-        `)
-        .eq('id', bookingId)
-        .single();
+        const { data: booking, error } = await supabase
+            .from('bookings')
+            .select(`
+                *,
+                guests (*),
+                rooms (*),
+                payments (*),
+                companies (*)
+            `)
+            .eq('id', bookingId)
+            .single();
 
-    if (error) throw error;
-    return booking;
+        if (error) throw error;
+        return { success: true, data: booking, error: null };
+    } catch (err: any) {
+        console.error('[Folio] getBookingFolio error:', err);
+        return { success: false, data: null, error: err.message || 'Failed to fetch booking folio' };
+    }
 }
 
 export async function logPayment(bookingId: string, amount: number, method: string) {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('payments')
-        .insert([{
-            booking_id: bookingId,
-            amount: amount,
-            method: method
-        }])
-        .select()
-        .single();
+    try {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('payments')
+            .insert([{
+                booking_id: bookingId,
+                amount: amount,
+                method: method
+            }])
+            .select();
 
-    if (error) throw error;
-    return data;
+        if (error) throw error;
+        return { success: true, data: data?.[0], error: null };
+    } catch (err: any) {
+        console.error('[Folio] logPayment error:', err);
+        return { success: false, data: null, error: err.message || 'Failed to log payment' };
+    }
 }
 
 export async function getRestaurantCharges(bookingId: string) {
-    const supabase = await createClient();
+    try {
+        const supabase = await createClient();
 
-    // Fetch orders tied to this specific booking
-    // OR orders for this guest/room within the booking dates (for legacy support)
-    const { data: booking } = await supabase
-        .from('bookings')
-        .select('guest_id, room_id, check_in_date')
-        .eq('id', bookingId)
-        .single();
+        // Fetch orders tied to this specific booking
+        // OR orders for this guest/room within the booking dates (for legacy support)
+        const { data: booking } = await supabase
+            .from('bookings')
+            .select('guest_id, room_id, check_in_date')
+            .eq('id', bookingId)
+            .single();
 
-    if (!booking) return [];
+        if (!booking) return { success: true, data: [] };
 
-    const { data, error } = await supabase
-        .from('restaurant_orders')
-        .select(`
-            *,
-            restaurant_order_items (
-                id, quantity, price_at_time,
-                restaurant_menu_items (name)
-            )
-        `)
-        .or(`booking_id.eq.${bookingId},and(guest_id.eq.${booking.guest_id},room_id.eq.${booking.room_id},order_time.gte.${booking.check_in_date})`)
-        .eq('payment_status', 'charged_to_room')
-        .order('order_time', { ascending: false });
+        const { data, error } = await supabase
+            .from('restaurant_orders')
+            .select(`
+                *,
+                restaurant_order_items (
+                    id, quantity, price_at_time,
+                    restaurant_menu_items (name)
+                )
+            `)
+            .or(`booking_id.eq.${bookingId},and(guest_id.eq.${booking.guest_id},room_id.eq.${booking.room_id},order_time.gte.${booking.check_in_date})`)
+            .eq('payment_status', 'charged_to_room')
+            .order('order_time', { ascending: false });
 
-    if (error) throw error;
-    return data || [];
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (err: any) {
+        console.error('[Folio] getRestaurantCharges error:', err);
+        return { success: false, error: err.message || 'Failed to fetch restaurant charges' };
+    }
 }
 
 export async function extendStay(bookingId: string, additionalNights: number) {
-    const supabase = await createClient();
+    try {
+        const supabase = await createClient();
 
-    // 1. Fetch current booking
-    const { data: booking, error: fetchErr } = await supabase
-        .from('bookings')
-        .select('check_out_date')
-        .eq('id', bookingId)
-        .single();
+        // 1. Fetch current booking
+        const { data: booking, error: fetchErr } = await supabase
+            .from('bookings')
+            .select('check_out_date')
+            .eq('id', bookingId)
+            .single();
 
-    if (fetchErr) throw fetchErr;
+        if (fetchErr) throw fetchErr;
 
-    // 2. Calculate new check-out date
-    const now = new Date();
-    const dbCheckout = new Date(booking.check_out_date);
+        // 2. Calculate new check-out date
+        const now = new Date();
+        const dbCheckout = new Date(booking.check_out_date);
 
-    // If the scheduled checkout has passed, start extension from now
-    const currentCheckout = (dbCheckout < now) ? now : dbCheckout;
-    currentCheckout.setDate(currentCheckout.getDate() + additionalNights);
+        // If the scheduled checkout has passed, start extension from now
+        const currentCheckout = (dbCheckout < now) ? now : dbCheckout;
+        currentCheckout.setDate(currentCheckout.getDate() + additionalNights);
 
-    // 3. Update booking
-    const { error: updateErr } = await supabase
-        .from('bookings')
-        .update({ check_out_date: currentCheckout.toISOString() })
-        .eq('id', bookingId);
+        // 3. Update booking
+        const { error: updateErr } = await supabase
+            .from('bookings')
+            .update({ check_out_date: currentCheckout.toISOString() })
+            .eq('id', bookingId);
 
-    if (updateErr) throw updateErr;
-    return { newCheckoutDate: currentCheckout.toISOString() };
+        if (updateErr) throw updateErr;
+        return { success: true, newCheckoutDate: currentCheckout.toISOString(), error: null };
+    } catch (err: any) {
+        console.error('[Folio] extendStay error:', err);
+        return { success: false, error: err.message || 'Failed to extend stay' };
+    }
 }
 
 export async function performCheckout(bookingId: string, roomId: string, billToCompany: boolean = false) {
-    const supabase = await createClient();
+    try {
+        const supabase = await createClient();
 
-    // 1. Update booking status and billing preference
-    const { error: bookErr } = await supabase
-        .from('bookings')
-        .update({
-            status: 'Checked_Out',
-            check_out_date: new Date().toISOString(),
-            bill_to_company: billToCompany
-        })
-        .eq('id', bookingId);
+        // 1. Update booking status and billing preference
+        const { error: bookErr } = await supabase
+            .from('bookings')
+            .update({
+                status: 'Checked_Out',
+                check_out_date: new Date().toISOString(),
+                bill_to_company: billToCompany
+            })
+            .eq('id', bookingId);
 
-    if (bookErr) throw bookErr;
+        if (bookErr) throw bookErr;
 
-    // 1b. Trigger Emails (Non-blocking to prevent UI hangs)
-    sendCheckoutMail(bookingId).catch(e => {
-        console.error('[Checkout] Mail background failed:', e);
-    });
+        // 1b. Trigger Emails (Non-blocking to prevent UI hangs)
+        sendCheckoutMail(bookingId).catch(e => {
+            console.error('[Checkout] Mail background failed:', e);
+        });
 
-    // 2. Set room to Dirty (needs housekeeping)
-    const { error: roomErr } = await supabase
-        .from('rooms')
-        .update({ status: 'Dirty' })
-        .eq('id', roomId);
+        // 2. Set room to Dirty (needs housekeeping)
+        const { error: roomErr } = await supabase
+            .from('rooms')
+            .update({ status: 'Dirty' })
+            .eq('id', roomId);
 
-    if (roomErr) throw roomErr;
+        if (roomErr) throw roomErr;
 
-    // 3. Auto-Assign Cleaning Staff
-    const cleaners = await getAvailableCleaningStaff();
+        // 3. Auto-Assign Cleaning Staff
+        const cleaners = await getAvailableCleaningStaff();
 
-    // If there is cleaning staff available, assign one
-    if (cleaners && cleaners.length > 0) {
-        // Find staff with least assignments to balance load
-        const assignedCleaner = cleaners[Math.floor(Math.random() * cleaners.length)];
+        // If there is cleaning staff available, assign one
+        if (cleaners && cleaners.length > 0) {
+            // Find staff with least assignments to balance load
+            const assignedCleaner = cleaners[Math.floor(Math.random() * cleaners.length)];
 
-        await supabase
-            .from('cleaning_assignments')
-            .insert({
-                room_id: roomId,
-                staff_id: assignedCleaner.id,
-                status: 'pending',
-                assigned_at: new Date().toISOString()
-            });
+            await supabase
+                .from('cleaning_assignments')
+                .insert({
+                    room_id: roomId,
+                    staff_id: assignedCleaner.id,
+                    status: 'pending',
+                    assigned_at: new Date().toISOString()
+                });
+        }
+
+        return { success: true };
+    } catch (err: any) {
+        console.error('[Folio] performCheckout error:', err);
+        return { success: false, error: err.message || 'Failed to perform checkout' };
     }
-
-    return { success: true };
 }
 
 export async function updateRefundPolicy(bookingId: string, allowRefund: boolean) {
-    const supabase = await createClient();
-    const { error } = await supabase
-        .from('bookings')
-        .update({ allow_early_checkout_refund: allowRefund })
-        .eq('id', bookingId);
-    if (error) throw error;
-    revalidatePath(`/folio/${bookingId}`);
-    return { success: true };
+    try {
+        const supabase = await createClient();
+        const { error } = await supabase
+            .from('bookings')
+            .update({ allow_early_checkout_refund: allowRefund })
+            .eq('id', bookingId);
+        if (error) throw error;
+        revalidatePath(`/folio/${bookingId}`);
+        return { success: true, error: null };
+    } catch (err: any) {
+        console.error('[Folio] updateRefundPolicy error:', err);
+        return { success: false, error: err.message || 'Failed to update refund policy' };
+    }
 }
 
 export async function updateGuestIdUrl(guestId: string, idUrl: string) {
@@ -178,77 +206,80 @@ export async function transferRoom(
     toRoomId: string,
     reason: string
 ) {
-    const supabase = await createClient();
+    try {
+        const supabase = await createClient();
 
-    // 1. Fetch current booking and the last transfer to calculate nights spent in current segment
-    const { data: booking, error: bErr } = await supabase
-        .from('bookings')
-        .select('check_in_date, room_id')
-        .eq('id', bookingId)
-        .single();
-    if (bErr) throw bErr;
+        // 1. Fetch current booking and the last transfer to calculate nights spent in current segment
+        const { data: booking, error: bErr } = await supabase
+            .from('bookings')
+            .select('check_in_date, room_id')
+            .eq('id', bookingId)
+            .single();
+        if (bErr) throw bErr;
 
-    const { data: lastTransfer } = await supabase
-        .from('room_transfers')
-        .select('transferred_at')
-        .eq('booking_id', bookingId)
-        .order('transferred_at', { ascending: false })
-        .limit(1)
-        .single();
+        const { data: lastTransfer } = await supabase
+            .from('room_transfers')
+            .select('transferred_at')
+            .eq('booking_id', bookingId)
+            .order('transferred_at', { ascending: false })
+            .limit(1)
+            .single();
 
-    const segmentStartDate = lastTransfer ? new Date(lastTransfer.transferred_at) : new Date(booking.check_in_date);
-    const nightsInOldRoom = Math.max(1, Math.ceil(
-        (new Date().getTime() - segmentStartDate.getTime()) / (1000 * 60 * 60 * 24)
-    ));
-    const { data: fromRoom } = await supabase.from('rooms').select('number, base_rate, status').eq('id', fromRoomId).single();
-    const { data: toRoom } = await supabase.from('rooms').select('number, base_rate, status').eq('id', toRoomId).single();
+        const segmentStartDate = lastTransfer ? new Date(lastTransfer.transferred_at) : new Date(booking.check_in_date);
+        const nightsInOldRoom = Math.max(1, Math.ceil(
+            (new Date().getTime() - segmentStartDate.getTime()) / (1000 * 60 * 60 * 24)
+        ));
+        const { data: fromRoom } = await supabase.from('rooms').select('number, base_rate, status').eq('id', fromRoomId).single();
+        const { data: toRoom } = await supabase.from('rooms').select('number, base_rate, status').eq('id', toRoomId).single();
 
-    if (!fromRoom || !toRoom) throw new Error('One or both rooms not found');
-    if (toRoom.status !== 'Available') throw new Error(`Room ${toRoom.number} is not available (current status: ${toRoom.status})`);
+        if (!fromRoom || !toRoom) throw new Error('One or both rooms not found');
+        if (toRoom.status !== 'Available') throw new Error(`Room ${toRoom.number} is not available (current status: ${toRoom.status})`);
 
+        // 3. Update booking to new room
+        const { error: updateErr } = await supabase
+            .from('bookings')
+            .update({ room_id: toRoomId })
+            .eq('id', bookingId);
+        if (updateErr) throw updateErr;
 
+        // 4. Set old room → Dirty, new room → Occupied
+        await supabase.from('rooms').update({ status: 'Dirty' }).eq('id', fromRoomId);
+        await supabase.from('rooms').update({ status: 'Occupied' }).eq('id', toRoomId);
 
-    // 3. Update booking to new room
-    const { error: updateErr } = await supabase
-        .from('bookings')
-        .update({ room_id: toRoomId })
-        .eq('id', bookingId);
-    if (updateErr) throw updateErr;
+        // 5. Log the transfer
+        const { error: logErr } = await supabase
+            .from('room_transfers')
+            .insert({
+                booking_id: bookingId,
+                from_room_id: fromRoomId,
+                to_room_id: toRoomId,
+                from_room_number: fromRoom.number,
+                to_room_number: toRoom.number,
+                from_rate: fromRoom.base_rate,
+                to_rate: toRoom.base_rate,
+                nights_in_old_room: nightsInOldRoom,
+                reason: reason || 'No reason provided'
+            });
+        if (logErr) throw logErr;
 
-    // 4. Set old room → Dirty, new room → Occupied
-    await supabase.from('rooms').update({ status: 'Dirty' }).eq('id', fromRoomId);
-    await supabase.from('rooms').update({ status: 'Occupied' }).eq('id', toRoomId);
+        // 6. Auto-Assign Cleaning Staff for old room
+        const cleaners = await getAvailableCleaningStaff();
 
-    // 5. Log the transfer
-    const { error: logErr } = await supabase
-        .from('room_transfers')
-        .insert({
-            booking_id: bookingId,
-            from_room_id: fromRoomId,
-            to_room_id: toRoomId,
-            from_room_number: fromRoom.number,
-            to_room_number: toRoom.number,
-            from_rate: fromRoom.base_rate,
-            to_rate: toRoom.base_rate,
-            nights_in_old_room: nightsInOldRoom,
-            reason: reason || 'No reason provided'
-        });
-    if (logErr) throw logErr;
+        if (cleaners && cleaners.length > 0) {
+            const assignedCleaner = cleaners[Math.floor(Math.random() * cleaners.length)];
+            await supabase.from('cleaning_assignments').insert({
+                room_id: fromRoomId,
+                staff_id: assignedCleaner.id,
+                status: 'pending',
+                assigned_at: new Date().toISOString()
+            });
+        }
 
-    // 6. Auto-Assign Cleaning Staff for old room
-    const cleaners = await getAvailableCleaningStaff();
-
-    if (cleaners && cleaners.length > 0) {
-        const assignedCleaner = cleaners[Math.floor(Math.random() * cleaners.length)];
-        await supabase.from('cleaning_assignments').insert({
-            room_id: fromRoomId,
-            staff_id: assignedCleaner.id,
-            status: 'pending',
-            assigned_at: new Date().toISOString()
-        });
+        return { success: true, newRoomNumber: toRoom.number, error: null };
+    } catch (err: any) {
+        console.error('[Folio] transferRoom error:', err);
+        return { success: false, error: err.message || 'Failed to transfer room' };
     }
-
-    return { success: true, newRoomNumber: toRoom.number };
 }
 
 export async function getRoomTransfers(bookingId: string) {
@@ -284,32 +315,42 @@ export async function getExtraCharges(bookingId: string) {
 }
 
 export async function addExtraCharge(bookingId: string, description: string, amount: number) {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('extra_charges')
-        .insert({
-            booking_id: bookingId,
-            description,
-            amount: Number(amount)
-        })
-        .select()
-        .single();
+    try {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('extra_charges')
+            .insert({
+                booking_id: bookingId,
+                description,
+                amount: Number(amount)
+            })
+            .select()
+            .single();
 
-    if (error) throw error;
-    revalidatePath(`/folio/${bookingId}`);
-    return data;
+        if (error) throw error;
+        revalidatePath(`/folio/${bookingId}`);
+        return { success: true, data, error: null };
+    } catch (err: any) {
+        console.error('[Folio] addExtraCharge error:', err);
+        return { success: false, error: err.message || 'Failed to add extra charge' };
+    }
 }
 
 export async function deleteExtraCharge(chargeId: string, bookingId: string) {
-    const supabase = await createClient();
-    const { error } = await supabase
-        .from('extra_charges')
-        .delete()
-        .eq('id', chargeId);
+    try {
+        const supabase = await createClient();
+        const { error } = await supabase
+            .from('extra_charges')
+            .delete()
+            .eq('id', chargeId);
 
-    if (error) throw error;
-    revalidatePath(`/folio/${bookingId}`);
-    return { success: true };
+        if (error) throw error;
+        revalidatePath(`/folio/${bookingId}`);
+        return { success: true, error: null };
+    } catch (err: any) {
+        console.error('[Folio] deleteExtraCharge error:', err);
+        return { success: false, error: err.message || 'Failed to delete extra charge' };
+    }
 }
 export async function updateStayConfiguration(
     bookingId: string,
@@ -335,50 +376,60 @@ export async function updateStayConfiguration(
     destRoomNo: string,
     amount: number
 ) {
-    const supabase = await createClient();
+    try {
+        const supabase = await createClient();
 
-    // 1. Credit Source Room (Clear Balance)
-    const { error: paymentError } = await supabase
-        .from('payments')
-        .insert({
-            booking_id: sourceBookingId,
-            amount: amount,
-            method: 'Bill Transfer',
-            is_refund: false
-        });
+        // 1. Credit Source Room (Clear Balance)
+        const { error: paymentError } = await supabase
+            .from('payments')
+            .insert({
+                booking_id: sourceBookingId,
+                amount: amount,
+                method: 'Bill Transfer',
+                is_refund: false
+            });
 
-    if (paymentError) throw paymentError;
+        if (paymentError) throw paymentError;
 
-    // 2. Debit Destination Room (Add Charge)
-    const { error: chargeError } = await supabase
-        .from('extra_charges')
-        .insert({
-            booking_id: destBookingId,
-            amount: amount,
-            description: `Transferred Bill from Room ${sourceRoomNo}`
-        });
+        // 2. Debit Destination Room (Add Charge)
+        const { error: chargeError } = await supabase
+            .from('extra_charges')
+            .insert({
+                booking_id: destBookingId,
+                amount: amount,
+                description: `Transferred Bill from Room ${sourceRoomNo}`
+            });
 
-    if (chargeError) throw chargeError;
+        if (chargeError) throw chargeError;
 
-    revalidatePath(`/folio/${sourceBookingId}`);
-    revalidatePath(`/folio/${destBookingId}`);
-    return { success: true };
+        revalidatePath(`/folio/${sourceBookingId}`);
+        revalidatePath(`/folio/${destBookingId}`);
+        return { success: true, error: null };
+    } catch (err: any) {
+        console.error('[Folio] transferFolioBalance error:', err);
+        return { success: false, error: err.message || 'Failed to transfer balance' };
+    }
 }
 
 export async function getActiveBookings(excludeId: string) {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-            id,
-            pax_count,
-            food_plan,
-            guests (name),
-            rooms (number, type)
-        `)
-        .eq('status', 'Active')
-        .neq('id', excludeId);
+    try {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('bookings')
+            .select(`
+                id,
+                pax_count,
+                food_plan,
+                guests (name),
+                rooms (number, type)
+            `)
+            .eq('status', 'Active')
+            .neq('id', excludeId);
 
-    if (error) throw error;
-    return data;
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (err: any) {
+        console.error('[Folio] getActiveBookings error:', err);
+        return { success: false, error: err.message || 'Failed to fetch active bookings' };
+    }
 }

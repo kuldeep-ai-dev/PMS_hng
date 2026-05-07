@@ -72,32 +72,46 @@ export default function FolioPage() {
     useEffect(() => {
         async function load() {
             try {
-                const [folio, orders, extras, s, transfers] = await Promise.all([
+                const [folioRes, ordersRes, extrasRes, sRes, transfersRes] = await Promise.all([
                     getBookingFolio(bookingId),
                     getRestaurantCharges(bookingId),
                     getExtraCharges(bookingId),
                     getSettings(),
                     getRoomTransfers(bookingId)
-                ]);
-                setBooking(folio);
-                setRestaurantOrders(orders);
-                setExtraCharges(extras);
-                setRoomTransfers(transfers);
-                setEditData({
-                    pax_count: folio.pax_count || 2,
-                    extra_beds: folio.extra_beds || 0,
-                    food_plan: folio.food_plan || 'EP'
-                });
+                ]) as [any, any, any, any, any];
+
+                if (folioRes.success) {
+                    const folio = folioRes.data;
+                    setBooking(folio);
+                    setEditData({
+                        pax_count: folio.pax_count || 2,
+                        extra_beds: folio.extra_beds || 0,
+                        food_plan: folio.food_plan || 'EP'
+                    });
+                } else {
+                    toast.error(`Error loading folio: ${folioRes.error}`);
+                }
+
+                if (ordersRes.success) setRestaurantOrders(ordersRes.data);
+                else toast.error(`Error loading orders: ${ordersRes.error}`);
+
+                if (extrasRes.success) setExtraCharges(extrasRes.data);
+                // extrasRes might not have success/error pattern yet if it returns data directly, 
+                // but let's check actions-folio.ts again. Actually I standardized it.
+
+                if (transfersRes.success) setRoomTransfers(transfersRes.data);
+
+                // Settings doesn't use the pattern yet as it's from another file, but let's assume it works
                 setSettings({
-                    hotel_name: s.hotel_name || 'Hotel New Ganga',
-                    address: s.address || '',
-                    cgst_rate: s.cgst_rate || 6,
-                    sgst_rate: s.sgst_rate || 6,
-                    currency: s.currency || 'INR',
-                    extra_bed_rate: s.extra_bed_rate || 500,
-                    extra_pax_rate: s.extra_pax_rate || 800,
-                    free_pax_limit: s.free_pax_limit || 2,
-                    meal_plan_rates: s.meal_plan_rates || {}
+                    hotel_name: sRes.hotel_name || 'Hotel New Ganga',
+                    address: sRes.address || '',
+                    cgst_rate: sRes.cgst_rate || 6,
+                    sgst_rate: sRes.sgst_rate || 6,
+                    currency: sRes.currency || 'INR',
+                    extra_bed_rate: sRes.extra_bed_rate || 500,
+                    extra_pax_rate: sRes.extra_pax_rate || 800,
+                    free_pax_limit: sRes.free_pax_limit || 2,
+                    meal_plan_rates: sRes.meal_plan_rates || {}
                 });
             } catch (err: any) {
                 console.error('Failed to load folio:', err);
@@ -219,9 +233,12 @@ export default function FolioPage() {
     const handleUpdateStay = async () => {
         setUpdatingStay(true);
         try {
-            await updateStayConfiguration(bookingId, editData);
+            const res = await updateStayConfiguration(bookingId, editData) as any;
+            if (!res.success) throw new Error(res.error);
+
             const updated = await getBookingFolio(bookingId);
-            setBooking(updated);
+            if (updated.success) setBooking(updated.data);
+
             setShowEditStayModal(false);
             toast.success('Stay configuration updated!');
         } catch (err: any) {
@@ -235,11 +252,13 @@ export default function FolioPage() {
         const newValue = e.target.checked;
         setUpdatingRefund(true);
         try {
-            await updateRefundPolicy(bookingId, newValue);
+            const res = await updateRefundPolicy(bookingId, newValue) as any;
+            if (!res.success) throw new Error(res.error);
+
             setBooking((prev: any) => ({ ...prev, allow_early_checkout_refund: newValue }));
             toast.success(newValue ? 'Refund allowed (Actual Stay billing)' : 'Refund disabled (Full Stay billing)');
         } catch (err: any) {
-            toast.error('Failed to update refund policy');
+            toast.error('Failed to update refund policy: ' + err.message);
         } finally {
             setUpdatingRefund(false);
         }
@@ -273,14 +292,22 @@ export default function FolioPage() {
         if (!transferTarget) return;
         setTransferring(true);
         try {
-            await transferRoom(bookingId, booking.rooms.id, transferTarget.id, transferReason);
+            const res = await transferRoom(bookingId, booking.rooms.id, transferTarget.id, transferReason) as any;
+            if (!res.success) throw new Error(res.error);
+
             toast.success(`Guest transferred to Room ${transferTarget.number}!`);
             setShowTransferModal(false);
             setTransferTarget(null);
             setTransferReason('');
-            const [updatedFolio, transfers] = await Promise.all([getBookingFolio(bookingId), getRoomTransfers(bookingId)]);
-            setBooking(updatedFolio);
-            setRoomTransfers(transfers);
+
+            const [folioRes, transfersRes] = await Promise.all([
+                getBookingFolio(bookingId),
+                getRoomTransfers(bookingId)
+            ]) as [any, any];
+
+            if (folioRes.success) setBooking(folioRes.data);
+            if (transfersRes.success) setRoomTransfers(transfersRes.data);
+
         } catch (err: any) {
             toast.error(`Transfer failed: ${err.message}`);
         } finally {
@@ -292,9 +319,12 @@ export default function FolioPage() {
         if (!extraChargeDesc || extraChargeAmount <= 0) return;
         setAddingCharge(true);
         try {
-            await addExtraCharge(bookingId, extraChargeDesc, extraChargeAmount);
-            const extras = await getExtraCharges(bookingId);
-            setExtraCharges(extras);
+            const res = await addExtraCharge(bookingId, extraChargeDesc, extraChargeAmount) as any;
+            if (!res.success) throw new Error(res.error);
+
+            const extrasRes = await getExtraCharges(bookingId) as any;
+            if (extrasRes.success) setExtraCharges(extrasRes.data);
+
             setExtraChargeDesc('');
             setExtraChargeAmount(0);
             setShowExtraChargeModal(false);
@@ -312,9 +342,11 @@ export default function FolioPage() {
         setLogging(true);
         try {
             if (printWindow) printWindow.document.write('<html><body><h3>Preparing invoice...</h3></body></html>');
-            await logPayment(bookingId, logAmount, logMethod);
+            const res = await logPayment(bookingId, logAmount, logMethod);
+            if (!res.success) throw new Error(res.error);
+
             const updated = await getBookingFolio(bookingId);
-            setBooking(updated);
+            if (updated.success) setBooking(updated.data);
             setLogAmount(0);
             toast.success('Payment logged successfully!');
             setLogging(false); // Release parent UI state BEFORE triggering blocking print dialogs
@@ -333,7 +365,8 @@ export default function FolioPage() {
         }
         setCheckingOut(true);
         try {
-            await performCheckout(bookingId, booking.rooms.id, billToCompany);
+            const res = await performCheckout(bookingId, booking.rooms.id, billToCompany) as any;
+            if (!res.success) throw new Error(res.error);
             toast.success('Checkout successful');
             window.open(`/print-bill/${bookingId}?type=final`, '_blank');
 
@@ -364,8 +397,9 @@ export default function FolioPage() {
 
     const handleOpenBillTransfer = async () => {
         try {
-            const active = await getActiveBookings(bookingId);
-            setActiveBookings(active);
+            const res = await getActiveBookings(bookingId);
+            if (!res.success) throw new Error(res.error);
+            setActiveBookings(res.data || []);
             setShowBillTransferModal(true);
         } catch (err: any) {
             toast.error('Failed to load active bookings: ' + err.message);
@@ -380,26 +414,31 @@ export default function FolioPage() {
 
         setTransferringBill(true);
         try {
-            await transferFolioBalance(
+            const res = await transferFolioBalance(
                 bookingId,
                 booking.rooms.number,
                 selectedDestBooking.id,
                 selectedDestBooking.rooms.number,
                 billingData.balanceDue
             );
+            if (!res.success) throw new Error(res.error);
+
             toast.success(`Bill successfully transferred to Room ${selectedDestBooking.rooms.number}`);
             setShowBillTransferModal(false);
+
             // Reload folio data
-            const [folio, orders, extras, transfers] = await Promise.all([
+            const [folioRes, ordersRes, extrasRes, transfersRes] = await Promise.all([
                 getBookingFolio(bookingId),
                 getRestaurantCharges(bookingId),
                 getExtraCharges(bookingId),
                 getRoomTransfers(bookingId)
-            ]);
-            setBooking(folio);
-            setRestaurantOrders(orders);
-            setExtraCharges(extras);
-            setRoomTransfers(transfers);
+            ]) as [any, any, any, any];
+
+            if (folioRes.success) setBooking(folioRes.data);
+            if (ordersRes.success) setRestaurantOrders(ordersRes.data);
+            if (extrasRes.success) setExtraCharges(extrasRes.data);
+            if (transfersRes.success) setRoomTransfers(transfersRes.data);
+
         } catch (err: any) {
             toast.error('Transfer failed: ' + err.message);
         } finally {
@@ -672,9 +711,13 @@ export default function FolioPage() {
                                                                 <button
                                                                     onClick={async () => {
                                                                         if (confirm('Delete this charge?')) {
-                                                                            await deleteExtraCharge(charge.id, bookingId);
-                                                                            setExtraCharges((prev: any) => prev.filter((c: any) => c.id !== charge.id));
-                                                                            toast.success('Charge deleted');
+                                                                            const res = await deleteExtraCharge(charge.id, bookingId);
+                                                                            if (res.success) {
+                                                                                setExtraCharges((prev: any) => prev.filter((c: any) => c.id !== charge.id));
+                                                                                toast.success('Charge deleted');
+                                                                            } else {
+                                                                                toast.error(`Failed to delete charge: ${res.error}`);
+                                                                            }
                                                                         }
                                                                     }}
                                                                     className="p-1 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded transition-colors"
@@ -770,7 +813,7 @@ export default function FolioPage() {
                                                     <div className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-200 transition-colors group-hover:border-emerald-200"><CreditCard className="w-4 h-4 text-slate-400 group-hover:text-emerald-500" /></div>
                                                     <div>
                                                         <p className="text-xs font-bold text-slate-700 uppercase">Payment Received</p>
-                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{p.payment_method} Settlement</p>
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{p.method} Settlement</p>
                                                     </div>
                                                 </div>
                                                 <span className="font-bold text-slate-800">{sym}{Number(p.amount).toLocaleString()}</span>
