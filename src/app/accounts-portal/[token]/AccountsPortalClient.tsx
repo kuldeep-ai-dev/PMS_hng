@@ -11,12 +11,14 @@ export default function AccountsPortalClient({
     receipts,
     startDate,
     endDate,
-    hotelName
+    hotelName,
+    accountsToken
 }: {
     receipts: any[];
     startDate: string;
     endDate: string;
     hotelName: string;
+    accountsToken: string;
 }) {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [downloading, setDownloading] = useState(false);
@@ -33,27 +35,13 @@ export default function AccountsPortalClient({
         else setSelectedIds(new Set(receipts.map(r => r.id)));
     };
 
-    // We pass the JWT token in auth url
-    // To be perfectly secure, we could pass it down from params, but since the component is rendered, 
-    // we can extract it from window.location.pathname
-    const getToken = () => {
-        if (typeof window === 'undefined') return '';
-        const parts = window.location.pathname.split('/');
-        return parts[parts.length - 1];
-    };
-
-    const downloadPDF = async (url: string) => {
-        // Just opens the print page passing the auth JWT token
-        // The print page will verify it.
-        const authUrl = `${url}?accounts_token=${getToken()}`;
-        window.open(authUrl, '_blank');
-    };
-
     const handleIndividualDownload = (receipt: any) => {
         const baseUrl = receipt.downloadType === 'bill'
             ? `/print-bill/${receipt.downloadId}`
             : `/print-pos-bill/${receipt.downloadId}`;
-        downloadPDF(baseUrl);
+        // Pass the verified accounts token as a query param for the print page auth
+        const authUrl = `${baseUrl}?accounts_token=${encodeURIComponent(accountsToken)}`;
+        window.open(authUrl, '_blank');
     };
 
     const downloadSelected = async () => {

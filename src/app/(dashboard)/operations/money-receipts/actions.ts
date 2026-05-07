@@ -165,7 +165,8 @@ export async function generateAndSendAccountsLink(startDate: string, endDate: st
 
         const token = `${b64Payload}.${signature}`;
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const link = `${appUrl}/accounts-portal/${token}`;
+        // Use query param ?t= so Next.js doesn't interpret the token's dot as a file extension
+        const link = `${appUrl}/accounts-portal/view?t=${encodeURIComponent(token)}`;
 
         const result = await sendAccountsPortalEmail(
             startDate,

@@ -2,19 +2,16 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { getSettings } from '@/app/(dashboard)/settings/actions';
 import { generateInvoiceNo } from '@/utils/billing';
-import AccountsPortalClient from './AccountsPortalClient';
+import AccountsPortalClient from '../[token]/AccountsPortalClient';
 
 export const metadata = {
     title: 'Accounts Portal | Hotel New Ganga',
-    robots: {
-        index: false,
-        follow: false,
-    }
+    robots: { index: false, follow: false }
 };
 
 function verifyToken(token: string) {
     try {
-        console.log('[AccountsPortal] Verifying token length:', token?.length);
+        // Use lastIndexOf to handle any edge case with dots in base64url parts
         const lastDot = token.lastIndexOf('.');
         if (lastDot === -1) {
             console.error('[AccountsPortal] No dot separator found in token');
@@ -26,10 +23,8 @@ function verifyToken(token: string) {
         const secret = process.env.INTERNAL_PDF_TOKEN || 'fallback-secret-2026';
         const expectedSignature = crypto.createHmac('sha256', secret).update(b64Payload).digest('base64url');
 
-        console.log('[AccountsPortal] Signature match:', signature === expectedSignature);
-
         if (signature !== expectedSignature) {
-            console.error('[AccountsPortal] Signature mismatch');
+            console.error('[AccountsPortal] Signature mismatch. received:', signature, 'expected:', expectedSignature);
             return null;
         }
 
@@ -47,12 +42,12 @@ function verifyToken(token: string) {
 
         return parsed;
     } catch (e: any) {
-        console.error('[AccountsPortal] Exception in verifyToken:', e.message);
+        console.error('[AccountsPortal] Exception:', e.message);
         return null;
     }
 }
 
-function InvalidLink() {
+function InvalidLink({ reason }: { reason?: string }) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
             <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md text-center">
@@ -62,31 +57,29 @@ function InvalidLink() {
                     </svg>
                 </div>
                 <h1 className="text-2xl font-black text-slate-800 mb-2 tracking-tight">Invalid or Expired Link</h1>
-                <p className="text-slate-500 mb-6">This accounts portal access link is not valid or has been revoked. Links expire after 48 hours.</p>
+                <p className="text-slate-500">This accounts portal access link is not valid or has expired. Links are valid for 48 hours after generation.</p>
+                {reason && <p className="text-xs text-slate-400 mt-4">Reason: {reason}</p>}
             </div>
         </div>
     );
 }
 
-export default async function AccountsPortalPage({
-    params,
+export default async function AccountsPortalViewPage({
     searchParams
 }: {
-    params: Promise<{ token: string }>;
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    // Support both URL path token (/accounts-portal/TOKEN) and query param (?t=TOKEN)
-    const { token: pathToken } = await params;
     const qs = await searchParams;
-    const queryToken = typeof qs.t === 'string' ? qs.t : undefined;
 
-    // Use whichever token is available, prefer query param (more reliable)
-    const rawToken = queryToken || pathToken;
+    // Token arrives URL-decoded from Next.js - no need to manually decode
+    const rawToken = typeof qs.t === 'string' ? qs.t : undefined;
 
-    if (!rawToken) return <InvalidLink />;
+    if (!rawToken) return <InvalidLink reason="No token provided" />;
 
     const payload = verifyToken(rawToken);
-    if (!payload || !payload.startDate || !payload.endDate) return <InvalidLink />;
+    if (!payload || !payload.startDate || !payload.endDate) {
+        return <InvalidLink />;
+    }
 
     const { startDate, endDate } = payload;
     const adminSupabase = createAdminClient();
@@ -117,7 +110,6 @@ export default async function AccountsPortalPage({
         .lte('order_time', `${endDate}T23:59:59Z`)
         .order('order_time', { ascending: false });
 
-    // Combine Data
     const receipts = [
         ...(roomPayments || []).map((p: any) => ({
             id: p.id,
@@ -129,8 +121,7 @@ export default async function AccountsPortalPage({
             status: p.is_refund ? 'Refunded' : 'Paid',
             type: 'Room',
             downloadId: p.booking_id,
-            downloadType: 'bill',
-            rawToken // pass token to client for download auth
+            downloadType: 'bill'
         })),
         ...(posPayments || []).map((p: any) => ({
             id: p.id,
@@ -142,10 +133,17 @@ export default async function AccountsPortalPage({
             status: p.is_refund ? 'Refunded' : 'Paid',
             type: 'Restaurant',
             downloadId: p.id,
-            downloadType: 'pos-bill',
-            rawToken // pass token to client for download auth
+            downloadType: 'pos-bill'
         }))
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    return <AccountsPortalClient receipts={receipts} startDate={startDate} endDate={endDate} hotelName={settings?.hotel_name} accountsToken={rawToken} />;
+    return (
+        <AccountsPortalClient
+            receipts={receipts}
+            startDate={startDate}
+            endDate={endDate}
+            hotelName={settings?.hotel_name || 'Hotel'}
+            accountsToken={rawToken}
+        />
+    );
 }
