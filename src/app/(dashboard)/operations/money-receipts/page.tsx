@@ -223,7 +223,7 @@ export default function MoneyReceiptsPage() {
                                 search: searchTerm,
                                 method: filterMethod,
                                 source: filterSource,
-                                _token: '__GENY_PMS_INTERNAL_SECRET_2026__'
+                                _token: '__geny_pms_internal_pdf_2026__'
                             });
                             window.open(`/print-receipts?${params.toString()}`, '_blank');
                         }}

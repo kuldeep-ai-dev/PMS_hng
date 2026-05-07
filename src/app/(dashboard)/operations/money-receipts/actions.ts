@@ -173,7 +173,7 @@ export async function generateAndSendAccountsLink(startDate: string, endDate: st
         // Generate a secure JWT-like token without requiring DB schema changes
         const payload = JSON.stringify({ startDate, endDate, iat: Date.now() });
         const b64Payload = Buffer.from(payload).toString('base64url');
-        const secret = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
+        const secret = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
         const signature = crypto.createHmac('sha256', secret).update(b64Payload).digest('base64url');
 
         // Dynamically determine the application URL from headers if NEXT_PUBLIC_APP_URL is missing
