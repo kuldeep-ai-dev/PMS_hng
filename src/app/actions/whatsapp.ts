@@ -302,6 +302,72 @@ export async function sendWhatsAppTemplate({
     }
 }
 
+/**
+ * Send a WhatsApp notification to cleaning staff when assigned to a room.
+ * Includes a "Mark Cleaned" button.
+ */
+export async function sendHousekeepingAssignmentWhatsApp(assignmentId: string) {
+    try {
+        const settings = await getSettings();
+        if (!settings.whatsapp_enabled) return { success: false, message: 'WhatsApp disabled' };
+
+        const supabase = await createAdminClient();
+        const { data: assignment, error: assignErr } = await supabase
+            .from('cleaning_assignments')
+            .select(`
+                *,
+                rooms (number),
+                profiles (name, phone)
+            `)
+            .eq('id', assignmentId)
+            .single();
+
+        if (assignErr || !assignment?.profiles?.phone) {
+            console.warn('[WhatsApp] Housekeeping: Assignment or phone not found:', assignmentId);
+            return { success: false, message: 'Assignment or staff phone not found' };
+        }
+
+        const phone = formatPhoneForWhatsApp(assignment.profiles.phone);
+        const roomNumber = assignment.rooms.number;
+        const assignedTime = formatISTTime(assignment.assigned_at);
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://genypms.hotelnewganga.in';
+        const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
+
+        // Button URL format: /housekeeping/mark-cleaned/[id]?_token=[token]
+        const buttonUrlSuffix = `${assignmentId}?_token=${pdfToken}`;
+
+        console.log(`[WhatsApp] Notifying ${assignment.profiles.name} (${phone}) for Room ${roomNumber}`);
+
+        const result = await sendWhatsAppTemplate({
+            to: phone,
+            templateName: 'housekeeping_assignment', // Configurable via settings if needed
+            languageCode: 'en',
+            bodyParams: [
+                roomNumber,
+                assignedTime
+            ],
+            buttonUrlSuffix
+        });
+
+        if (result.success && result.messageId) {
+            await supabase.from('whatsapp_analytics').insert({
+                wamid: result.messageId,
+                status: 'sent',
+                template_type: 'test', // We can add 'housekeeping' to the enum later, using 'test' as fallback for now to avoid schema error if not present
+                guest_name: assignment.profiles.name,
+                guest_phone: phone,
+                tracking_id: assignmentId,
+                sent_at: new Date().toISOString()
+            });
+        }
+
+        return result;
+    } catch (err: any) {
+        console.error('[WhatsApp] Housekeeping notification error:', err.message);
+        return { success: false, error: err.message };
+    }
+}
+
 // ─── Public Actions ───────────────────────────────────────────────────────────
 
 /**

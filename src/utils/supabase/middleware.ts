@@ -49,7 +49,8 @@ export async function updateSession(request: NextRequest) {
         pathname.startsWith('/qr-order') ||
         pathname.startsWith('/security-protocols') ||
         pathname.startsWith('/data-policy') ||
-        pathname.startsWith('/accounts-portal');
+        pathname.startsWith('/accounts-portal') ||
+        pathname.startsWith('/housekeeping/mark-cleaned');
 
     if (!user && !isPublicRoute) {
         const url = request.nextUrl.clone();

@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
+import { sendHousekeepingAssignmentWhatsApp } from './whatsapp';
 
 const supabaseAdmin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -77,7 +78,30 @@ export async function assignCleaningStaff(roomId: string, staffId: string) {
         if (error) throw error;
     }
 
+    if (!existing) {
+        // Find newly created assignment ID if needed, or just use the logic below
+    }
+
+    // Trigger WhatsApp notification for the assigned staff
+    // We need to get the ID after insert if it's new
+    const { data: currentAssignment } = await supabaseAdmin
+        .from('cleaning_assignments')
+        .select('id')
+        .eq('room_id', roomId)
+        .filter('status', 'in', '("pending","in_progress")')
+        .order('assigned_at', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (currentAssignment) {
+        console.log('[Housekeeping] Triggering WhatsApp for assignment:', currentAssignment.id);
+        sendHousekeepingAssignmentWhatsApp(currentAssignment.id).catch(err => {
+            console.error('[Housekeeping] WhatsApp notify failed:', err.message);
+        });
+    }
+
     revalidatePath('/front-desk');
+    revalidatePath('/admin/housekeeping');
     return { success: true };
 }
 
