@@ -29,10 +29,10 @@ const transporter = nodemailer.createTransport({
 // Helper to generate PDF using Puppeteer
 async function generateInvoicePDF(bookingId: string, isProvisional: boolean) {
     // Internal token to bypass auth middleware for PDF generation
-    const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
+    const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
     if (isProvisional) params.set('type', 'provisional');
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hotelnewganga.in';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://genypms.hotelnewganga.in';
     const url = `${baseUrl}/print-bill/${bookingId}?${params.toString()}`;
 
     console.log('[Mailer] Generating PDF for:', url);
@@ -109,7 +109,7 @@ function generateEmailHTML({
     const currentYear = new Date().getFullYear();
 
     // Extract actual static image URL if it's a Next.js optimized link (email clients block _next/image)
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hotelnewganga.in';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://genypms.hotelnewganga.in';
     let finalLogoUrl = settings.logo_url;
 
     // Handle Next.js image optimization URLs

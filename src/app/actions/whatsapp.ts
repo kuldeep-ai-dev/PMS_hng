@@ -89,10 +89,10 @@ async function uploadPdfToR2(pdfBuffer: Uint8Array, filename: string): Promise<s
  * Generate invoice PDF using Puppeteer (same logic as mail.ts).
  */
 async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Promise<Uint8Array> {
-    const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
+    const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
     if (isProvisional) params.set('type', 'provisional');
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hotelnewganga.in';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://genypms.hotelnewganga.in';
     const url = `${baseUrl}/print-bill/${bookingId}?${params.toString()}`;
 
     console.log('[WhatsApp] Generating PDF for:', url);
@@ -142,7 +142,7 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Pr
  */
 async function generateRestaurantBillPDF(orderId: string): Promise<Uint8Array> {
     const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hotelnewganga.in';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://genypms.hotelnewganga.in';
     const url = `${baseUrl}/print-pos-bill/${orderId}?_token=${pdfToken}`;
 
     console.log('[WhatsApp] Generating Restaurant PDF for:', url);
