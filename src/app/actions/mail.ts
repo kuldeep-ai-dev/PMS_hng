@@ -298,15 +298,17 @@ export async function sendBookingConfirmation(bookingId: string) {
         const pdfBuffer = await generateInvoicePDF(bookingId, true);
 
         // TRIGGER WHATSAPP (Concurrent with Email)
-        const waPromise = sendBookingWhatsApp(bookingId).catch(err =>
-            console.error('[Mailer] WhatsApp booking send failed:', err.message)
-        );
+        let waResult: any = null;
+        const waPromise = sendBookingWhatsApp(bookingId).then(r => { waResult = r; return r; }).catch(err => {
+            console.error('[Mailer] WhatsApp booking send failed:', err.message);
+            waResult = { success: false, error: err.message };
+        });
 
         // Check if we can send email
         if (!booking.guests.email) {
             console.log('[Mailer] Skipping email (no email found), but WhatsApp was triggered.');
             await waPromise;
-            return { success: true, message: 'WhatsApp sent, no email found' };
+            return { success: true, message: 'WhatsApp sent, no email found', whatsappSent: waResult?.success ?? false, whatsappError: waResult?.error };
         }
 
         const mailOptions = {
@@ -344,10 +346,10 @@ export async function sendBookingConfirmation(bookingId: string) {
 
         await waPromise; // Ensure WA attempted
 
-        return { success: true, emailId: emailResult.messageId };
+        return { success: true, emailId: emailResult.messageId, whatsappSent: waResult?.success ?? false, whatsappError: waResult?.error };
     } catch (err: any) {
         console.error('[Mailer] Error sending check-in mail:', err.message);
-        return { success: false, message: err.message };
+        return { success: false, message: err.message, whatsappSent: false };
     }
 }
 
@@ -378,9 +380,11 @@ export async function sendCheckoutMail(bookingId: string) {
         ];
 
         // TRIGGER WHATSAPP (Early so it's not blocked by email failures)
-        const waPromise = sendCheckoutWhatsApp(bookingId).catch(err =>
-            console.error('[Mailer] WhatsApp checkout send failed:', err.message)
-        );
+        let waResult: any = null;
+        const waPromise = sendCheckoutWhatsApp(bookingId).then(r => { waResult = r; return r; }).catch(err => {
+            console.error('[Mailer] WhatsApp checkout send failed:', err.message);
+            waResult = { success: false, error: err.message };
+        });
 
         const hasGuestEmail = !!booking.guests?.email;
         const hasCompanyEmail = !!(booking.bill_to_company && booking.companies?.email);
@@ -388,7 +392,7 @@ export async function sendCheckoutMail(bookingId: string) {
         if (!hasGuestEmail && !hasCompanyEmail) {
             console.warn('[Mailer] Skipping emails. No valid email recipient found, but WhatsApp was triggered.');
             await waPromise;
-            return { success: true, message: 'WhatsApp attempted, no emails found' };
+            return { success: true, message: 'WhatsApp attempted, no emails found', whatsappSent: waResult?.success ?? false, whatsappError: waResult?.error };
         }
 
         // 1. Send Email to Guest (Thank You)
@@ -458,10 +462,10 @@ export async function sendCheckoutMail(bookingId: string) {
         }
 
         await waPromise; // Ensure WA attempted
-        return { success: true };
+        return { success: true, whatsappSent: waResult?.success ?? false, whatsappError: waResult?.error };
     } catch (err: any) {
         console.error('[Mailer] Error sending checkout mail info:', err.message);
-        return { success: false, message: err.message };
+        return { success: false, message: err.message, whatsappSent: false };
     }
 }
 

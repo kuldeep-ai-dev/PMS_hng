@@ -354,10 +354,21 @@ function CheckInForm() {
                 early_check_in_charge: earlyCheckInCharge
             }, bookingId || undefined);
             window.open(`/print-bill/${booking.id}?type=provisional`, '_blank');
-            toast.promise(sendBookingConfirmation(booking.id).then((res) => {
-                if (!res.success) throw new Error(res.message || 'Unknown error');
-                return res;
-            }), { loading: 'Sending confirmation email...', success: 'Confirmation email sent successfully!', error: (err) => `Failed to send email: ${err.message}` });
+            toast.promise(
+                sendBookingConfirmation(booking.id).then((res) => {
+                    if (!res.success) throw new Error(res.message || 'Unknown error');
+                    // Show WhatsApp status after email resolves
+                    setTimeout(() => {
+                        if (res.whatsappSent) {
+                            toast.success('📱 WhatsApp confirmation sent!', { duration: 4000 });
+                        } else {
+                            toast.error(`📵 WhatsApp not sent: ${res.whatsappError || 'Message not delivered'}`, { duration: 5000 });
+                        }
+                    }, 800);
+                    return res;
+                }),
+                { loading: 'Sending confirmation email & WhatsApp...', success: 'Confirmation email sent!', error: (err) => `Failed to send: ${err.message}` }
+            );
 
             // Clear persistence on success
             localStorage.removeItem('pms_checkin_form');
