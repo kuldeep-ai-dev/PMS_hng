@@ -337,6 +337,7 @@ function CheckInForm() {
     };
 
     const onConfirm = async () => {
+        if (loading) return;
         if (conflict && !isForceBooking) {
             toast.error('Please resolve the room booking conflict or check the "Still make the booking" option.');
             return;

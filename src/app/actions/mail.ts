@@ -282,6 +282,21 @@ function generateEmailHTML({
 export async function sendBookingConfirmation(bookingId: string) {
     try {
         const supabase = await createClient();
+
+        // 1. DEDUPLICATION: Check if a confirmation was already sent in the last 2 minutes
+        const { data: existing } = await supabase
+            .from('whatsapp_analytics')
+            .select('id')
+            .eq('booking_id', bookingId)
+            .eq('template_type', 'check_in')
+            .gt('created_at', new Date(Date.now() - 2 * 60 * 1000).toISOString())
+            .maybeSingle();
+
+        if (existing) {
+            console.log('[Mailer] Skipping duplicate booking confirmation for:', bookingId);
+            return { success: true, message: 'Notification already sent recently', alreadySent: true };
+        }
+
         const settings = await getSettings();
 
         const { data: booking, error } = await supabase
@@ -356,6 +371,21 @@ export async function sendBookingConfirmation(bookingId: string) {
 export async function sendCheckoutMail(bookingId: string) {
     try {
         const supabase = await createClient();
+
+        // 1. DEDUPLICATION: Check if a checkout mail was already sent in the last 2 minutes
+        const { data: existing } = await supabase
+            .from('whatsapp_analytics')
+            .select('id')
+            .eq('booking_id', bookingId)
+            .eq('template_type', 'check_out')
+            .gt('created_at', new Date(Date.now() - 2 * 60 * 1000).toISOString())
+            .maybeSingle();
+
+        if (existing) {
+            console.log('[Mailer] Skipping duplicate checkout mail for:', bookingId);
+            return { success: true, message: 'Notification already sent recently', alreadySent: true };
+        }
+
         const settings = await getSettings();
         console.log('[Mailer] Preparing checkout mail for booking:', bookingId);
 

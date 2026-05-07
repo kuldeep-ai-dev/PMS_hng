@@ -369,25 +369,8 @@ export default function FolioPage() {
             if (!res.success) throw new Error(res.error);
             toast.success('Checkout successful');
             window.open(`/print-bill/${bookingId}?type=final`, '_blank');
-
-            // Send checkout mail + WhatsApp notification and surface WhatsApp status
-            const { sendCheckoutMail } = await import('@/app/actions/mail');
-            toast.promise(
-                sendCheckoutMail(bookingId).then((res) => {
-                    // Show WhatsApp status after mail resolves
-                    setTimeout(() => {
-                        if (res.whatsappSent) {
-                            toast.success('📱 WhatsApp checkout message sent!', { duration: 4000 });
-                        } else {
-                            toast.error(`📵 WhatsApp not sent: ${res.whatsappError || 'Message not delivered'}`, { duration: 5000 });
-                        }
-                    }, 800);
-                    return res;
-                }),
-                { loading: 'Sending checkout email & WhatsApp...', success: 'Checkout email sent!', error: (err) => `Email failed: ${err.message}` }
-            );
-
             router.push('/front-desk');
+
         } catch (err: any) {
             toast.error('Checkout failed: ' + err.message);
         } finally {
