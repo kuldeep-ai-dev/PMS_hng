@@ -15,7 +15,7 @@ import { getSettings } from '../settings/actions';
 import { getCompanies } from '../companies/actions';
 import { AlertCircle } from 'lucide-react';
 
-const EARLY_CHECKIN_SURCHARGE_PERCENT = 30;
+
 
 function CheckInForm() {
     const router = useRouter();
@@ -43,7 +43,8 @@ function CheckInForm() {
         free_pax_limit: 2,
         extra_bed_rate: 1000,
         extra_pax_rate: 800,
-        meal_plan_rates: { EP: 0, CP: 500, MAP: 1000, AP: 1500, AI: 2500 } as Record<string, number>
+        meal_plan_rates: { EP: 0, CP: 500, MAP: 1000, AP: 1500, AI: 2500 } as Record<string, number>,
+        early_checkin_rules: [] as any[]
     });
 
     const [formData, setFormData] = useState({
@@ -82,7 +83,8 @@ function CheckInForm() {
             free_pax_limit: s.free_pax_limit !== undefined ? s.free_pax_limit : 2,
             extra_bed_rate: s.extra_bed_rate || 0,
             extra_pax_rate: s.extra_pax_rate || 0,
-            meal_plan_rates: s.meal_plan_rates || { EP: 0, CP: 500, MAP: 1000, AP: 1500, AI: 2500 }
+            meal_plan_rates: s.meal_plan_rates || { EP: 0, CP: 500, MAP: 1000, AP: 1500, AI: 2500 },
+            early_checkin_rules: s.early_checkin_rules || []
         }));
 
         const prefill = searchParams.get('prefill');
@@ -246,7 +248,23 @@ function CheckInForm() {
     const mealPlanRatePerPerson = settings.meal_plan_rates[formData.food_plan] || 0;
     const mealPlanCharge = mealPlanRatePerPerson * formData.pax_count * nights;
 
-    const earlyCheckInCharge = formData.early_check_in ? Math.round(roomRate * EARLY_CHECKIN_SURCHARGE_PERCENT / 100) : 0;
+    const getEarlyCheckinInfo = () => {
+        if (!formData.early_check_in) return { charge: 0, label: "" };
+        const now = new Date();
+        const currentTime = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        const rules = [...(settings.early_checkin_rules || [])].sort((a: any, b: any) => a.time_limit.localeCompare(b.time_limit));
+        const matchingRule = rules.find((r: any) => currentTime < r.time_limit);
+        if (matchingRule) {
+            return {
+                charge: Math.round(roomRate * matchingRule.charge_percentage / 100),
+                label: `(${matchingRule.label || `${matchingRule.charge_percentage}%`})`
+            };
+        }
+        return { charge: 0, label: "(Complimentary)" };
+    };
+
+    const ec = getEarlyCheckinInfo();
+    const earlyCheckInCharge = ec.charge;
     const discount = Number(formData.discount_amount) || 0;
 
     const subtotal = Math.max(0, roomCharges + extraPaxCharge + extraBedCharge + mealPlanCharge + earlyCheckInCharge - discount);
@@ -329,7 +347,12 @@ function CheckInForm() {
         }
         setLoading(true);
         try {
-            const booking = await submitCheckIn({ ...formData, gst_type: isB2b ? 'B2B' : 'B2C', total_bill: grandTotal }, bookingId || undefined);
+            const booking = await submitCheckIn({
+                ...formData,
+                gst_type: isB2b ? 'B2B' : 'B2C',
+                total_bill: grandTotal,
+                early_check_in_charge: earlyCheckInCharge
+            }, bookingId || undefined);
             window.open(`/print-bill/${booking.id}?type=provisional`, '_blank');
             toast.promise(sendBookingConfirmation(booking.id).then((res) => {
                 if (!res.success) throw new Error(res.message || 'Unknown error');
@@ -740,7 +763,9 @@ function CheckInForm() {
                                     </div>
                                     <div className="flex items-center gap-2 pt-2 border-t border-slate-200 mt-2">
                                         <input type="checkbox" id="early_check_in_badge" checked={formData.early_check_in} onChange={(e) => setFormData({ ...formData, early_check_in: e.target.checked })} className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500 cursor-pointer" />
-                                        <label htmlFor="early_check_in_badge" className="text-sm font-semibold text-slate-700 cursor-pointer">Early Check-in (+{EARLY_CHECKIN_SURCHARGE_PERCENT}%)</label>
+                                        <label htmlFor="early_check_in_badge" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                                            Early Check-in {ec.label && <span className="text-teal-600 font-bold ml-1">{ec.label}</span>}
+                                        </label>
                                     </div>
                                 </div>
                             </div>

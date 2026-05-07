@@ -31,12 +31,13 @@ export async function createR2BackupAction() {
 
         const backupData: Record<string, any> = {};
 
-        // Fetch data from all tables (Max 10,000 rows each for edge safety, adjust if massive)
+        // Fetch data from all tables (Resilient approach)
         for (const table of tables) {
             const { data, error } = await supabase.from(table).select('*').limit(10000);
             if (error) {
-                console.error(`Error fetching table ${table}:`, error);
-                throw new Error(`Failed to fetch ${table} during backup.`);
+                console.warn(`[Backup] Skipping ${table} (Possibly missing):`, error.message);
+                backupData[table] = []; // Placeholder for missing table
+                continue;
             }
             backupData[table] = data || [];
         }

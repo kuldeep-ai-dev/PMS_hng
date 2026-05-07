@@ -10,8 +10,7 @@ import { StaffDashboard } from '@/components/dashboard/StaffDashboard';
 import { cn } from '@/lib/utils';
 
 import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
-import { getISTTodayRange } from '@/utils/date-utils';
-import { formatISTDate } from '@/utils/date';
+import { formatISTDate, getISTTodayRange, getTodayIST } from '@/utils/date';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { getAdminDashboardStats } from '@/app/actions/admin-dashboard';
 
@@ -70,7 +69,7 @@ export default async function Dashboard() {
     supabase.from('night_audit_logs').select('audit_date').order('audit_date', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('payments').select('amount, method').gte('created_at', istStart).lt('created_at', istEnd),
     supabase.from('restaurant_orders').select('total_amount, payment_status').in('payment_status', ['paid', 'charged_to_room']).eq('is_refund', false).gte('order_time', istStart).lt('order_time', istEnd),
-    supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('check_in_date', istStart).lt('check_in_date', istEnd).eq('status', 'Confirmed'),
+    supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('check_in_date', istStart).lt('check_in_date', istEnd).in('status', ['Confirmed', 'Advance_Booking']),
     supabase.from('bookings').select('id, rooms(number), guests(name), check_out_date', { count: 'exact' }).lt('check_out_date', istEnd).eq('status', 'Active'),
     supabase.from('payments').select('created_at, amount').gte('created_at', sevenDaysAgo),
     supabase.from('restaurant_orders').select('order_time, total_amount').in('payment_status', ['paid', 'charged_to_room']).eq('is_refund', false).gte('order_time', sevenDaysAgo),
@@ -84,13 +83,8 @@ export default async function Dashboard() {
   const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
   // --- Process Business Date ---
-  let today = new Date();
-  if (latestAudit?.audit_date) {
-    const lastAuditDate = new Date(latestAudit.audit_date + 'T00:00:00Z');
-    today = new Date(lastAuditDate);
-    today.setDate(today.getDate() + 1);
-  }
-  const businessDateDisplay = format(today, 'MMM dd, yyyy');
+  const businessDateDisplay = formatISTDate(new Date(), 'dashboard');
+  const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   // --- Process Revenue ---

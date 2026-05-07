@@ -30,10 +30,22 @@ export default function MasterSuitePage() {
             ]);
             setRooms(roomsData);
             setSettings(settingsData);
-            if (settingsData?.room_types) {
-                setRoomTypes(settingsData.room_types);
-                setNewRoom(prev => ({ ...prev, type: prev.type || settingsData.room_types[0] }));
+            
+            // 🔄 Auto-Sync Room Categories: Ensure inventory types match global settings
+            const existingTypes = settingsData?.room_types || [];
+            const usedTypes = Array.from(new Set(roomsData.map(r => r.type)));
+            const missingTypes = usedTypes.filter(t => t && !existingTypes.includes(t));
+
+            if (missingTypes.length > 0) {
+                console.log('[Auto-Sync] Found missing categories:', missingTypes);
+                const updatedTypes = [...existingTypes, ...missingTypes];
+                await updateSettings({ ...settingsData, room_types: updatedTypes });
+                setRoomTypes(updatedTypes);
+            } else {
+                setRoomTypes(existingTypes);
             }
+            
+            setNewRoom(prev => ({ ...prev, type: prev.type || (existingTypes[0] || usedTypes[0] || 'Standard') }));
         } finally {
             setLoading(false);
         }

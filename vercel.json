@@ -3,6 +3,10 @@
         {
             "path": "/api/cron/night-audit",
             "schedule": "30 18 * * *"
+        },
+        {
+            "path": "/api/cron/sync-website-bookings",
+            "schedule": "*/5 * * * *"
         }
     ]
 }

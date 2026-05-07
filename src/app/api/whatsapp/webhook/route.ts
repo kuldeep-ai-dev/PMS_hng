@@ -100,8 +100,14 @@ export async function POST(request: NextRequest) {
                         continue;
                     }
 
+                    // Extract error details if any
+                    const errorDetails = statusUpdate.errors?.[0]?.message || statusUpdate.errors?.[0]?.title || null;
+
                     // Build update payload
-                    const updatePayload: Record<string, any> = { status: mappedStatus };
+                    const updatePayload: Record<string, any> = {
+                        status: mappedStatus,
+                        error_message: mappedStatus === 'failed' ? errorDetails : null
+                    };
                     if (mappedStatus === 'delivered') updatePayload.delivered_at = timestamp;
                     if (mappedStatus === 'read') updatePayload.read_at = timestamp;
 
@@ -113,7 +119,7 @@ export async function POST(request: NextRequest) {
                     if (error) {
                         console.error(`[WA Webhook] Update error for ${wamid}:`, error.message);
                     } else {
-                        console.log(`[WA Webhook] Updated ${wamid} → ${mappedStatus}`);
+                        console.log(`[WA Webhook] Updated ${wamid} → ${mappedStatus}${errorDetails ? ` (Error: ${errorDetails})` : ''}`);
                     }
                 }
             }

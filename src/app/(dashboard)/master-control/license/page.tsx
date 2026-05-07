@@ -37,7 +37,13 @@ export default async function MasterLicenseAuthorityPage() {
 
     const expiryDate = new Date(status.expiry_date);
     const now = new Date();
+
+    // Normalize for calendar day count
+    const d1 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const d2 = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate());
+
     const diff = expiryDate.getTime() - now.getTime();
+    const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
 
     // Support for granular time display
     const hoursLeft = Math.floor(diff / (1000 * 60 * 60));

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { BentoCard } from '@/components/ui/BentoCard';
 import { Settings, Save, Building, Tag, IndianRupee, MapPin, Loader2, X, Plus, Globe, RefreshCw, Copy, Check, MessageCircle, FileKey2 } from 'lucide-react';
 import { getSettings, updateSettings } from './actions';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState<any>(null);
@@ -35,6 +36,19 @@ export default function SettingsPage() {
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    // Helper to parse "name|lang" format for UI
+    const parseTpl = (val: string) => {
+        if (!val) return { name: '', lang: 'en' };
+        const [name, lang] = val.split('|');
+        return { name: name?.trim() || '', lang: lang?.trim() || 'en' };
+    };
+
+    // Helper to update setting with "name|lang" format
+    const updateTpl = (key: string, name: string, lang: string) => {
+        const finalValue = lang && lang !== 'en' ? `${name}|${lang}` : name;
+        setSettings({ ...settings, [key]: finalValue });
     };
 
     useEffect(() => {
@@ -406,6 +420,79 @@ export default function SettingsPage() {
                     </div>
                 </BentoCard>
 
+                {/* Early Check-in Policy */}
+                <BentoCard className="p-6 md:col-span-1">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+                            <RefreshCw className="w-5 h-5" />
+                        </div>
+                        <h2 className="font-bold text-slate-800">Early Check-in Policy</h2>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="space-y-3">
+                            {(settings.early_checkin_rules || []).sort((a: any, b: any) => a.time_limit.localeCompare(b.time_limit)).map((rule: any, idx: number) => (
+                                <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl group">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-bold text-slate-900">Before {rule.time_limit}</p>
+                                        <p className="text-xs text-slate-500">{rule.charge_percentage}% Charge • {rule.label || "Manual Rule"}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const newRules = settings.early_checkin_rules.filter((_: any, i: number) => i !== idx);
+                                            setSettings({ ...settings, early_checkin_rules: newRules });
+                                        }}
+                                        className="p-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                            {(!settings.early_checkin_rules || settings.early_checkin_rules.length === 0) && (
+                                <p className="text-sm text-slate-400 italic bg-slate-50 p-4 rounded-xl text-center border border-dashed border-slate-200">No rules defined. Check-ins will be free.</p>
+                            )}
+                        </div>
+
+                        <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl space-y-3">
+                            <p className="text-xs font-bold text-amber-800 uppercase tracking-wider">Add New Rule</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-amber-700">Before Time</label>
+                                    <input type="time" id="new-rule-time" className="w-full p-2 bg-white border border-amber-200 rounded-lg text-sm outline-none" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-amber-700">Charge %</label>
+                                    <input type="number" id="new-rule-percent" placeholder="50" className="w-full p-2 bg-white border border-amber-200 rounded-lg text-sm outline-none" />
+                                </div>
+                            </div>
+                            <input type="text" id="new-rule-label" placeholder="e.g. Half Day Charge" className="w-full p-2 bg-white border border-amber-200 rounded-lg text-sm outline-none" />
+                            <button
+                                onClick={() => {
+                                    const time = (document.getElementById('new-rule-time') as HTMLInputElement).value;
+                                    const percent = (document.getElementById('new-rule-percent') as HTMLInputElement).value;
+                                    const label = (document.getElementById('new-rule-label') as HTMLInputElement).value;
+
+                                    if (!time || percent === '') return alert('Please set time and percentage');
+
+                                    const newRules = [
+                                        ...(settings.early_checkin_rules || []),
+                                        { time_limit: time, charge_percentage: Number(percent), label: label || 'Custom Rule' }
+                                    ];
+                                    setSettings({ ...settings, early_checkin_rules: newRules });
+
+                                    // Clear inputs
+                                    (document.getElementById('new-rule-time') as HTMLInputElement).value = '';
+                                    (document.getElementById('new-rule-percent') as HTMLInputElement).value = '';
+                                    (document.getElementById('new-rule-label') as HTMLInputElement).value = '';
+                                }}
+                                className="w-full py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 transition-colors shadow-sm"
+                            >
+                                Add Policy Bracket
+                            </button>
+                        </div>
+                    </div>
+                </BentoCard>
+
                 {/* Booking Engine Integration */}
                 <BentoCard className="p-6 md:col-span-2">
                     <div className="flex items-center gap-3 mb-6">
@@ -684,30 +771,63 @@ export default function SettingsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Booking Template</label>
-                                    <input
-                                        type="text"
-                                        value={settings.whatsapp_booking_template || ''}
-                                        onChange={e => setSettings({ ...settings, whatsapp_booking_template: e.target.value })}
-                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
-                                    />
+                                    <div className="flex gap-1.5">
+                                        <input
+                                            type="text"
+                                            placeholder="Template Name"
+                                            value={parseTpl(settings.whatsapp_booking_template).name}
+                                            onChange={e => updateTpl('whatsapp_booking_template', e.target.value, parseTpl(settings.whatsapp_booking_template).lang)}
+                                            className="flex-1 p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="en"
+                                            value={parseTpl(settings.whatsapp_booking_template).lang}
+                                            onChange={e => updateTpl('whatsapp_booking_template', parseTpl(settings.whatsapp_booking_template).name, e.target.value)}
+                                            className="w-14 p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-xs font-mono text-center"
+                                            title="Language Code (e.g. en, en_US, hi)"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Checkout Template</label>
-                                    <input
-                                        type="text"
-                                        value={settings.whatsapp_checkout_template || ''}
-                                        onChange={e => setSettings({ ...settings, whatsapp_checkout_template: e.target.value })}
-                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
-                                    />
+                                    <div className="flex gap-1.5">
+                                        <input
+                                            type="text"
+                                            placeholder="Template Name"
+                                            value={parseTpl(settings.whatsapp_checkout_template).name}
+                                            onChange={e => updateTpl('whatsapp_checkout_template', e.target.value, parseTpl(settings.whatsapp_checkout_template).lang)}
+                                            className="flex-1 p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="en"
+                                            value={parseTpl(settings.whatsapp_checkout_template).lang}
+                                            onChange={e => updateTpl('whatsapp_checkout_template', parseTpl(settings.whatsapp_checkout_template).name, e.target.value)}
+                                            className="w-14 p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-xs font-mono text-center"
+                                            title="Language Code (e.g. en, en_US, hi)"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Restaurant Template</label>
-                                    <input
-                                        type="text"
-                                        value={settings.whatsapp_restaurant_template || ''}
-                                        onChange={e => setSettings({ ...settings, whatsapp_restaurant_template: e.target.value })}
-                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
-                                    />
+                                    <div className="flex gap-1.5">
+                                        <input
+                                            type="text"
+                                            placeholder="Template Name"
+                                            value={parseTpl(settings.whatsapp_restaurant_template).name}
+                                            onChange={e => updateTpl('whatsapp_restaurant_template', e.target.value, parseTpl(settings.whatsapp_restaurant_template).lang)}
+                                            className="flex-1 p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="en"
+                                            value={parseTpl(settings.whatsapp_restaurant_template).lang}
+                                            onChange={e => updateTpl('whatsapp_restaurant_template', parseTpl(settings.whatsapp_restaurant_template).name, e.target.value)}
+                                            className="w-14 p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-xs font-mono text-center"
+                                            title="Language Code (e.g. en, en_US, hi)"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -731,18 +851,25 @@ export default function SettingsPage() {
                                             onClick={async () => {
                                                 const phone = (document.getElementById('test-wa-phone') as HTMLInputElement).value;
                                                 if (!phone) return alert('Please enter a phone number');
-                                                setSendingWa(true);
-                                                setWaResult(null);
-                                                try {
-                                                    await updateSettings(settings);
-                                                    const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
-                                                    const result = await testSendWhatsApp(phone, 'check_in');
-                                                    setWaResult(result);
-                                                } catch (err: any) {
-                                                    setWaResult({ success: false, error: err.message });
-                                                } finally {
-                                                    setSendingWa(false);
-                                                }
+                                                toast.promise(
+                                                    (async () => {
+                                                        try {
+                                                            await updateSettings(settings);
+                                                            const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
+                                                            const result = await testSendWhatsApp(phone, 'check_in');
+                                                            setWaResult(result);
+                                                            if (!result.success) throw new Error(result.error || 'Failed to send');
+                                                            return result;
+                                                        } finally {
+                                                            setSendingWa(false);
+                                                        }
+                                                    })(),
+                                                    {
+                                                        loading: 'Sending test check-in message...',
+                                                        success: 'Test check-in sent successfully!',
+                                                        error: (err) => `WhatsApp Error: ${err.message}`
+                                                    }
+                                                );
                                             }}
                                             className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm disabled:opacity-50 whitespace-nowrap"
                                         >
@@ -755,18 +882,25 @@ export default function SettingsPage() {
                                             onClick={async () => {
                                                 const phone = (document.getElementById('test-wa-phone') as HTMLInputElement).value;
                                                 if (!phone) return alert('Please enter a phone number');
-                                                setSendingWa(true);
-                                                setWaResult(null);
-                                                try {
-                                                    await updateSettings(settings);
-                                                    const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
-                                                    const result = await testSendWhatsApp(phone, 'check_out');
-                                                    setWaResult(result);
-                                                } catch (err: any) {
-                                                    setWaResult({ success: false, error: err.message });
-                                                } finally {
-                                                    setSendingWa(false);
-                                                }
+                                                toast.promise(
+                                                    (async () => {
+                                                        try {
+                                                            await updateSettings(settings);
+                                                            const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
+                                                            const result = await testSendWhatsApp(phone, 'check_out');
+                                                            setWaResult(result);
+                                                            if (!result.success) throw new Error(result.error || 'Failed to send');
+                                                            return result;
+                                                        } finally {
+                                                            setSendingWa(false);
+                                                        }
+                                                    })(),
+                                                    {
+                                                        loading: 'Sending test check-out message...',
+                                                        success: 'Test check-out sent successfully!',
+                                                        error: (err) => `WhatsApp Error: ${err.message}`
+                                                    }
+                                                );
                                             }}
                                             className="flex-1 px-4 py-3 bg-slate-800 text-white rounded-xl font-medium hover:bg-slate-900 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm disabled:opacity-50 whitespace-nowrap"
                                         >
@@ -779,18 +913,25 @@ export default function SettingsPage() {
                                             onClick={async () => {
                                                 const phone = (document.getElementById('test-wa-phone') as HTMLInputElement).value;
                                                 if (!phone) return alert('Please enter a phone number');
-                                                setSendingWa(true);
-                                                setWaResult(null);
-                                                try {
-                                                    await updateSettings(settings);
-                                                    const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
-                                                    const result = await testSendWhatsApp(phone, 'restaurant');
-                                                    setWaResult(result);
-                                                } catch (err: any) {
-                                                    setWaResult({ success: false, error: err.message });
-                                                } finally {
-                                                    setSendingWa(false);
-                                                }
+                                                toast.promise(
+                                                    (async () => {
+                                                        try {
+                                                            await updateSettings(settings);
+                                                            const { testSendWhatsApp } = await import('@/app/actions/whatsapp');
+                                                            const result = await testSendWhatsApp(phone, 'restaurant');
+                                                            setWaResult(result);
+                                                            if (!result.success) throw new Error(result.error || 'Failed to send');
+                                                            return result;
+                                                        } finally {
+                                                            setSendingWa(false);
+                                                        }
+                                                    })(),
+                                                    {
+                                                        loading: 'Sending test restaurant message...',
+                                                        success: 'Test restaurant message sent successfully!',
+                                                        error: (err) => `WhatsApp Error: ${err.message}`
+                                                    }
+                                                );
                                             }}
                                             className="flex-1 px-4 py-3 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm disabled:opacity-50 whitespace-nowrap"
                                         >

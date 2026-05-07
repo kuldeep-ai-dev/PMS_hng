@@ -43,6 +43,19 @@ export default async function PrintBillPage({
 
     if (error || !booking) return notFound();
 
+    // Fetch currently logged in user profile for signature (Safe check)
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+
+    const { data: currentUserProfile } = user ? await supabase
+        .from('profiles')
+        .select('role, signature_url')
+        .eq('id', user.id)
+        .single() : { data: null };
+
+    // Use user-specific signature for staff, fallback to hotel settings for admin or if staff signature missing
+    const authorizedSignature = currentUserProfile?.signature_url || settings.signature_url;
+
     const { data: orders } = await supabase
         .from('restaurant_orders')
         .select('*')
@@ -105,7 +118,7 @@ export default async function PrintBillPage({
     const extraPaxTotal = postedExtraPax + provExtraPaxCharge;
     const extraBedTotal = postedExtraBeds + provExtraBedCharge;
 
-    const earlyCheckInCharge = booking.early_check_in ? (Number(booking.rooms?.base_rate || 0) * 0.3) : 0;
+    const earlyCheckInCharge = Number(booking.early_check_in_charge || 0);
     const restaurantTotal = (orders || []).reduce((sum, order) => sum + (order.is_refund ? 0 : Number(order.total_amount || order.total || 0)), 0);
 
     // Manual/Other Charges
@@ -144,14 +157,15 @@ export default async function PrintBillPage({
             </div>
 
             {/* A4 Format */}
-            <div className="w-[210mm] min-h-[297mm] print:min-h-0 print:h-auto bg-white print:shadow-none p-8 print:p-0 flex flex-col relative text-[11px] text-slate-800 leading-relaxed mx-auto gap-4 overflow-hidden">
+            <div className="w-[210mm] min-h-[297mm] print:min-h-0 print:h-auto bg-white print:shadow-none p-8 print:p-0 flex flex-col relative text-[11px] text-slate-800 leading-relaxed mx-auto gap-4 print:overflow-visible overflow-hidden">
 
                 {/* Custom Global CSS to ensure crisp printing borders matching the photo */}
                 <style dangerouslySetInnerHTML={{
                     __html: `
                     @media print {
-                        @page { size: A4 portrait; margin: 5mm; }
-                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+                        @page { size: A4 portrait; margin: 8mm; }
+                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: white !important; margin: 0; padding: 0; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                     }
                 `}} />
 
@@ -420,11 +434,11 @@ export default async function PrintBillPage({
                                 </div>
                             )}
 
-                            <div className="flex flex-col items-center justify-end h-16">
-                                <div className="h-10 mb-1 w-32 flex items-end justify-center border-b border-transparent">
-                                    {settings.signature_url ? (
-                                        // Using absolute inline styles forcing height block ensures it never collapses in headless print.
-                                        <img src={settings.signature_url} alt="Authorized Signature" style={{ height: '40px', width: 'auto', objectFit: 'contain', display: 'block' }} />
+                            <div className="flex flex-col items-center justify-end h-24">
+                                <div className="h-20 mb-1 w-48 flex items-end justify-center border-b border-transparent">
+                                    {authorizedSignature ? (
+                                        // Increased height for better visibility
+                                        <img src={authorizedSignature} alt="Authorized Signature" style={{ height: '70px', width: 'auto', objectFit: 'contain', display: 'block' }} />
                                     ) : (
                                         <div className="w-32 border-b-2 border-slate-300 border-dashed mb-1"></div>
                                     )}

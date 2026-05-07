@@ -4,6 +4,7 @@ import { LogoutButton } from './LogoutButton';
 import { createClient } from '@/utils/supabase/server';
 import { MobileSidebar } from './MobileSidebar';
 import { SidebarNav } from './SidebarNav';
+import { getSettings } from '@/app/(dashboard)/settings/actions';
 
 interface SidebarProps {
     className?: string;
@@ -15,6 +16,7 @@ interface SidebarProps {
 export async function Sidebar({ className, role: propRole, initials: propInitials, displayName: propDisplayName }: SidebarProps) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const settings = await getSettings();
 
     // Use props if available, otherwise fetch as fallback
     let role = propRole;
@@ -45,7 +47,7 @@ export async function Sidebar({ className, role: propRole, initials: propInitial
                     />
                 </div>
 
-                <SidebarNav key={role} role={role!} />
+                <SidebarNav key={role} role={role!} isSandboxMode={settings?.is_sandbox_mode} />
 
                 <div className="mt-auto p-4 border-t border-slate-100 bg-slate-50/50">
                     <div className="flex items-center justify-between">
@@ -65,7 +67,7 @@ export async function Sidebar({ className, role: propRole, initials: propInitial
             <div className="hidden md:block shrink-0 w-64" />
 
             {/* Mobile Sidebar */}
-            <MobileSidebar
+            <MobileSidebar isSandboxMode={settings?.is_sandbox_mode}
                 initials={initials!}
                 displayName={displayName!}
                 role={role!}

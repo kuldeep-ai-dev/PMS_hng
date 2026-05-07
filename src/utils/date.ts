@@ -1,3 +1,5 @@
+import { startOfDay, endOfDay, subDays, addHours, format, eachDayOfInterval } from 'date-fns';
+
 /**
  * Date Utilities for IST (India Standard Time)
  * All time calculations in the PMS should explicitly use 'Asia/Kolkata'.
@@ -37,10 +39,6 @@ const istDashboardDateFormatter = new Intl.DateTimeFormat('en-IN', {
 
 /**
  * Format a date to IST string.
- * Variants: 
- * - 'short': 01-Oct-2023
- * - 'long': Sun, 01 Oct 2023
- * - 'dashboard': Oct 01, 2023
  */
 export function formatISTDate(date: Date | string | number | null | undefined, variant: 'short' | 'long' | 'dashboard' = 'short'): string {
     if (!date) return 'N/A';
@@ -61,21 +59,50 @@ export function formatISTTime(date: Date | string | number | null | undefined): 
 }
 
 /**
- * Combined Date and Time in IST
- */
-export function formatISTDateTime(date: Date | string | number | null | undefined): string {
-    if (!date) return 'N/A';
-    return `${formatISTDate(date)} ${formatISTTime(date)}`;
-}
-
-/**
- * Returns a new Date object representing the current "local" time in IST,
- * even when running on a UTC-based server.
- * Note: This doesn't change the underlying UTC value, but helps in relative calculations
- * if the host environment is not in IST.
+ * Returns a new Date object representing the current "local" time in IST.
  */
 export function getISTDate(): Date {
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
-    return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utcTime + istOffset);
+}
+
+/**
+ * Returns the current date in YYYY-MM-DD format based on IST.
+ */
+export function getTodayIST(): string {
+    const d = getISTDate();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Returns the UTC range for 'Today' in Asia/Kolkata timezone.
+ * India is UTC +5.5.
+ */
+export function getISTTodayRange() {
+    const today = getTodayIST();
+    // Convert IST boundaries to UTC ISO strings for safe comparison
+    const start = new Date(`${today}T00:00:00.000+05:30`).toISOString();
+    const end = new Date(`${today}T23:59:59.999+05:30`).toISOString();
+    return { start, end };
+}
+
+/**
+ * Returns the UTC range for the last N days in IST.
+ */
+export function getISTDateRange(daysBack: number) {
+    const { end } = getISTTodayRange();
+    const endDate = new Date(end);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - daysBack);
+    startDate.setHours(0, 0, 0, 0);
+
+    return {
+        start: startDate.toISOString(),
+        end: endDate.toISOString()
+    };
 }

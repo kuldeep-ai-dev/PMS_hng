@@ -68,6 +68,7 @@ export function BookingTapeChart() {
         switch (status) {
             case 'Active': return 'bg-emerald-500 hover:bg-emerald-600';
             case 'Confirmed': return 'bg-blue-500 hover:bg-blue-600';
+            case 'Advance_Booking': return 'bg-orange-500 hover:bg-orange-600';
             case 'Checked_Out': return 'bg-slate-400 hover:bg-slate-500';
             default: return 'bg-slate-300';
         }

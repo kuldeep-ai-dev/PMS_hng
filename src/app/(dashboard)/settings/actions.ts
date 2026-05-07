@@ -1,7 +1,8 @@
 'use server';
 
-import { revalidatePath, unstable_cache } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { createClient } from '@/utils/supabase/server';
+
 
 const DEFAULT_SETTINGS = {
     hotel_name: "My Hotel",
@@ -32,7 +33,12 @@ const DEFAULT_SETTINGS = {
         MAP: 1000,
         AP: 1500,
         AI: 2500
-    }
+    },
+    early_checkin_rules: [
+        { time_limit: "06:00", charge_percentage: 100, label: "Full Day Charge" },
+        { time_limit: "10:00", charge_percentage: 50, label: "Half Day Charge" },
+        { time_limit: "12:00", charge_percentage: 0, label: "Complimentary" }
+    ]
 };
 
 import { createAdminClient } from '@/utils/supabase/admin';
@@ -64,7 +70,23 @@ export async function getSettings() {
 
 export async function updateSettings(settings: any) {
     const supabase = await createClient();
+    const adminSupabase = createAdminClient();
     const { id, ...updateData } = settings;
+
+    // ── Guard: never wipe inbound_api_key with an empty string ──────────────
+    // If the caller sends an empty inbound_api_key, fetch the current value
+    // from the DB and preserve it so a settings save can't break the
+    // website booking connection.
+    if (!updateData.inbound_api_key) {
+        const { data: current } = await adminSupabase
+            .from('hotel_settings')
+            .select('inbound_api_key')
+            .single();
+        if (current?.inbound_api_key) {
+            updateData.inbound_api_key = current.inbound_api_key;
+        }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     const { error } = await supabase
         .from('hotel_settings')
@@ -76,8 +98,9 @@ export async function updateSettings(settings: any) {
         return { success: false, error: error.message };
     }
 
-    // Bust next.js route cache so next request gets fresh data
-    revalidatePath('/settings', 'page');
-    revalidatePath('/', 'layout');
+    // Bust the unstable_cache for settings so the next request fetches fresh data
+    revalidatePath('/settings');
+    revalidatePath('/check-in');
+    revalidatePath('/');
     return { success: true };
 }

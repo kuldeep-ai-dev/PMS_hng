@@ -5,6 +5,7 @@ import { Plus, Pencil, X, Loader2 } from 'lucide-react';
 import { createStaffMember, updateStaffMember, deleteStaffMember } from './actions';
 import { toast } from 'sonner';
 import PhotoUpload from '@/components/admin/PhotoUpload';
+import SignatureUpload from '@/components/admin/SignatureUpload';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 
@@ -15,6 +16,7 @@ type StaffData = {
     role?: string;
     status?: string;
     photo_url?: string | null;
+    signature_url?: string | null;
     phone?: string | null;
     address?: string | null;
 };
@@ -27,6 +29,7 @@ export default function StaffClientUI({ mode, staff }: { mode: 'add' | 'edit'; s
 
     // Form State
     const [photoUrl, setPhotoUrl] = useState<string | null>(staff?.photo_url || null);
+    const [signatureUrl, setSignatureUrl] = useState<string | null>(staff?.signature_url || null);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -36,6 +39,9 @@ export default function StaffClientUI({ mode, staff }: { mode: 'add' | 'edit'; s
             const formData = new FormData(e.currentTarget);
             if (photoUrl) {
                 formData.set('photo_url', photoUrl);
+            }
+            if (signatureUrl) {
+                formData.set('signature_url', signatureUrl);
             }
 
             let res;
@@ -124,8 +130,15 @@ export default function StaffClientUI({ mode, staff }: { mode: 'add' | 'edit'; s
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="px-6 py-6 pb-8 space-y-6">
 
-                            <div className="flex justify-center mb-2">
-                                <PhotoUpload value={photoUrl} onChange={setPhotoUrl} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-2">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Staff Photo</label>
+                                    <PhotoUpload value={photoUrl} onChange={setPhotoUrl} />
+                                </div>
+                                <div className="space-y-2 text-center">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block">Digital Signature</label>
+                                    <SignatureUpload value={signatureUrl} onChange={setSignatureUrl} />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

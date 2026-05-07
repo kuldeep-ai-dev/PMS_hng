@@ -51,6 +51,19 @@ export default async function PrintPOSBillPage({
 
     if (error || !order) return notFound();
 
+    // Fetch currently logged in user profile for signature (Safe check)
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+
+    const { data: currentUserProfile } = user ? await supabase
+        .from('profiles')
+        .select('role, signature_url')
+        .eq('id', user.id)
+        .single() : { data: null };
+
+    // Use user-specific signature for staff, fallback to hotel settings for admin
+    const authorizedSignature = currentUserProfile?.signature_url || settings.signature_url;
+
     const billDate = formatISTDate(order.order_time);
     const billTime = formatISTTime(order.order_time);
 
@@ -67,13 +80,14 @@ export default async function PrintPOSBillPage({
             <POSPrintActions />
 
             {/* 80mm Thermal Format */}
-            <div className="w-[80mm] bg-white p-4 print:p-2 flex flex-col relative text-[10px] text-black leading-tight mx-auto gap-3 overflow-hidden shadow-2xl print:shadow-none">
+            <div className="w-[80mm] bg-white p-4 print:p-2 flex flex-col relative text-[10px] text-black leading-tight mx-auto gap-3 print:overflow-visible overflow-hidden shadow-2xl print:shadow-none">
 
                 <style dangerouslySetInnerHTML={{
                     __html: `
                     @media print {
                         @page { size: 80mm auto; margin: 0; }
-                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; margin: 0; padding: 0; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                     }
                     body { color: black !important; }
                     .dashed-line { border-top: 1px dashed black; margin: 4px 0; }
@@ -176,7 +190,20 @@ export default async function PrintPOSBillPage({
                 </div>
 
                 {/* Branding Footer */}
-                <div className="mt-4 flex flex-col items-center gap-2 border-t border-black pt-4">
+                <div className="mt-4 flex flex-col items-center gap-2 border-t border-black pt-2">
+
+                    {/* Authorized Signature for POS */}
+                    <div className="flex flex-col items-center w-full mb-2">
+                        <div className="h-16 w-full flex items-end justify-center mb-1">
+                            {authorizedSignature ? (
+                                <img src={authorizedSignature} alt="Authorized Signature" className="max-h-full w-auto grayscale brightness-0 opacity-100 scale-125" />
+                            ) : (
+                                <div className="w-24 border-b border-black border-dashed opacity-30 h-10"></div>
+                            )}
+                        </div>
+                        <span className="text-[7px] font-black uppercase tracking-[0.2em] opacity-80">Authorized Signature</span>
+                    </div>
+
                     <p className="text-[10px] font-black italic tracking-widest uppercase mb-1">Thank You! Visit Again</p>
 
                     <div className="flex flex-col items-center gap-1">

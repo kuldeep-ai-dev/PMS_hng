@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
+import { getBrowser } from '@/utils/puppeteer';
 import { getSettings } from '@/app/(dashboard)/settings/actions';
 
 export async function GET(request: Request) {
@@ -18,24 +19,13 @@ export async function GET(request: Request) {
     const host = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const targetUrl = `${host}/print-bill/${bookingId}?${params.toString()}`;
 
+    const browserlessToken = process.env.BROWSERLESS_API_KEY?.trim();
     console.log('[API/download-invoice] Generating PDF for:', targetUrl);
     let browser;
+    let page;
     try {
-        const browserlessToken = process.env.BROWSERLESS_API_KEY;
-
-        if (browserlessToken) {
-            console.log('[API/download-invoice] Using Browserless.io for remote PDF generation...');
-            browser = await puppeteer.connect({
-                browserWSEndpoint: `wss://chrome.browserless.io?token=${browserlessToken}`,
-            });
-        } else {
-            console.log('[API/download-invoice] BROWSERLESS_API_KEY missing, falling back to local launch...');
-            browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-            });
-        }
-        const page = await browser.newPage();
+        browser = await getBrowser();
+        page = await browser.newPage();
 
         try {
             await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 30000 });
@@ -55,7 +45,7 @@ export async function GET(request: Request) {
             margin: { top: '0', right: '0', bottom: '0', left: '0' }
         });
 
-        await browser.close();
+        await page.close();
         console.log('[API/download-invoice] Raw PDF generated successfully');
 
         // Apply Digital Signature if configured
@@ -82,7 +72,7 @@ export async function GET(request: Request) {
         });
 
     } catch (err: any) {
-        if (browser) await browser.close();
+        if (page) await page.close();
         console.error('[API/download-invoice] PDF Generation Error:', err.message);
         return new NextResponse(`PDF Generation failed: ${err.message}`, { status: 500 });
     }

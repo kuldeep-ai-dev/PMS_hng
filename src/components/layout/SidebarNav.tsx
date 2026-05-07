@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -12,6 +12,8 @@ import {
     TrendingUp, Coins, Users2, PieChart, LineChart, Zap, CalendarPlus, ShieldCheck, HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toggleSandboxMode } from '@/app/actions/sandbox';
+import { toast } from 'sonner';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Home, Users, CalendarDays, Receipt, Settings, BedDouble,
@@ -26,15 +28,16 @@ type NavItem = {
     label: string;
     iconName: string;
     href?: string;
-    items?: { label: string; href: string; iconName: string }[];
+    items?: { label: string; href: string; iconName: string; newTab?: boolean }[];
 };
 
 interface SidebarNavProps {
     role: string;
+    isSandboxMode?: boolean;
     onNavigate?: () => void;
 }
 
-export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
+export function SidebarNav({ role, isSandboxMode, onNavigate }: SidebarNavProps) {
     const pathname = usePathname();
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     const toggleGroup = (label: string) => {
@@ -66,7 +69,7 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
             iconName: 'BedDouble',
             items: [
                 { label: role === 'front_desk' ? 'Manage Rooms' : 'Rooms Grid', href: '/rooms', iconName: 'LayoutGrid' },
-                { label: 'Restaurant POS', href: '/restaurant/pos', iconName: 'Utensils' },
+                { label: 'Restaurant POS', href: '/restaurant/pos', iconName: 'Utensils', newTab: true },
                 { label: 'Website Bookings', href: '/website-bookings', iconName: 'Globe' },
                 { label: 'Restaurant Guide', href: '/help', iconName: 'HelpCircle' },
             ]
@@ -77,8 +80,8 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
             items: [
                 { label: 'Master Suite', href: '/admin/master-suite', iconName: 'Layout' },
                 { label: 'Restaurant Master', href: '/admin/restaurant-master', iconName: 'UtensilsCrossed' },
-                { label: 'Audit Archives', href: '/admin/audit-logs', iconName: 'History' },
                 { label: 'Admin Panel', href: '/admin', iconName: 'Settings' },
+                { label: 'Marketing Hub', href: '/admin/marketing', iconName: 'Zap' },
                 { label: 'WhatsApp Hub', href: '/admin/whatsapp', iconName: 'MessageCircle' },
                 { label: 'Software License', href: '/admin/license', iconName: 'ShieldCheck' },
                 { label: 'Housekeeping Monitor', href: '/admin/housekeeping', iconName: 'Brush' },
@@ -106,6 +109,7 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
     if (role === 'master') {
         navGroups = [
             { label: 'Master Control', iconName: 'Zap', href: '/master-control' },
+            { label: 'Database Master', iconName: 'History', href: '/master-control/database' },
             { label: 'License Authority', iconName: 'ShieldCheck', href: '/master-control/license' },
             { label: 'System Logs', iconName: 'History', href: '/master-control/logs' },
             { label: 'Master Guide', iconName: 'HelpCircle', href: '/help' },
@@ -119,6 +123,23 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
         ];
     }
 
+    const [isPending, startTransition] = useTransition();
+
+    const handleSandboxToggle = () => {
+        const next = !isSandboxMode;
+        if (next && !confirm('Enable Sandbox Mode? Real data will be hidden and all new entries will be marked for eventual deletion.')) return;
+
+        startTransition(async () => {
+            try {
+                await toggleSandboxMode(next);
+                toast.success(`Sandbox Mode ${next ? 'Enabled' : 'Disabled'}`);
+                window.location.reload();
+            } catch (err: any) {
+                toast.error(err.message);
+            }
+        });
+    };
+
     const isActive = (href: string) => {
         if (href === '/' && pathname !== '/') return false;
         return pathname === href || pathname?.startsWith(href + '/');
@@ -131,6 +152,38 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
 
     return (
         <nav className="flex-1 flex flex-col justify-start gap-1 overflow-y-auto px-4 py-4 custom-scrollbar">
+            {role === 'master' && (
+                <div className="mb-4">
+                    <button
+                        onClick={handleSandboxToggle}
+                        disabled={isPending}
+                        className={cn(
+                            "w-full flex items-center justify-between p-3 rounded-2xl border-2 transition-all group",
+                            isSandboxMode
+                                ? "bg-orange-50 border-orange-200 text-orange-700 shadow-lg shadow-orange-100"
+                                : "bg-slate-50 border-slate-100 text-slate-500 hover:border-blue-200"
+                        )}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={cn("p-2 rounded-xl", isSandboxMode ? "bg-orange-500 text-white" : "bg-white text-slate-400 group-hover:text-blue-500 shadow-sm")}>
+                                <Zap className={cn("w-4 h-4", isPending && "animate-spin")} />
+                            </div>
+                            <div className="flex flex-col items-start leading-none">
+                                <span className="text-[11px] font-black uppercase tracking-tighter">Sandbox Mode</span>
+                                <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest mt-0.5">{isSandboxMode ? 'Active' : 'Disabled'}</span>
+                            </div>
+                        </div>
+                        <div className={cn("w-8 h-4 rounded-full relative transition-colors", isSandboxMode ? "bg-orange-500" : "bg-slate-300")}>
+                            <div className={cn("absolute top-1 w-2 h-2 rounded-full bg-white transition-all", isSandboxMode ? "right-1" : "left-1")} />
+                        </div>
+                    </button>
+                    {isSandboxMode && (
+                        <p className="px-2 mt-2 text-[8px] font-black text-orange-600 uppercase tracking-widest animate-pulse">
+                            Test Data Layer Active
+                        </p>
+                    )}
+                </div>
+            )}
             {navGroups.map((group) => {
                 const Icon = iconMap[group.iconName] || Home;
                 const isGroupActive = group.items?.some(item => isActive(item.href)) || (group.href && isActive(group.href));
@@ -164,6 +217,28 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                             {group.items?.map(sub => {
                                 const SubIcon = iconMap[sub.iconName] || LayoutDashboard;
                                 const isSubActive = isActive(sub.href);
+
+                                if (sub.newTab) {
+                                    return (
+                                        <a
+                                            key={sub.label + sub.href}
+                                            href={sub.href}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={onNavigate}
+                                            className={cn(
+                                                "shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group",
+                                                isSubActive
+                                                    ? "bg-teal-500 text-white font-bold shadow-lg shadow-teal-100"
+                                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-semibold"
+                                            )}
+                                        >
+                                            <SubIcon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", isSubActive ? "text-white" : "text-slate-400")} />
+                                            <span className="text-[13px] tracking-tight">{sub.label}</span>
+                                        </a>
+                                    );
+                                }
+
                                 return (
                                     <Link
                                         key={sub.label + sub.href}
@@ -220,7 +295,27 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                                     const SubIcon = iconMap[sub.iconName] || LayoutDashboard;
                                     const isSubActive = isActive(sub.href);
 
-                                    return (
+                                    return sub.newTab ? (
+                                        <a
+                                            key={sub.label + sub.href}
+                                            href={sub.href}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={onNavigate}
+                                            className={cn(
+                                                "relative flex items-center gap-3 px-3 py-2 text-[13px] rounded-lg transition-all duration-200 group/sub",
+                                                isSubActive
+                                                    ? "bg-teal-50 text-teal-700 font-bold"
+                                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                                            )}
+                                        >
+                                            <SubIcon className={cn(
+                                                "w-4 h-4 transition-all duration-300",
+                                                isSubActive ? "text-teal-600 scale-110" : "text-slate-400 group-hover/sub:text-slate-600 group-hover/sub:scale-105"
+                                            )} />
+                                            <span className="truncate">{sub.label}</span>
+                                        </a>
+                                    ) : (
                                         <Link
                                             key={sub.label + sub.href}
                                             href={sub.href}
@@ -232,13 +327,11 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                                                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium"
                                             )}
                                         >
-
                                             <SubIcon className={cn(
                                                 "w-4 h-4 transition-all duration-300",
                                                 isSubActive ? "text-teal-600 scale-110" : "text-slate-400 group-hover/sub:text-slate-600 group-hover/sub:scale-105"
                                             )} />
                                             <span className="truncate">{sub.label}</span>
-
                                             {isSubActive && (
                                                 <div className="absolute right-2 w-1 h-4 bg-teal-500 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
                                             )}

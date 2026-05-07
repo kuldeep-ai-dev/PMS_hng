@@ -149,27 +149,31 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                                             </div>
                                         )}
 
-                                        {room.bookingSource && (
-                                            <div className={cn(
-                                                "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
-                                                room.bookingSource === 'OTA' ? "bg-indigo-50 text-indigo-700 border-indigo-100 shadow-indigo-50" : "bg-slate-50 text-slate-600 border-slate-200"
-                                            )}>
-                                                {room.bookingSource}
-                                            </div>
-                                        )}
+                                        {room.status === 'Occupied' && (
+                                            <>
+                                                {room.bookingSource && (
+                                                    <div className={cn(
+                                                        "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
+                                                        room.bookingSource === 'OTA' ? "bg-indigo-50 text-indigo-700 border-indigo-100 shadow-indigo-50" : "bg-slate-50 text-slate-600 border-slate-200"
+                                                    )}>
+                                                        {room.bookingSource}
+                                                    </div>
+                                                )}
 
-                                        {room.foodPlan && (
-                                            <div className={cn(
-                                                "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
-                                                room.foodPlan === 'EP' ? "bg-slate-50 text-slate-500 border-slate-200" : "bg-orange-50 text-orange-700 border-orange-100 shadow-orange-50"
-                                            )}>
-                                                {room.foodPlan}
-                                            </div>
-                                        )}
+                                                {room.foodPlan && (
+                                                    <div className={cn(
+                                                        "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
+                                                        room.foodPlan === 'EP' ? "bg-slate-50 text-slate-500 border-slate-200" : "bg-orange-50 text-orange-700 border-orange-100 shadow-orange-50"
+                                                    )}>
+                                                        {room.foodPlan}
+                                                    </div>
+                                                )}
 
-                                        <div className="flex items-center gap-1 bg-white text-blue-950 px-1.5 py-0.5 rounded-md text-[9px] font-black shadow-sm border border-blue-100">
-                                            <User className="w-2.5 h-2.5" /> {room.paxCount || 1}
-                                        </div>
+                                                <div className="flex items-center gap-1 bg-white text-blue-950 px-1.5 py-0.5 rounded-md text-[9px] font-black shadow-sm border border-blue-100">
+                                                    <User className="w-2.5 h-2.5" /> {room.paxCount || 1}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-col gap-0.5">

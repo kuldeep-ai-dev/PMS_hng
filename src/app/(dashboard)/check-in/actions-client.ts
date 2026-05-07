@@ -74,10 +74,14 @@ export async function getBookingById(id: string) {
 export async function submitCheckIn(formData: any, bookingId?: string) {
     const supabase = createClient();
 
+    // 0. Check Sandbox Mode
+    const { data: settings } = await supabase.from('hotel_settings').select('is_sandbox_mode').single();
+    const isSandbox = settings?.is_sandbox_mode || false;
+
     // 1. Resolve/Upsert Guest
     let guestId = formData.guest_id;
 
-    const guestPayload = {
+    const guestPayload: any = {
         name: formData.name,
         phone: formData.phone,
         email: formData.email,
@@ -96,6 +100,8 @@ export async function submitCheckIn(formData: any, bookingId?: string) {
         age: formData.age || null,
         ...(formData.id_document_url ? { id_image_url: formData.id_document_url } : {}),
     };
+
+    if (isSandbox) guestPayload.is_test_data = true;
 
     let guest;
 
@@ -142,13 +148,14 @@ export async function submitCheckIn(formData: any, bookingId?: string) {
     // 2. Create Lead for marketing opt-in (separate table)
     if (formData.opted_in) {
         try {
-            await supabase.from('leads').upsert({
-                name: formData.name,
-                phone: formData.phone,
+            await supabase.from('marketing_leads').upsert({
+                full_name: formData.name,
+                phone_number: formData.phone,
                 email: formData.email,
                 source: 'Check-in',
-                opted_in: true
-            }, { onConflict: 'phone' });
+                status: 'active',
+                is_test_data: isSandbox
+            }, { onConflict: 'phone_number' });
         } catch { /* ignore lead insert failures */ }
     }
 
@@ -172,7 +179,7 @@ export async function submitCheckIn(formData: any, bookingId?: string) {
         finalCheckOut.setHours(12, 0, 0, 0);
     }
 
-    const bookingPayload = {
+    const bookingPayload: any = {
         guest_id: guest.id,
         room_id: formData.room_id,
         check_in_date: finalCheckIn.toISOString(),
@@ -193,7 +200,10 @@ export async function submitCheckIn(formData: any, bookingId?: string) {
         coming_from: formData.coming_from || null,
         next_destination: formData.next_destination || null,
         booking_source: formData.booking_source || 'Walk-In',
-        ota_booking_id: formData.ota_booking_id || null
+        ota_booking_id: formData.ota_booking_id || null,
+        early_check_in: formData.early_check_in || false,
+        early_check_in_charge: formData.early_check_in_charge || 0,
+        is_test_data: isSandbox
     };
 
     let booking;

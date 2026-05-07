@@ -6,6 +6,7 @@ import { createAdminClient } from '@/utils/supabase/admin';
 import puppeteer from 'puppeteer';
 import { getSettings } from '@/app/(dashboard)/settings/actions';
 import { formatISTDate, formatISTTime } from '@/utils/date';
+import { getBrowser } from '@/utils/puppeteer';
 
 // ─── R2 Client (reuses existing Cloudflare R2 config) ─────────────────────────
 const R2 = new S3Client({
@@ -22,6 +23,18 @@ const WA_API_VERSION = 'v22.0';
 // Moved constants into functions to ensure they pick up .env.local changes instantly.
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Parse a template name that may include a language suffix (e.g. "food_confirm|en_US").
+ * Returns { name, lang } where lang defaults to 'en' if not specified.
+ */
+function parseTemplateSetting(setting: string): { name: string; lang: string } {
+    if (setting.includes('|')) {
+        const [name, lang] = setting.split('|');
+        return { name: name.trim(), lang: lang.trim() || 'en' };
+    }
+    return { name: setting.trim(), lang: 'en' };
+}
 
 /**
  * Format phone number to WhatsApp-compatible international format (E.164).
@@ -83,12 +96,10 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Pr
 
     console.log('[WhatsApp] Generating PDF for:', url);
     let browser;
+    let page;
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-        });
-        const page = await browser.newPage();
+        browser = await getBrowser();
+        page = await browser.newPage();
 
         try {
             await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
@@ -104,7 +115,7 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Pr
             margin: { top: '0', right: '0', bottom: '0', left: '0' }
         });
 
-        await browser.close();
+        await page.close();
         console.log('[WhatsApp] Raw PDF generated successfully');
 
         // Apply Digital Signature if configured
@@ -119,7 +130,7 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Pr
 
         return rawPdfBuffer as unknown as Uint8Array;
     } catch (err: any) {
-        if (browser) await browser.close();
+        if (page) await page.close();
         console.error('[WhatsApp] PDF Generation Error:', err.message);
         throw new Error(`PDF Generation failed: ${err.message}`);
     }
@@ -134,12 +145,10 @@ async function generateRestaurantBillPDF(orderId: string): Promise<Uint8Array> {
 
     console.log('[WhatsApp] Generating Restaurant PDF for:', url);
     let browser;
+    let page;
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-        });
-        const page = await browser.newPage();
+        browser = await getBrowser();
+        page = await browser.newPage();
 
         // Emulate thermal printer width if needed, but the page already has 80mm CSS
         await page.setViewport({ width: 400, height: 800 });
@@ -158,10 +167,10 @@ async function generateRestaurantBillPDF(orderId: string): Promise<Uint8Array> {
             margin: { top: '0', right: '0', bottom: '0', left: '0' }
         });
 
-        await browser.close();
+        await page.close();
         return rawPdfBuffer as unknown as Uint8Array;
     } catch (err: any) {
-        if (browser) await browser.close();
+        if (page) await page.close();
         console.error('[WhatsApp] Restaurant PDF Error:', err.message);
         throw new Error(`Restaurant PDF fail: ${err.message}`);
     }
@@ -175,21 +184,26 @@ async function generateRestaurantBillPDF(orderId: string): Promise<Uint8Array> {
 
 /**
  * Send a WhatsApp template message via the Cloud API.
+ * Supports Marketing campaigns with media headers and dynamic buttons.
  */
-async function sendWhatsAppTemplate({
+export async function sendWhatsAppTemplate({
     to,
     templateName,
-    languageCode = 'en_US',
-    headerDocUrl,
-    headerDocFilename,
+    languageCode = 'en',
+    mediaType,
+    mediaUrl,
+    mediaHandle,
+    headerParams,
     bodyParams,
     buttonUrlSuffix,
 }: {
     to: string;
     templateName: string;
     languageCode?: string;
-    headerDocUrl?: string;
-    headerDocFilename?: string;
+    mediaType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT';
+    mediaUrl?: string;
+    mediaHandle?: string;
+    headerParams?: string[];
     bodyParams: string[];
     buttonUrlSuffix?: string;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
@@ -204,21 +218,32 @@ async function sendWhatsAppTemplate({
 
     const components: any[] = [];
 
-    // Document header component
-    if (headerDocUrl) {
+    // --- Header Component (Text or Media) ---
+    if (mediaType && (mediaUrl || mediaHandle)) {
+        const mediaObj: any = {};
+        if (mediaHandle) mediaObj.handle = mediaHandle;
+        else if (mediaUrl) mediaObj.link = mediaUrl;
+
+        // Document specific filename
+        if (mediaType === 'DOCUMENT') {
+            mediaObj.filename = 'Document.pdf';
+        }
+
         components.push({
             type: 'header',
             parameters: [{
-                type: 'document',
-                document: {
-                    link: headerDocUrl,
-                    filename: headerDocFilename || 'Invoice.pdf'
-                }
+                type: mediaType.toLowerCase(),
+                [mediaType.toLowerCase()]: mediaObj
             }]
+        });
+    } else if (headerParams && headerParams.length > 0) {
+        components.push({
+            type: 'header',
+            parameters: headerParams.map(text => ({ type: 'text', text }))
         });
     }
 
-    // Body parameters
+    // --- Body Component ---
     if (bodyParams.length > 0) {
         components.push({
             type: 'body',
@@ -226,7 +251,7 @@ async function sendWhatsAppTemplate({
         });
     }
 
-    // Button URL parameter (for dynamic URL buttons like "Rate Us")
+    // --- Button Component (Dynamic URL) ---
     if (buttonUrlSuffix) {
         components.push({
             type: 'button',
@@ -313,11 +338,14 @@ export async function sendBookingWhatsApp(bookingId: string) {
         const pdfFilename = `Provisional_${bookingId.split('-')[0].toUpperCase()}_${Date.now()}.pdf`;
         const pdfUrl = await uploadPdfToR2(pdfBuffer, pdfFilename);
 
+        const tpl = parseTemplateSetting(settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation');
+
         const result = await sendWhatsAppTemplate({
             to: phone,
-            templateName: settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation',
-            headerDocUrl: pdfUrl,
-            headerDocFilename: `Provisional_Receipt_${bookingId.split('-')[0].toUpperCase()}.pdf`,
+            templateName: tpl.name,
+            languageCode: tpl.lang,
+            mediaType: 'DOCUMENT',
+            mediaUrl: pdfUrl,
             bodyParams: [
                 guestName,
                 settings.hotel_name,
@@ -394,11 +422,14 @@ export async function sendCheckoutWhatsApp(bookingId: string) {
         // The full button URL will be: base_url_from_template + trackingId
         const trackingId = crypto.randomUUID().split('-')[0];
 
+        const tpl = parseTemplateSetting(settings.whatsapp_checkout_template || process.env.WHATSAPP_CHECKOUT_TEMPLATE || 'checkout_thankyou');
+
         const result = await sendWhatsAppTemplate({
             to: phone,
-            templateName: settings.whatsapp_checkout_template || process.env.WHATSAPP_CHECKOUT_TEMPLATE || 'checkout_thankyou',
-            headerDocUrl: pdfUrl,
-            headerDocFilename: `Tax_Invoice_${bookingId.split('-')[0].toUpperCase()}.pdf`,
+            templateName: tpl.name,
+            languageCode: tpl.lang,
+            mediaType: 'DOCUMENT',
+            mediaUrl: pdfUrl,
             bodyParams: [
                 guestName,
                 settings.hotel_name,
@@ -453,8 +484,12 @@ export async function testSendWhatsApp(phoneNumber: string, type: 'check_in' | '
         let headerDocFilename = 'Test_Invoice.pdf';
         let buttonUrlSuffix: string | undefined = undefined;
 
+        let languageCode = 'en';
+
         if (type === 'check_in') {
-            templateName = settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation';
+            const tpl = parseTemplateSetting(settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation');
+            templateName = tpl.name;
+            languageCode = tpl.lang;
             bodyParams = [
                 'Test Guest',
                 settings.hotel_name,
@@ -466,7 +501,9 @@ export async function testSendWhatsApp(phoneNumber: string, type: 'check_in' | '
             ];
             headerDocFilename = 'Test_Provisional_Invoice.pdf';
         } else if (type === 'check_out') {
-            templateName = settings.whatsapp_checkout_template || process.env.WHATSAPP_CHECKOUT_TEMPLATE || 'checkout_thankyou';
+            const tpl = parseTemplateSetting(settings.whatsapp_checkout_template || process.env.WHATSAPP_CHECKOUT_TEMPLATE || 'checkout_thankyou');
+            templateName = tpl.name;
+            languageCode = tpl.lang;
             bodyParams = [
                 'Test Guest',
                 settings.hotel_name,
@@ -477,7 +514,9 @@ export async function testSendWhatsApp(phoneNumber: string, type: 'check_in' | '
             headerDocFilename = 'Test_Final_Invoice.pdf';
             buttonUrlSuffix = 'test_click_tracker';
         } else if (type === 'restaurant') {
-            templateName = settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'food_confirm';
+            const tpl = parseTemplateSetting(settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'food_confirm');
+            templateName = tpl.name;
+            languageCode = tpl.lang;
             bodyParams = [
                 settings.hotel_name || 'Restaurant',
                 'TEST-123',
@@ -487,13 +526,13 @@ export async function testSendWhatsApp(phoneNumber: string, type: 'check_in' | '
             headerDocFilename = 'Test_Restaurant_Bill.pdf';
             // Important: we do not set buttonUrlSuffix because food_confirm uses a static button URL
         }
-
         const result = await sendWhatsAppTemplate({
             to: phone,
             templateName,
+            languageCode,
             // Use a reliable public PDF for testing. Settings logo might be a data: URI which Meta rejects.
-            headerDocUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            headerDocFilename,
+            mediaType: 'DOCUMENT',
+            mediaUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
             bodyParams,
             buttonUrlSuffix
         });
@@ -568,11 +607,14 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
         const trackingId = crypto.randomUUID().split('-')[0];
         console.log(`[WhatsApp] Generated tracking ID: ${trackingId}, PDF URL: ${pdfUrl}`);
 
+        const tpl = parseTemplateSetting(settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'food_confirm');
+
         const result = await sendWhatsAppTemplate({
             to: phone,
-            templateName: settings.whatsapp_restaurant_template || process.env.WHATSAPP_RESTAURANT_TEMPLATE || 'food_confirm',
-            headerDocUrl: pdfUrl,
-            headerDocFilename: `Bill_${billNo}.pdf`,
+            templateName: tpl.name,
+            languageCode: tpl.lang,
+            mediaType: 'DOCUMENT',
+            mediaUrl: pdfUrl,
             bodyParams: [
                 settings.hotel_name || 'Restaurant',
                 billNo,
@@ -617,3 +659,42 @@ export async function sendRestaurantOrderWhatsApp(orderId: string) {
     }
 }
 
+
+/**
+ * Fetch WhatsApp Phone Number Account status and details from Meta.
+ */
+export async function getWhatsAppAccountInfo() {
+    try {
+        const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+        const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+
+        if (!phoneNumberId || !accessToken) {
+            return { success: false, error: 'WhatsApp credentials missing in .env.local' };
+        }
+
+        const apiUrl = `https://graph.facebook.com/${WA_API_VERSION}/${phoneNumberId}?access_token=${accessToken}`;
+
+        const res = await fetch(apiUrl, { cache: 'no-store' });
+        const data = await res.json();
+
+        if (!res.ok) {
+            console.error('[WhatsApp Account] Meta API Error:', data);
+            return {
+                success: false,
+                error: data.error?.message || 'Failed to fetch account info from Meta'
+            };
+        }
+
+        return {
+            success: true,
+            appStatus: 'live', // We return live if the API responds
+            appName: data.verified_name || 'WhatsApp Official Account',
+            phoneNumberId: data.id,
+            displayPhoneNumber: data.display_phone_number,
+            isTestNumber: data.id?.startsWith('105') || false
+        };
+    } catch (err: any) {
+        console.error('[WhatsApp Account] Fetch Error:', err.message);
+        return { success: false, error: err.message };
+    }
+}

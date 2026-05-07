@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 const RESTAURANT_ALLOWED = ['/restaurant', '/qr-order', '/auth', '/login', '/_next', '/api', '/print-pos-bill', '/print-kot', '/help'];
 
 // Static paths that never need DB role-based routing — skip profile fetch entirely
-const SKIP_PROFILE_PREFIXES = ['/_next/', '/favicon', '/api/', '/print-', '/.well-known'];
+const SKIP_PROFILE_PREFIXES = ['/_next/', '/favicon', '/api/', '/print-', '/.well-known', '/static/', '/images/', '/pmslogo.svg'];
 
 export async function updateSession(request: NextRequest) {
     let supabaseResponse = NextResponse.next({ request });
@@ -53,7 +53,12 @@ export async function updateSession(request: NextRequest) {
     // Skip the profile DB fetch for static assets and API routes — they never need role checks.
     if (user) {
         const isStaticPath = SKIP_PROFILE_PREFIXES.some(prefix => pathname.startsWith(prefix));
-        if (!isStaticPath) {
+                // Extra guard: Ignore any path that looks like a static asset (.css, .js, .png, etc)
+        const isAsset = pathname.includes('.') && 
+                        !pathname.endsWith('.html') && 
+                        !pathname.endsWith('.php'); // safety for some edge cases
+
+        if (!isStaticPath && !isAsset) {
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('role')

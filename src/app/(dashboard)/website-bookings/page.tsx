@@ -50,7 +50,7 @@ export default function WebsiteBookingsPage() {
     const handleConfirm = async (booking: any) => {
         setConfirming(booking.id);
         await confirmWebsiteBooking(booking.id);
-        // Redirect to check-in with pre-filled data via query params
+        // Redirect to advance-booking with pre-filled data via query params
         const params = new URLSearchParams({
             prefill: 'true',
             name: booking.guest_name || '',
@@ -61,7 +61,7 @@ export default function WebsiteBookingsPage() {
             room_type: booking.room_type || '',
             total: String(booking.total_price || 0),
         });
-        router.push(`/check-in?${params.toString()}`);
+        router.push(`/operations/advance-booking?${params.toString()}`);
     };
 
     const handleReject = async (id: string) => {

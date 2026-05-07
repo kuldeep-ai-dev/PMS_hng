@@ -20,7 +20,22 @@ export default async function PrintGRCPage({
         .eq('id', bookingId)
         .single();
 
+    // Fetch currently logged in user profile for signature (Safe check)
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+
+    const { data: currentUserProfile } = user ? await supabase
+        .from('profiles')
+        .select('role, signature_url')
+        .eq('id', user.id)
+        .single() : { data: null };
+
     if (error || !booking) return notFound();
+
+    const role = currentUserProfile?.role || 'Guest';
+    // Use user-specific signature if available, otherwise fallback to hotel-wide one
+    // Specifically for front_desk, manager, and other staff
+    const receptionistSignature = currentUserProfile?.signature_url || settings.signature_url;
 
     const guest = booking.guests || {};
     const room = booking.rooms || {};
@@ -46,13 +61,13 @@ export default async function PrintGRCPage({
             </div>
 
             {/* GRC Document Container */}
-            <div className="max-w-[850px] mx-auto bg-white border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.05)] print:border-0 print:shadow-none p-8 flex flex-col relative overflow-hidden min-h-[1050px]">
+            <div className="max-w-[850px] mx-auto bg-white border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.05)] print:border-0 print:shadow-none p-6 sm:p-8 flex flex-col relative min-h-[960px] print:min-h-0 print:overflow-visible">
 
                 {/* Decorative Pattern Background (CSS) */}
                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none grc-pattern" />
 
                 {/* Header Section */}
-                <div className="grid grid-cols-3 items-start mb-4 relative z-10">
+                <div className="grid grid-cols-3 items-start mb-2 relative z-10">
                     <div className="space-y-1.5 text-[11px] font-sans">
                         <p className="flex items-center gap-2">
                             <span className="font-bold text-slate-600 uppercase tracking-widest text-[9px]">GR Card No.</span>
@@ -92,12 +107,12 @@ export default async function PrintGRCPage({
                     </div>
                 </div>
 
-                <div className="text-center mb-6 relative">
-                    <div className="text-center mb-2 relative z-10 flex items-center justify-center gap-4">
-                        <span className="text-4xl font-black opacity-[0.06] tracking-[1em] text-slate-900 uppercase pointer-events-none">REGISTRATION</span>
+                <div className="text-center mb-4 relative">
+                    <div className="text-center mb-1 relative z-10 flex items-center justify-center gap-4">
+                        <span className="text-3xl font-black opacity-[0.06] tracking-[1em] text-slate-900 uppercase pointer-events-none">REGISTRATION</span>
                     </div>
                     <h1 className="text-xl font-black tracking-[0.25em] uppercase text-slate-900 relative z-10">Guest Registration Card</h1>
-                    <div className="h-1 w-12 bg-teal-500 mx-auto mt-2 rounded-full" />
+                    <div className="h-1 w-12 bg-teal-500 mx-auto mt-1.5 rounded-full" />
                 </div>
 
                 {/* Primary Guest Info Grid */}
@@ -275,10 +290,10 @@ export default async function PrintGRCPage({
                 </div>
 
                 {/* Room and Advance Table */}
-                <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 shadow-sm">
+                <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 shadow-sm">
                     <table className="w-full border-collapse text-[11px] font-sans">
                         <thead>
-                            <tr className="bg-white border-b-2 border-slate-900 text-slate-900">
+                            <tr className="bg-white border-b-2 border-slate-900 text-slate-900 text-[10px]">
                                 <th className="p-2 text-left font-black uppercase tracking-widest">Allocation</th>
                                 <th className="p-2 text-center font-black uppercase tracking-widest">Rate</th>
                                 <th className="p-2 text-center font-black uppercase tracking-widest">PAX</th>
@@ -287,9 +302,9 @@ export default async function PrintGRCPage({
                             </tr>
                         </thead>
                         <tbody>
-                            <tr className="h-10 text-center text-sm bg-white">
+                            <tr className="h-8 text-center text-sm bg-white">
                                 <td className="p-2 text-left font-black border-r border-slate-200 leading-tight">
-                                    <p className="text-xl">#{room.number}</p>
+                                    <p className="text-lg">#{room.number}</p>
                                     <p className="text-[9px] uppercase text-slate-500 tracking-tighter">{room.type}</p>
                                 </td>
                                 <td className="p-2 font-black text-slate-900 border-r border-slate-200">
@@ -298,21 +313,21 @@ export default async function PrintGRCPage({
                                 <td className="p-2 font-bold text-slate-700 border-r border-slate-200">{booking.pax_count || 1}</td>
                                 <td className="p-2 font-bold text-slate-700 border-r border-slate-200">{booking.extra_beds || '—'}</td>
                                 <td className="p-2 text-left bg-slate-50" colSpan={2}>
-                                    <div className="space-y-1.5 font-bold text-[10px]">
-                                        <p className="flex justify-between text-slate-700"><span>Payment Settled:</span> <span className="text-emerald-800 bg-emerald-50 px-1 rounded">{settings.currency_symbol || '₹'}{totalPaid.toLocaleString()}</span></p>
-                                        <p className="flex justify-between text-slate-600"><span>Ref ID:</span> <span className="font-bold text-slate-900 ml-2 tracking-tight uppercase">{invoiceNumber.slice(-8)}</span></p>
+                                    <div className="space-y-1 font-bold text-[10px]">
+                                        <p className="flex justify-between text-slate-700"><span>Set:</span> <span className="text-emerald-800 bg-emerald-50 px-1 rounded">{settings.currency_symbol || '₹'}{totalPaid.toLocaleString()}</span></p>
+                                        <p className="flex justify-between text-slate-600"><span>Inv:</span> <span className="font-bold text-slate-900 ml-2 tracking-tight uppercase">{invoiceNumber.slice(-8)}</span></p>
                                     </div>
                                 </td>
                             </tr>
                             <tr className="bg-white border-t-2 border-slate-900">
-                                <td className="p-2 text-left font-black uppercase" colSpan={4}>
+                                <td className="p-1 px-2 text-left font-black uppercase" colSpan={4}>
                                     <div className="flex items-center gap-4">
-                                        <span className="text-slate-600 text-[10px] tracking-widest">Master Invoice No:</span>
-                                        <span className="font-black text-lg text-slate-950 tracking-tighter uppercase">{invoiceNumber}</span>
+                                        <span className="text-slate-600 text-[9px] tracking-widest">Master Invoice No:</span>
+                                        <span className="font-black text-base text-slate-950 tracking-tighter uppercase">{invoiceNumber}</span>
                                     </div>
                                 </td>
-                                <td className="p-2 text-right font-black uppercase" colSpan={2}>
-                                    <div className="flex items-center justify-end gap-2 text-slate-600 text-[10px]">
+                                <td className="p-1 px-2 text-right font-black uppercase" colSpan={2}>
+                                    <div className="flex items-center justify-end gap-2 text-slate-600 text-[9px]">
                                         <span>Issued:</span>
                                         <span className="text-slate-900">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                                     </div>
@@ -325,8 +340,14 @@ export default async function PrintGRCPage({
                 {/* Footer Section - Unified Professional Layout */}
                 <footer className="mt-auto pt-8 border-slate-900 px-4 font-sans uppercase relative z-10 grid grid-cols-3 items-end gap-12 overflow-visible">
                     <div className="flex flex-col items-center text-center">
-                        <div className="w-full border-b-2 border-slate-300 border-dashed h-8 mb-3"></div>
-                        <p className="text-[10px] font-black tracking-[0.2em] text-slate-900 pt-2 w-full">Receptionist Signature</p>
+                        <div className="w-full h-16 mb-2 flex items-end justify-center">
+                            {receptionistSignature ? (
+                                <img src={receptionistSignature} alt="Receptionist Signature" style={{ height: '64px', width: 'auto', objectFit: 'contain', display: 'block' }} />
+                            ) : (
+                                <div className="w-full border-b-2 border-slate-300 border-dashed h-8"></div>
+                            )}
+                        </div>
+                        <p className="text-[10px] font-black tracking-[0.2em] text-slate-900 pt-1 w-full">Receptionist Signature</p>
                     </div>
 
                     <div className="flex flex-col items-center group pb-1">
@@ -351,14 +372,8 @@ export default async function PrintGRCPage({
                     </div>
 
                     <div className="flex flex-col items-center text-center">
-                        <div className="w-full h-8 mb-3 flex items-end justify-center">
-                            {settings.signature_url ? (
-                                <img src={settings.signature_url} alt="Authorized Signature" style={{ height: '32px', width: 'auto', objectFit: 'contain', display: 'block' }} />
-                            ) : (
-                                <div className="w-full border-b-2 border-slate-300 border-dashed flex-1"></div>
-                            )}
-                        </div>
-                        <p className="text-[10px] font-black tracking-[0.2em] text-slate-900 pt-2 w-full">Manager Signature</p>
+                        <div className="w-full border-b-2 border-slate-300 border-dashed h-8 mb-3"></div>
+                        <p className="text-[10px] font-black tracking-[0.2em] text-slate-900 pt-2 w-full">Customer Signature</p>
                     </div>
                 </footer>
             </div>
@@ -366,10 +381,13 @@ export default async function PrintGRCPage({
             <style dangerouslySetInnerHTML={{
                 __html: `
                 @media print {
-                    body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    @page { margin: 8mm; size: A4; }
                     .print-hidden { display: none !important; }
-                    @page { margin: 12mm; size: A4; }
+                    footer { break-inside: avoid; }
                     .grc-paper { border: 0 !important; box-shadow: none !important; }
+                    p, span, td, th { orphans: 3; widows: 3; }
                 }
                 .font-serif { font-family: 'Times New Roman', Times, serif; }
                 .font-sans { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; }

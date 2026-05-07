@@ -14,7 +14,7 @@ export function DataOpsClient() {
     const [isBackingUp, setIsBackingUp] = useState(false);
     const [isPurging, setIsPurging] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
-    
+
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [factoryConfirmText, setFactoryConfirmText] = useState('');
@@ -23,7 +23,7 @@ export function DataOpsClient() {
         const loadBackups = async () => {
             const result = await fetchR2BackupsAction();
             if (result.success) {
-                setBackups(result.backups);
+                setBackups(result.backups || []);
             }
             setIsLoadingBackups(false);
         };
@@ -33,13 +33,13 @@ export function DataOpsClient() {
     const handleBackup = async () => {
         setIsBackingUp(true);
         toast.loading('Compiling database snapshot...', { id: 'backup' });
-        
+
         const result = await createR2BackupAction();
-        
+
         if (result.success) {
             toast.success(result.message, { id: 'backup' });
             const refresh = await fetchR2BackupsAction();
-            if (refresh.success) setBackups(refresh.backups);
+            if (refresh.success) setBackups(refresh.backups || []);
         } else {
             toast.error(result.error, { id: 'backup' });
         }
@@ -53,17 +53,17 @@ export function DataOpsClient() {
         }
 
         const confirmPurge = confirm(`Are you absolutely sure you want to permanently delete all transactional data between ${startDate} and ${endDate}? This action CANNOT be undone.`);
-        
+
         if (!confirmPurge) return;
 
         setIsPurging(true);
         toast.loading('Purging selected data timeframe...', { id: 'purge' });
-        
+
         // Add artificial delay for loading state effect
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
+
         const result = await purgeDataByDateRangeAction(new Date(startDate).toISOString(), new Date(endDate).toISOString());
-        
+
         if (result.success) {
             toast.success(result.message, { id: 'purge' });
             setStartDate('');
@@ -103,14 +103,14 @@ export function DataOpsClient() {
         }
 
         const finalConfirm = confirm('WARNING: THIS WILL DELETE ALL GUESTS, BOOKINGS, PAYMENTS, AND ORDERS IN THE ENTIRE DATABASE. ONLY PROCEED IF YOU ARE SETTING UP A NEW HOTEL. PROCEED?');
-        
+
         if (!finalConfirm) return;
 
         setIsResetting(true);
         toast.loading('Executing Database Truncation Protocol...', { id: 'reset' });
 
         const result = await factoryResetSystemAction();
-        
+
         if (result.success) {
             toast.success(result.message, { id: 'reset', duration: 10000 });
             setFactoryConfirmText('');
@@ -138,13 +138,13 @@ export function DataOpsClient() {
                                     Generate a structured JSON snapshot of the entire public schema and upload it directly to your remote edge storage bucket.
                                 </p>
                             </div>
-                            <button 
+                            <button
                                 onClick={handleBackup}
                                 disabled={isBackingUp}
                                 className={cn(
                                     "w-full py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all",
-                                    isBackingUp 
-                                        ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
+                                    isBackingUp
+                                        ? "bg-slate-800 text-slate-500 cursor-not-allowed"
                                         : "bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-900/20 active:scale-[0.98]"
                                 )}
                             >
@@ -176,8 +176,8 @@ export function DataOpsClient() {
                             <div className="grid grid-cols-2 gap-4 mt-4">
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-amber-800/60">Start Range</label>
-                                    <input 
-                                        type="date" 
+                                    <input
+                                        type="date"
                                         value={startDate}
                                         onChange={(e) => setStartDate(e.target.value)}
                                         className="w-full px-4 py-3 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-400 text-sm font-bold text-slate-800"
@@ -185,8 +185,8 @@ export function DataOpsClient() {
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-amber-800/60">End Range</label>
-                                    <input 
-                                        type="date" 
+                                    <input
+                                        type="date"
                                         value={endDate}
                                         onChange={(e) => setEndDate(e.target.value)}
                                         min={startDate}
@@ -195,13 +195,13 @@ export function DataOpsClient() {
                                 </div>
                             </div>
 
-                            <button 
+                            <button
                                 onClick={handlePurge}
                                 disabled={isPurging || !startDate || !endDate}
                                 className={cn(
                                     "w-full py-4 mt-2 rounded-xl font-black uppercase text-xs tracking-widest transition-all",
                                     isPurging || !startDate || !endDate
-                                        ? "bg-amber-200 text-amber-400 cursor-not-allowed" 
+                                        ? "bg-amber-200 text-amber-400 cursor-not-allowed"
                                         : "bg-amber-600 hover:bg-amber-700 text-white shadow-xl shadow-amber-900/10 active:scale-[0.98]"
                                 )}
                             >
@@ -247,7 +247,7 @@ export function DataOpsClient() {
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{new Date(backup.lastModified).toLocaleString()}</span>
                                             </div>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={() => handleRestore(backup.key)}
                                             disabled={isRestoring || isBackingUp || isResetting}
                                             className="shrink-0 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:border-indigo-500 hover:text-indigo-600 text-slate-600 rounded-lg text-xs font-black uppercase tracking-widest transition-colors disabled:opacity-50"
@@ -284,7 +284,7 @@ export function DataOpsClient() {
 
                     <div className="prose prose-sm prose-red flex-1">
                         <p className="text-red-800 font-medium leading-relaxed">
-                            This action is designed exclusively for transitioning the software to a completely new property or executing a baseline wipe after testing. 
+                            This action is designed exclusively for transitioning the software to a completely new property or executing a baseline wipe after testing.
                         </p>
                         <h4 className="font-bold text-red-900 mt-4 mb-2 uppercase tracking-wide text-xs">What will be destroyed:</h4>
                         <ul className="list-disc pl-5 space-y-1 text-sm text-red-800/80 font-medium">
@@ -294,7 +294,7 @@ export function DataOpsClient() {
                             <li>Restaurant Orders, Table States, and Reservations</li>
                             <li>System Audit Logs and Attendance Records</li>
                         </ul>
-                        
+
                         <h4 className="font-bold text-emerald-900 mt-4 mb-2 uppercase tracking-wide text-xs">What will survive (Config):</h4>
                         <ul className="list-disc pl-5 space-y-1 text-sm text-emerald-800/80 font-medium pb-6 border-b border-red-200">
                             <li>Master & Staff Profiles</li>
@@ -309,8 +309,8 @@ export function DataOpsClient() {
                             <label className="text-[10px] font-black uppercase tracking-widest text-red-800">
                                 Authorization Required: Type <span className="bg-red-200 px-1 py-0.5 rounded text-red-900">HOTEL NEW GANGA</span>
                             </label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 value={factoryConfirmText}
                                 onChange={(e) => setFactoryConfirmText(e.target.value)}
                                 placeholder="I solemnly swear I am up to no good..."
@@ -318,13 +318,13 @@ export function DataOpsClient() {
                             />
                         </div>
 
-                        <button 
+                        <button
                             onClick={handleFactoryReset}
                             disabled={isResetting || factoryConfirmText !== 'HOTEL NEW GANGA'}
                             className={cn(
                                 "w-full py-5 rounded-xl font-black uppercase tracking-widest transition-all",
                                 isResetting || factoryConfirmText !== 'HOTEL NEW GANGA'
-                                    ? "bg-red-200/50 text-red-400 cursor-not-allowed border border-red-200" 
+                                    ? "bg-red-200/50 text-red-400 cursor-not-allowed border border-red-200"
                                     : "bg-red-600 hover:bg-red-700 text-white shadow-2xl shadow-red-900/30 active:scale-[0.98] border border-red-500"
                             )}
                         >

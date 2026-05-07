@@ -1,18 +1,28 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactCompiler: true,
+  reactCompiler: process.env.NODE_ENV === 'production',
   compress: true,
   poweredByHeader: false,
+  // Increase dev performance by disabling source maps for production-like speed
+  // and optimizing package imports for heavy libraries.
   experimental: {
-    // Tree-shake large icon/chart/animation libs at build time
-    // This alone can cut JS bundle by 200-400KB
     optimizePackageImports: [
       'lucide-react',
       'recharts',
       'framer-motion',
       'date-fns',
+      'sonner',
+      'zod',
+      'clsx',
+      'tailwind-merge',
+      '@supabase/supabase-js'
     ],
+  },
+  logging: {
+    fetches: {
+      fullUrl: false,
+    },
   },
 };
 

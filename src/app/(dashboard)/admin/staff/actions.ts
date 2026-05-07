@@ -17,6 +17,7 @@ const createStaffSchema = z.object({
     password: z.string().min(6, 'Password must be at least 6 characters'),
     role: z.enum(['admin', 'front_desk', 'manager', 'restaurant_staff', 'cleaning_staff', 'master']),
     photo_url: z.string().optional().nullable(),
+    signature_url: z.string().optional().nullable(),
     phone: z.string().optional().nullable(),
     address: z.string().optional().nullable(),
 });
@@ -30,6 +31,7 @@ export async function createStaffMember(formData: FormData) {
             password: formData.get('password'),
             role: formData.get('role'),
             photo_url: formData.get('photo_url') || null,
+            signature_url: formData.get('signature_url') || null,
             phone: formData.get('phone') || null,
             address: formData.get('address') || null,
         };
@@ -59,6 +61,7 @@ export async function createStaffMember(formData: FormData) {
                 phone: parsed.phone,
                 address: parsed.address,
                 ...(parsed.photo_url ? { photo_url: parsed.photo_url } : {}),
+                ...(parsed.signature_url ? { signature_url: parsed.signature_url } : {}),
             }, { onConflict: 'id' });
 
         if (profileError) {
@@ -80,6 +83,7 @@ export async function updateStaffMember(formData: FormData) {
         const role = formData.get('role') as string;
         const status = formData.get('status') as string;
         const photo_url = formData.get('photo_url') as string | null;
+        const signature_url = formData.get('signature_url') as string | null;
         const phone = formData.get('phone') as string | null;
         const address = formData.get('address') as string | null;
 
@@ -96,6 +100,7 @@ export async function updateStaffMember(formData: FormData) {
                 phone,
                 address,
                 ...(photo_url !== null ? { photo_url } : {}),
+                ...(signature_url !== null ? { signature_url } : {}),
             })
             .eq('id', id);
 

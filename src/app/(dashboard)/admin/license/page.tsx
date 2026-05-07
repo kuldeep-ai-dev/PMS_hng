@@ -47,8 +47,13 @@ export default function AdminLicensePage() {
 
     const expiryDate = new Date(status.expiry_date);
     const now = new Date();
-    const diffTime = expiryDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Normalize both dates to midnight to get an accurate calendar day count
+    const d1 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const d2 = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate());
+
+    const diffTime = d2.getTime() - d1.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
     return (
         <div className="p-8 max-w-5xl mx-auto space-y-8 pb-32">

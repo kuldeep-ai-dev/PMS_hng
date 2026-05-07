@@ -7,6 +7,7 @@ import { LogoutButton } from './LogoutButton';
 import { SidebarNav } from './SidebarNav';
 
 interface MobileSidebarProps {
+    isSandboxMode?: boolean;
     initials: string;
     displayName: string;
     role: string;

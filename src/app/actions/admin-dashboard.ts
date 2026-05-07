@@ -1,21 +1,17 @@
 'use server';
 
 import { createAdminClient } from '@/utils/supabase/admin';
-import { getISTTodayRange, getISTDateRange } from '@/utils/date-utils';
+import { getISTTodayRange, getTodayIST } from '@/utils/date';
 import { startOfDay, subDays, format, eachDayOfInterval } from 'date-fns';
 
 export async function getAdminDashboardStats() {
     const supabase = createAdminClient();
     const { start: todayStart, end: todayEnd } = getISTTodayRange();
-
-    // Get the actual ISO date string for IST today (YYYY-MM-DD)
-    const todayIST = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Kolkata',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).format(new Date());
-    const { start: weekStart } = getISTDateRange(7);
+    const todayIST = getTodayIST();
+    // Use a fixed 7-day range for consistency
+    const weekStartDate = new Date();
+    weekStartDate.setDate(weekStartDate.getDate() - 7);
+    const weekStart = weekStartDate.toISOString();
 
     // Parallel fetching for performance
     const [

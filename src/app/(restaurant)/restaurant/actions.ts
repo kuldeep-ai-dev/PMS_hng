@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { startOfDay, endOfDay, subDays, format } from 'date-fns';
 import { revalidatePath } from 'next/cache';
-import { getISTTodayRange } from '@/utils/date-utils';
+import { getISTTodayRange, formatISTDate } from '@/utils/date';
 
 export async function getRestaurantInsights() {
     const supabase = await createClient();
@@ -13,21 +13,7 @@ export async function getRestaurantInsights() {
 
     console.log('[Analytics] Fetching range:', todayStart, 'to', todayEnd);
 
-    // Fetch latest Night Audit to determine the true Business Date (same logic as main dashboard)
-    const { data: latestAudit } = await supabase
-        .from('night_audit_logs')
-        .select('audit_date')
-        .order('audit_date', { ascending: false })
-        .limit(1)
-        .single();
-
-    let businessDateObj = new Date();
-    if (latestAudit?.audit_date) {
-        const lastAuditDate = new Date(latestAudit.audit_date + 'T00:00:00Z');
-        businessDateObj = new Date(lastAuditDate);
-        businessDateObj.setDate(businessDateObj.getDate() + 1);
-    }
-    const businessDate = format(businessDateObj, 'MMM dd, yyyy');
+    const businessDate = formatISTDate(new Date(), 'dashboard');
 
     try {
         // Parallel execution of all necessary data

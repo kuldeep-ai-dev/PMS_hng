@@ -59,7 +59,7 @@ export function LoginForm({ message: initialMessage }: Props) {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[100] bg-slate-50/40 backdrop-blur-[100px] flex flex-col items-center justify-center p-6"
+                            className="fixed inset-0 z-[100] bg-slate-50/40 backdrop-blur-[24px] flex flex-col items-center justify-center p-6"
                         >
                             {/* Sophisticated Background Architecture */}
                             <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -69,7 +69,7 @@ export function LoginForm({ message: initialMessage }: Props) {
                                         rotate: [0, 90, 0],
                                         x: [0, 100, 0]
                                     }}
-                                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                                    transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
                                     className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] bg-blue-400/10 rounded-full blur-[120px]"
                                 />
                                 <motion.div
@@ -78,7 +78,7 @@ export function LoginForm({ message: initialMessage }: Props) {
                                         rotate: [0, -90, 0],
                                         x: [0, -100, 0]
                                     }}
-                                    transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                                    transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
                                     className="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-indigo-400/10 rounded-full blur-[150px]"
                                 />
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.8)_0%,transparent_100%)]" />
@@ -129,7 +129,7 @@ export function LoginForm({ message: initialMessage }: Props) {
                                             <motion.div
                                                 initial={{ width: "0%" }}
                                                 animate={{ width: "100%" }}
-                                                transition={{ duration: 4, ease: "easeInOut" }}
+                                                transition={{ duration: 0.5, ease: "circOut" }}
                                                 className="h-full bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.4)]"
                                             />
                                         </div>

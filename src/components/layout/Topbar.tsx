@@ -11,7 +11,7 @@ import { getLicenseStatus } from '@/app/actions/license';
 const MODULES = [
     { label: 'Front Desk', href: '/front-desk', icon: BedDouble, color: 'bg-teal-500' },
     { label: 'Guests', href: '/guests', icon: Users, color: 'bg-blue-500' },
-    { label: 'Restaurant', href: '/restaurant', icon: UtensilsCrossed, color: 'bg-orange-500' },
+    { label: 'Restaurant', href: '/restaurant', icon: UtensilsCrossed, color: 'bg-orange-500', newTab: true },
     { label: 'Rooms', href: '/rooms', icon: ClipboardList, color: 'bg-purple-500' },
     { label: 'Admin', href: '/admin', icon: BarChart2, color: 'bg-rose-500' },
     { label: 'Settings', href: '/settings', icon: Settings, color: 'bg-slate-500' },
@@ -44,8 +44,14 @@ export function Topbar({ role }: TopbarProps) {
         getLicenseStatus().then(status => {
             if (status) {
                 const expiry = new Date(status.expiry_date);
-                const diff = expiry.getTime() - new Date().getTime();
-                setDaysLeft(Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24))));
+                const now = new Date();
+
+                // Normalize for calendar day count
+                const d1 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const d2 = new Date(expiry.getFullYear(), expiry.getMonth(), expiry.getDate());
+
+                const days = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+                setDaysLeft(Math.max(0, days));
             }
         });
     }, []);
@@ -160,19 +166,42 @@ export function Topbar({ role }: TopbarProps) {
                                 </button>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
-                                {MODULES.map(m => (
-                                    <Link
-                                        key={m.href}
-                                        href={m.href}
-                                        onClick={() => setShowLauncher(false)}
-                                        className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 transition-colors group"
-                                    >
-                                        <div className={`w-10 h-10 ${m.color} rounded-xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}>
-                                            <m.icon className="w-5 h-5 text-white" />
-                                        </div>
-                                        <span className="text-[10px] font-bold text-slate-500 text-center leading-tight">{m.label}</span>
-                                    </Link>
-                                ))}
+                                {MODULES.map(m => {
+                                    const content = (
+                                        <>
+                                            <div className={`w-10 h-10 ${m.color} rounded-xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}>
+                                                <m.icon className="w-5 h-5 text-white" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-500 text-center leading-tight">{m.label}</span>
+                                        </>
+                                    );
+
+                                    if ((m as any).newTab) {
+                                        return (
+                                            <a
+                                                key={m.href}
+                                                href={m.href}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={() => setShowLauncher(false)}
+                                                className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 transition-colors group"
+                                            >
+                                                {content}
+                                            </a>
+                                        );
+                                    }
+
+                                    return (
+                                        <Link
+                                            key={m.href}
+                                            href={m.href}
+                                            onClick={() => setShowLauncher(false)}
+                                            className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 transition-colors group"
+                                        >
+                                            {content}
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

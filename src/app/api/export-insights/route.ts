@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
+import { getBrowser } from '@/utils/puppeteer';
 
 export async function GET(request: NextRequest) {
     const range = request.nextUrl.searchParams.get('range') || '7d';
@@ -8,13 +9,10 @@ export async function GET(request: NextRequest) {
     const url = `http://localhost:3000/print-insights?range=${range}&_token=${pdfToken}`;
 
     let browser;
+    let page;
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-        });
-
-        const page = await browser.newPage();
+        browser = await getBrowser();
+        page = await browser.newPage();
 
         try {
             await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
@@ -29,7 +27,7 @@ export async function GET(request: NextRequest) {
             margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
         });
 
-        await browser.close();
+        await page.close();
 
         const rangeLabels: Record<string, string> = { '7d': '7Days', '1m': '1Month', '2m': '2Months', '3m': '3Months' };
         const filename = `WhatsApp_Insights_${rangeLabels[range] || range}_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -42,7 +40,7 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (err: any) {
-        if (browser) await browser.close();
+        if (page) await page.close();
         console.error('[Export Insights] PDF generation error:', err.message);
         return NextResponse.json({ error: err.message }, { status: 500 });
     }

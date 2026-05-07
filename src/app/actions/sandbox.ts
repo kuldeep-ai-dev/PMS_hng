@@ -4,171 +4,93 @@ import { createAdminClient } from '@/utils/supabase/admin';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Toggles the global Sandbox Mode state in the hotel_settings table.
- * If toggling OFF, it automatically triggers a purge of all sandbox data.
+ * Toggles the global Sandbox Mode in the settings table.
  */
-export async function toggleSandboxModeAction(enabled: boolean) {
-    console.log(`[Sandbox] Toggling mode to: ${enabled ? 'ON' : 'OFF'}`);
+export async function toggleSandboxMode(enabled: boolean) {
     const supabase = createAdminClient();
     
-    try {
-        // 1. Fetch current settings and snapshot if needed
-        const { data: settings } = await supabase.from('hotel_settings').select('id, sandbox_snapshot').single();
+    // Explicitly update all settings rows (usually only 1)
+    const { error } = await supabase
+        .from('hotel_settings')
+        .update({ is_sandbox_mode: enabled })
+        .filter('id', 'neq', '00000000-0000-0000-0000-000000000000'); // Ensure we target the real setting
 
-        // 2. If turning ON, take a snapshot of production state
-        if (enabled) {
-            console.log('[Sandbox] Taking production state snapshot...');
-            const snapshot = await takeStateSnapshot(supabase);
-            const { error: snapErr } = await supabase
-                .from('hotel_settings')
-                .update({ 
-                    is_sandbox_mode: true,
-                    sandbox_snapshot: snapshot 
-                })
-                .eq('id', settings?.id);
-            if (snapErr) throw snapErr;
-        } else {
-            // 3. If turning OFF, restore state from snapshot BEFORE purging data
-            console.log('[Sandbox] Restoring state from snapshot...');
-            await restoreStateFromSnapshot(supabase, settings?.sandbox_snapshot);
-
-            // 4. Update mode to OFF and clear snapshot
-            const { error: settingsError } = await supabase
-                .from('hotel_settings')
-                .update({ 
-                    is_sandbox_mode: false,
-                    sandbox_snapshot: null 
-                })
-                .eq('id', settings?.id);
-            if (settingsError) throw settingsError;
-
-            // 5. Cleanup ALL sandbox database records
-            console.log('[Sandbox] Triggering automatic transactional data purge...');
-            const purgeResult = await purgeSandboxDataAction();
-            if (!purgeResult.success) {
-                console.error('[Sandbox] Automated purge failed:', purgeResult.error);
-            }
-        }
-
-        revalidatePath('/', 'layout');
-        revalidatePath('/settings');
-        
-        return { success: true, mode: enabled ? 'Sandbox' : 'Production' };
-    } catch (err: any) {
-        console.error('[Sandbox] Toggle error:', err.message);
-        return { success: false, error: err.message };
+    if (error) {
+        console.error('[Sandbox] Failed to toggle mode:', error.message);
+        throw new Error(error.message);
     }
+
+    // If turning OFF, automatically trigger a wipe of all test data
+    if (!enabled) {
+        await wipeTestData();
+    }
+
+    revalidatePath('/', 'layout');
+    return { success: true };
 }
 
 /**
- * Permanently deletes all records marked as test data.
+ * Permanently erases all records marked with is_test_data = true across all tables.
  */
-export async function purgeSandboxDataAction() {
+export async function wipeTestData() {
     const supabase = createAdminClient();
-    console.log('[Sandbox] Purging all test data...');
-    
-    try {
-        const tables = [
-            'debug_log', 'companies', 'guests', 'cleaning_assignments', 'payments', 
-            'bookings', 'website_bookings', 'rooms', 'extra_charges', 'profiles', 
-            'room_transfers', 'restaurant_orders', 'restaurant_customers', 'lost_and_found', 
-            'night_audit_logs', 'restaurant_categories', 'restaurant_menu_items', 
-            'restaurant_order_items', 'room_blocks', 'restaurant_tables', 
-            'restaurant_loyalty_transactions', 'inventory_categories', 'inventory_vendors', 
-            'inventory_recipes', 'system_license', 'license_renewal_requests', 
-            'system_activity_logs', 'whatsapp_analytics', 'staff_attendance', 
-            'marketing_campaigns', 'restaurant_loyalty_settings', 'restaurant_reservations', 
-            'restaurant_settings', 'restaurant_loyalty_wallets', 'inventory_items', 
-            'inventory_purchase_orders', 'inventory_po_items', 'inventory_wastage', 
-            'inventory_audits', 'staff_activity_logs', 'leads'
-        ];
+    console.log('[Sandbox] Initiating complete wipe of test data...');
 
-        const results = [];
-        for (const table of tables) {
-            const { error } = await supabase
+    // 1. Identify rooms that need resetting (those occupied by test bookings)
+    const { data: testBookings } = await supabase
+        .from('bookings')
+        .select('room_id')
+        .eq('is_test_data', true);
+
+    const roomIdsToReset = testBookings?.map(b => b.room_id).filter(Boolean) || [];
+
+    const tablesToClean = [
+        'bookings',
+        'payments',
+        'extra_charges',
+        'restaurant_orders',
+        'restaurant_order_items',
+        'room_blocks',
+        'staff_attendance',
+        'guests',
+        'companies',
+        'marketing_leads',
+        'whatsapp_campaigns',
+        'system_activity_logs',
+        'lost_and_found',
+        'marketing_campaigns'
+    ];
+
+    const results = await Promise.all(
+        tablesToClean.map(async (table) => {
+            const { error, count } = await supabase
                 .from(table)
-                .delete()
+                .delete({ count: 'exact' })
                 .eq('is_test_data', true);
             
-            if (error) {
-                console.error(`[Sandbox] Failed to purge table ${table}:`, error.message);
-                results.push({ table, success: false, error: error.message });
-            } else {
-                results.push({ table, success: true });
+            if (error && error.code !== '42703') { // Ignore "column does not exist" errors
+                console.error(`[Sandbox] Failed to clean ${table}:`, error.message);
             }
+            return { table, count };
+        })
+    );
+
+    // 2. DEEP HEAL: Reset ANY room that is marked Occupied but has no Active booking
+    console.log('[Sandbox] Running deep room status healing...');
+    const { data: allRooms } = await supabase.from('rooms').select('id, number, status');
+    const { data: activeBookings } = await supabase.from('bookings').select('room_id').eq('status', 'Active');
+    
+    const activeRoomIds = new Set(activeBookings?.map(b => b.room_id) || []);
+    
+    for (const room of (allRooms || [])) {
+        // If room is marked Occupied but has no active booking, reset it
+        if (room.status === 'Occupied' && !activeRoomIds.has(room.id)) {
+            console.log(`[Sandbox] Healing Room ${room.number}: Occupied -> Available`);
+            await supabase.from('rooms').update({ status: 'Available' }).eq('id', room.id);
         }
-
-        const failed = results.filter(r => !r.success);
-        if (failed.length > 0) {
-            return { 
-                success: false, 
-                error: `Failed to clear some tables: ${failed.map(f => f.table).join(', ')}` 
-            };
-        }
-
-        return { success: true, message: 'Sandbox environment wiped clean.' };
-    } catch (err: any) {
-        return { success: false, error: err.message };
-    }
-}
-
-/**
- * Takes a snapshot of shared mutable assets (Rooms, Inventory, Tables).
- */
-async function takeStateSnapshot(supabase: any) {
-    const [rooms, inventory, tables] = await Promise.all([
-        supabase.from('rooms').select('id, status, blocked_reason'),
-        supabase.from('inventory_items').select('id, current_stock'),
-        supabase.from('restaurant_tables').select('id, status')
-    ]);
-
-    return {
-        rooms: rooms.data || [],
-        inventory: inventory.data || [],
-        tables: tables.data || []
-    };
-}
-
-/**
- * Restores shared mutable assets from a snapshot.
- */
-async function restoreStateFromSnapshot(supabase: any, snapshot: any) {
-    if (!snapshot) {
-        console.warn('[Sandbox] No snapshot found to restore.');
-        return;
     }
 
-    try {
-        // Restore Rooms
-        if (snapshot.rooms?.length > 0) {
-            for (const room of snapshot.rooms) {
-                await supabase.from('rooms').update({ 
-                    status: room.status, 
-                    blocked_reason: room.blocked_reason 
-                }).eq('id', room.id);
-            }
-        }
-
-        // Restore Inventory
-        if (snapshot.inventory?.length > 0) {
-            for (const item of snapshot.inventory) {
-                await supabase.from('inventory_items').update({ 
-                    current_stock: item.current_stock 
-                }).eq('id', item.id);
-            }
-        }
-
-        // Restore Restaurant Tables
-        if (snapshot.tables?.length > 0) {
-            for (const table of snapshot.tables) {
-                await supabase.from('restaurant_tables').update({ 
-                    status: table.status 
-                }).eq('id', table.id);
-            }
-        }
-        
-        console.log('[Sandbox] Asset state restoration complete.');
-    } catch (err: any) {
-        console.error('[Sandbox] State restoration failed:', err.message);
-    }
+    console.log('[Sandbox] Wipe and healing complete. Results:', results);
+    revalidatePath('/', 'layout');
+    return { success: true, results };
 }

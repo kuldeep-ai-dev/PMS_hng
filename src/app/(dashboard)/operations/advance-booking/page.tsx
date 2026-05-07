@@ -7,7 +7,7 @@ import IdDropzone from '@/components/pms/IdDropzone';
 import { formatCurrency } from '@/utils/billing';
 import { formatISTDate } from '@/utils/date';
 import { cn, calculateAge } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { searchGuests } from '../../check-in/actions-client';
 import { submitAdvanceBooking, getAdvanceAvailableRooms, processCancellation, getAdvanceBookings } from './actions';
 import { getSettings } from '../../settings/actions';
@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 
 export default function AdvanceBookingPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
@@ -110,6 +111,26 @@ export default function AdvanceBookingPage() {
                 .finally(() => setLoadingRooms(false));
         }
     }, [formData.check_in_date, formData.check_out_date]);
+
+    // Pre-fill from Website Bookings / Query Params
+    useEffect(() => {
+        if (searchParams.get('prefill') === 'true') {
+            const checkIn = searchParams.get('check_in');
+            const checkOut = searchParams.get('check_out');
+            const tomorrow = new Date(new Date().getTime() + 86400000).toISOString().split('T')[0];
+            const nextDay = new Date(new Date().getTime() + 172800000).toISOString().split('T')[0];
+
+            setFormData(prev => ({
+                ...prev,
+                name: searchParams.get('name') || prev.name,
+                phone: searchParams.get('phone') || prev.phone,
+                email: searchParams.get('email') || prev.email,
+                check_in_date: checkIn && checkIn !== 'null' ? new Date(checkIn).toISOString().split('T')[0] : tomorrow,
+                check_out_date: checkOut && checkOut !== 'null' ? new Date(checkOut).toISOString().split('T')[0] : nextDay,
+                booking_source: 'Website',
+            }));
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
