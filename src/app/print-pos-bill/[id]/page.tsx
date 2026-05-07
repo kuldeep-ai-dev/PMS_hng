@@ -13,16 +13,31 @@ export default async function PrintPOSBillPage({
     searchParams,
 }: {
     params: Promise<{ id: string }>;
-    searchParams: Promise<{ _token?: string; token?: string }>;
+    searchParams: Promise<{ _token?: string; token?: string; accounts_token?: string }>;
 }) {
     const { id: orderId } = await params;
-    const { _token, token } = await searchParams;
+    const { _token, token, accounts_token } = await searchParams;
 
     const pdfToken = _token || token;
     const expectedToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
 
+    // Verify Accounts Token if present
+    let isAccountsVerified = false;
+    if (accounts_token) {
+        try {
+            const crypto = await import('crypto');
+            const [b64Payload, signature] = accounts_token.split('.');
+            const expectedSignature = crypto.createHmac('sha256', expectedToken).update(b64Payload).digest('base64url');
+            if (signature === expectedSignature) {
+                isAccountsVerified = true;
+            }
+        } catch (e) {
+            console.error('Invalid accounts link token', e);
+        }
+    }
+
     let supabase;
-    if (pdfToken && pdfToken === expectedToken) {
+    if ((pdfToken && pdfToken === expectedToken) || isAccountsVerified) {
         const { createClient: createJsClient } = await import('@supabase/supabase-js');
         supabase = createJsClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,

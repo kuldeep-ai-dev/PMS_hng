@@ -642,3 +642,42 @@ export async function testSendCheckoutMail(targetEmail: string) {
         return { success: false, message: err.message };
     }
 }
+
+export async function sendAccountsPortalEmail(startDate: string, endDate: string, link: string, targetEmail: string, accountantName: string) {
+    try {
+        const settings = await getSettings();
+        const hotelName = settings?.hotel_name || 'Hotel New Ganga';
+
+        await transporter.sendMail({
+            from: `"Accounts Department | ${hotelName}" <bookings@hotelnewganga.in>`,
+            to: targetEmail,
+            subject: `Accounts Audit Link: Temporary Access to Invoices & Receipts (${startDate} to ${endDate})`,
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; color: #333;">
+                    <h2 style="color: #0f766e;">Hello ${accountantName || 'Accountant'},</h2>
+                    <p>The management at <strong>${hotelName}</strong> has exported a batch of Money Receipts and Invoices for your review.</p>
+                    
+                    <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid #0f766e; margin: 20px 0;">
+                        <strong>Period:</strong> ${startDate} to ${endDate}<br/>
+                    </div>
+                    
+                    <p>You can access, view, and securely download these documents (individually or collectively) using your dedicated Accounts Portal access link below. <strong>No login is required.</strong></p>
+                    
+                    <div style="margin: 30px 0;">
+                        <a href="${link}" style="background-color: #0f766e; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">Access Accounts Portal</a>
+                    </div>
+                    
+                    <p style="font-size: 11px; color: #64748b; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                        This is an automated administrative export from the Geny PMS Pro Engine.<br/>
+                        For security purposes, do not forward this email to unauthorized personnel as the link provides direct access to financial documents.
+                    </p>
+                </div>
+            `
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        console.error('[Mailer] Error sending Accounts email:', e);
+        return { success: false, error: e.message };
+    }
+}

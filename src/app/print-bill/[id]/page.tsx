@@ -13,19 +13,32 @@ export default async function PrintBillPage({
     searchParams,
 }: {
     params: Promise<{ id: string }>;
-    searchParams: Promise<{ provisional?: string; type?: string; _token?: string; token?: string }>;
+    searchParams: Promise<{ provisional?: string; type?: string; _token?: string; token?: string; accounts_token?: string }>;
 }) {
     const { id: bookingId } = await params;
-    const { provisional, type, _token, token } = await searchParams;
+    const { provisional, type, _token, token, accounts_token } = await searchParams;
     const isProvisional = provisional === 'true' || type === 'provisional';
 
     const pdfToken = _token || token;
     const expectedToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
 
-    // Internal PDF generation might use a token to bypass normal auth via middleware
-    // But here we need a supabase client.
+    // Verify Accounts Token if present
+    let isAccountsVerified = false;
+    if (accounts_token) {
+        try {
+            const crypto = await import('crypto');
+            const [b64Payload, signature] = accounts_token.split('.');
+            const expectedSignature = crypto.createHmac('sha256', expectedToken).update(b64Payload).digest('base64url');
+            if (signature === expectedSignature) {
+                isAccountsVerified = true;
+            }
+        } catch (e) {
+            console.error('Invalid accounts link token', e);
+        }
+    }
+
     let supabase;
-    if (pdfToken && pdfToken === expectedToken) {
+    if ((pdfToken && pdfToken === expectedToken) || isAccountsVerified) {
         supabase = createJsClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!

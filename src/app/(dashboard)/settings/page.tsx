@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { BentoCard } from '@/components/ui/BentoCard';
-import { Settings, Save, Building, Tag, IndianRupee, MapPin, Loader2, X, Plus, Globe, RefreshCw, Copy, Check, MessageCircle, FileKey2 } from 'lucide-react';
+import { Settings, Save, Building, Tag, IndianRupee, MapPin, Loader2, X, Plus, Globe, RefreshCw, Copy, Check, MessageCircle, FileKey2, Users } from 'lucide-react';
 import { getSettings, updateSettings } from './actions';
 import { toast } from 'sonner';
 
@@ -269,6 +269,39 @@ export default function SettingsPage() {
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm font-bold"
                                 />
                             </div>
+                        </div>
+                    </div>
+                </BentoCard>
+
+                {/* Accounts & Finance Roles */}
+                <BentoCard className="p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                            <Users className="w-5 h-5" />
+                        </div>
+                        <h2 className="font-bold text-slate-800">Accounts & Finance Team</h2>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Accountant Name</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. John Doe"
+                                value={settings.accountant_name || ''}
+                                onChange={e => setSettings({ ...settings, accountant_name: e.target.value })}
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Accountant Email</label>
+                            <input
+                                type="email"
+                                placeholder="accounts@hotel.com"
+                                value={settings.accountant_email || ''}
+                                onChange={e => setSettings({ ...settings, accountant_email: e.target.value })}
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                            />
                         </div>
                     </div>
                 </BentoCard>

@@ -144,3 +144,42 @@ export async function settlePOSWithRestaurant(orderId: string) {
     revalidatePath('/operations/money-receipts');
     return { success: true };
 }
+
+import * as crypto from 'crypto';
+import { sendAccountsPortalEmail } from '@/app/actions/mail';
+import { getSettings } from '@/app/(dashboard)/settings/actions';
+
+export async function generateAndSendAccountsLink(startDate: string, endDate: string) {
+    try {
+        const settings = await getSettings();
+
+        if (!settings.accountant_email) {
+            return { success: false, message: 'Accountant email is not configured in settings.' };
+        }
+
+        // Generate a secure JWT-like token without requiring DB schema changes
+        const payload = JSON.stringify({ startDate, endDate, iat: Date.now() });
+        const b64Payload = Buffer.from(payload).toString('base64url');
+        const secret = process.env.INTERNAL_PDF_TOKEN || 'fallback-secret-2026';
+        const signature = crypto.createHmac('sha256', secret).update(b64Payload).digest('base64url');
+
+        const token = `${b64Payload}.${signature}`;
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const link = `${appUrl}/accounts-portal/${token}`;
+
+        const result = await sendAccountsPortalEmail(
+            startDate,
+            endDate,
+            link,
+            settings.accountant_email,
+            settings.accountant_name || 'Accountant'
+        );
+
+        if (!result.success) throw new Error(result.error);
+
+        return { success: true, message: 'Accounts portal link sent successfully to ' + settings.accountant_email };
+    } catch (err: any) {
+        console.error('Error generating accounts link:', err);
+        return { success: false, message: err.message || 'Failed to send accounts link' };
+    }
+}

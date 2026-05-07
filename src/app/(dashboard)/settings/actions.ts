@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS = {
     email: "",
     logo_url: "",
     signature_url: "",
+    accountant_name: "",
+    accountant_email: "",
     webhook_secret: "",
     inbound_api_key: "",
     whatsapp_enabled: false,

@@ -17,9 +17,11 @@ import {
     RotateCcw,
     AlertCircle,
     CheckCircle2,
-    Undo2
+    Undo2,
+    Mail,
+    Send
 } from 'lucide-react';
-import { getMoneyReceiptsData, getReceiptStats, processRefund, settlePOSWithRestaurant } from './actions';
+import { getMoneyReceiptsData, getReceiptStats, processRefund, settlePOSWithRestaurant, generateAndSendAccountsLink } from './actions';
 import { generateInvoiceNo, formatCurrency } from '@/utils/billing';
 import { formatISTDate, formatISTTime } from '@/utils/date';
 import { cn } from '@/lib/utils';
@@ -41,6 +43,13 @@ export default function MoneyReceiptsPage() {
     const [filterMethod, setFilterMethod] = useState('All');
     const [filterSource, setFilterSource] = useState('All');
 
+    // Accounts send states
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isAccountsModalOpen, setIsAccountsModalOpen] = useState(false);
+    const [accountsStartDate, setAccountsStartDate] = useState('');
+    const [accountsEndDate, setAccountsEndDate] = useState('');
+    const [isSendingAccounts, setIsSendingAccounts] = useState(false);
+
     useEffect(() => {
         loadData();
 
@@ -60,6 +69,15 @@ export default function MoneyReceiptsPage() {
     const loadData = async () => {
         try {
             setLoading(true);
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role === 'admin' || profile?.role === 'master' || profile?.role === 'owner') {
+                    setIsAdmin(true);
+                }
+            }
+
             const [receipts, statistics] = await Promise.all([
                 getMoneyReceiptsData(),
                 getReceiptStats()
@@ -212,6 +230,15 @@ export default function MoneyReceiptsPage() {
                         <Download className="w-4 h-4" />
                         Export PDF
                     </button>
+                    {isAdmin && (
+                        <button
+                            onClick={() => setIsAccountsModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-medium text-sm shadow-sm active:scale-95"
+                        >
+                            <Mail className="w-4 h-4" />
+                            Send to Accounts
+                        </button>
+                    )}
                     <button
                         onClick={loadData}
                         className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-all font-medium text-sm shadow-sm active:scale-95"
@@ -582,6 +609,86 @@ export default function MoneyReceiptsPage() {
                             >
                                 {isProcessingRefund ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
                                 Confirm Refund
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Send to Accounts Modal */}
+            {isAccountsModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-3 text-indigo-600">
+                                <Mail className="w-5 h-5" />
+                                <h3 className="font-black text-lg tracking-tight">Send to Accounts</h3>
+                            </div>
+                            <button
+                                onClick={() => setIsAccountsModalOpen(false)}
+                                className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+                            >
+                                <CloseIcon className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-slate-500 font-medium">
+                                Generate a temporary, secure web portal link containing all invoices within a specified date range and send it directly to your configured Accounts email.
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Start Date</label>
+                                    <input
+                                        type="date"
+                                        value={accountsStartDate}
+                                        onChange={(e) => setAccountsStartDate(e.target.value)}
+                                        max={new Date().toISOString().split('T')[0]}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">End Date</label>
+                                    <input
+                                        type="date"
+                                        value={accountsEndDate}
+                                        onChange={(e) => setAccountsEndDate(e.target.value)}
+                                        max={new Date().toISOString().split('T')[0]}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex gap-3">
+                            <button
+                                onClick={() => setIsAccountsModalOpen(false)}
+                                className="flex-1 px-4 py-3 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                disabled={isSendingAccounts || !accountsStartDate || !accountsEndDate}
+                                onClick={async () => {
+                                    setIsSendingAccounts(true);
+                                    try {
+                                        const res = await generateAndSendAccountsLink(accountsStartDate, accountsEndDate);
+                                        if (res.success) {
+                                            toast.success(res.message);
+                                            setIsAccountsModalOpen(false);
+                                        } else {
+                                            toast.error(res.message);
+                                        }
+                                    } catch (err: any) {
+                                        toast.error(err.message || 'Failed to send accounts link');
+                                    } finally {
+                                        setIsSendingAccounts(false);
+                                    }
+                                }}
+                                className="flex-1 px-4 py-3 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isSendingAccounts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                Generate & Send
                             </button>
                         </div>
                     </div>
