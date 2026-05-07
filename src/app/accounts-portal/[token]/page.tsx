@@ -24,14 +24,26 @@ function verifyToken(token: string) {
         if (signature !== expectedSignature) return null;
 
         const payloadStr = Buffer.from(b64Payload, 'base64url').toString('utf-8');
-        return JSON.parse(payloadStr);
+        const parsed = JSON.parse(payloadStr);
+
+        // Verify 48 hour expiration
+        if (parsed.iat) {
+            const ageMs = Date.now() - parsed.iat;
+            if (ageMs > 48 * 60 * 60 * 1000) {
+                console.error('Accounts token has expired (older than 48 hrs)');
+                return null;
+            }
+        }
+
+        return parsed;
     } catch {
         return null;
     }
 }
 
-export default async function AccountsPortalPage({ params }: { params: { token: string } }) {
-    const payload = verifyToken(params.token);
+export default async function AccountsPortalPage({ params }: { params: Promise<{ token: string }> }) {
+    const { token } = await params;
+    const payload = verifyToken(token);
 
     if (!payload || !payload.startDate || !payload.endDate) {
         return (

@@ -29,7 +29,16 @@ export default async function PrintPOSBillPage({
             const [b64Payload, signature] = accounts_token.split('.');
             const expectedSignature = crypto.createHmac('sha256', expectedToken).update(b64Payload).digest('base64url');
             if (signature === expectedSignature) {
-                isAccountsVerified = true;
+                const payloadStr = Buffer.from(b64Payload, 'base64url').toString('utf-8');
+                const parsed = JSON.parse(payloadStr);
+                if (parsed.iat) {
+                    const ageMs = Date.now() - parsed.iat;
+                    if (ageMs <= 48 * 60 * 60 * 1000) {
+                        isAccountsVerified = true;
+                    }
+                } else {
+                    isAccountsVerified = true;
+                }
             }
         } catch (e) {
             console.error('Invalid accounts link token', e);
