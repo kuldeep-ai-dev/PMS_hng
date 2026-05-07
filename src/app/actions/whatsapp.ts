@@ -353,7 +353,7 @@ export async function sendHousekeepingAssignmentWhatsApp(assignmentId: string) {
             await supabase.from('whatsapp_analytics').insert({
                 wamid: result.messageId,
                 status: 'sent',
-                template_type: 'test', // We can add 'housekeeping' to the enum later, using 'test' as fallback for now to avoid schema error if not present
+                template_type: 'housekeeping',
                 guest_name: assignment.profiles.name,
                 guest_phone: phone,
                 tracking_id: assignmentId,
