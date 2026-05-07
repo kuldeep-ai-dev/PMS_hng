@@ -359,6 +359,19 @@ export async function sendHousekeepingAssignmentWhatsApp(assignmentId: string) {
                 tracking_id: assignmentId,
                 sent_at: new Date().toISOString()
             });
+        } else {
+            console.error('[WhatsApp] Housekeeping notification failed:', result.error);
+            // Also log the failure to analytics for debugging
+            await supabase.from('whatsapp_analytics').insert({
+                wamid: `fail-${Date.now()}`,
+                status: 'failed',
+                template_type: 'housekeeping',
+                guest_name: assignment.profiles.name,
+                guest_phone: phone,
+                tracking_id: assignmentId,
+                error_message: result.error || 'Unknown API error',
+                sent_at: new Date().toISOString()
+            });
         }
 
         return result;
