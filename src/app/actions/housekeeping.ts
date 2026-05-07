@@ -89,7 +89,7 @@ export async function assignCleaningStaff(roomId: string, staffId: string) {
         .select('id')
         .eq('room_id', roomId)
         .in('status', ['pending', 'in_progress'])
-        .order('assigned_at', { descending: false })
+        .order('assigned_at', { ascending: false })
         .limit(1)
         .single();
 
