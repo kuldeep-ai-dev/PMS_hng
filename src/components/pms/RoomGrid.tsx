@@ -9,8 +9,9 @@ import { formatCurrency } from '@/utils/billing';
 import { formatISTDate } from '@/utils/date';
 import { cn } from '@/lib/utils';
 import { getAvailableCleaningStaff, assignCleaningStaff } from '@/app/actions/housekeeping';
-import { unblockRoom } from '@/app/actions/rooms';
+import { unblockRoom, getRoomGridData } from '@/app/actions/rooms';
 import { toast } from 'sonner';
+import { createClient } from '@/utils/supabase/client';
 
 type RoomStatus = 'Available' | 'Occupied' | 'Dirty' | 'Maintenance' | 'Blocked';
 
@@ -74,11 +75,47 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
     const [loadingStaff, setLoadingStaff] = useState(false);
     const [assigningId, setAssigningId] = useState<string | null>(null);
     const [rooms, setRooms] = useState<Room[]>(initialRooms);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Synchronize state if props change (e.g. from server refresh)
     useEffect(() => {
         setRooms(initialRooms);
     }, [initialRooms]);
+
+    // Function to fetch latest data and update state
+    const refreshData = async () => {
+        setIsRefreshing(true);
+        try {
+            const data: any = await getRoomGridData();
+            setRooms(data);
+        } catch (error) {
+            console.error('[RoomGrid] Failed to refresh data:', error);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    // Real-time subscription
+    useEffect(() => {
+        const supabase = createClient();
+
+        const channel = supabase
+            .channel('room_grid_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
+                refreshData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'cleaning_assignments' }, () => {
+                refreshData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+                refreshData();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
 
     const filteredRooms = filter === 'All' ? rooms : rooms.filter(r => r.status === filter);
 

@@ -2,7 +2,8 @@ import { createClient } from '@/utils/supabase/server';
 import { RoomGrid } from '@/components/pms/RoomGrid';
 import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
 
-export const revalidate = 30;
+// Real-time synchronization is handled via a client-side subscription.
+export const dynamic = 'force-dynamic';
 
 export default async function FrontDeskPage() {
     const supabase = await createClient();
@@ -67,7 +68,6 @@ export default async function FrontDeskPage() {
 
     return (
         <>
-            <RealtimeRefresh />
             <RoomGrid initialRooms={formattedRooms as any} />
         </>
     );
