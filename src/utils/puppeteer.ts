@@ -58,10 +58,20 @@ export async function getBrowser(): Promise<Browser> {
 
     // 4. Default Fallback
     console.log('[Puppeteer] Launching default bundled browser...');
-    globalForPuppeteer.browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox']
-    });
-
-    return globalForPuppeteer.browser!;
+    try {
+        globalForPuppeteer.browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+        return globalForPuppeteer.browser!;
+    } catch (e) {
+        console.error('[Puppeteer] CRITICAL: Failed to launch local/bundled browser.');
+        if (!isMac && !browserlessToken) {
+            throw new Error(
+                'PDF Generation failed: Could not find Chrome on this Linux/Server environment. ' +
+                'Action Required: Please set the BROWSERLESS_API_KEY environment variable to use cloud-based browser execution.'
+            );
+        }
+        throw e;
+    }
 }

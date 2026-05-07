@@ -92,7 +92,8 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Pr
     const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__GENY_PMS_INTERNAL_SECRET_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
     if (isProvisional) params.set('type', 'provisional');
-    const url = `http://localhost:3000/print-bill/${bookingId}?${params.toString()}`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hotelnewganga.in';
+    const url = `${baseUrl}/print-bill/${bookingId}?${params.toString()}`;
 
     console.log('[WhatsApp] Generating PDF for:', url);
     let browser;
@@ -101,13 +102,7 @@ async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Pr
         browser = await getBrowser();
         page = await browser.newPage();
 
-        try {
-            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-        } catch (e) {
-            console.warn('[WhatsApp] Localhost failed, trying 127.0.0.1...');
-            const fallbackUrl = url.replace('localhost', '127.0.0.1');
-            await page.goto(fallbackUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-        }
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
         const rawPdfBuffer = await page.pdf({
             format: 'A4',
