@@ -17,26 +17,34 @@ export const metadata = {
 
 function verifyToken(token: string) {
     try {
+        console.log('[verifyToken] Raw token:', token);
         const [b64Payload, signature] = token.split('.');
         const secret = process.env.INTERNAL_PDF_TOKEN || 'fallback-secret-2026';
         const expectedSignature = crypto.createHmac('sha256', secret).update(b64Payload).digest('base64url');
 
-        if (signature !== expectedSignature) return null;
+        console.log('[verifyToken] Signature mapping:', { received: signature, expected: expectedSignature });
+
+        if (signature !== expectedSignature) {
+            console.error('[verifyToken] Signature mismatch!');
+            return null;
+        }
 
         const payloadStr = Buffer.from(b64Payload, 'base64url').toString('utf-8');
+        console.log('[verifyToken] Payload String:', payloadStr);
         const parsed = JSON.parse(payloadStr);
 
         // Verify 48 hour expiration
         if (parsed.iat) {
             const ageMs = Date.now() - parsed.iat;
             if (ageMs > 48 * 60 * 60 * 1000) {
-                console.error('Accounts token has expired (older than 48 hrs)');
+                console.error('[verifyToken] Accounts token has expired (older than 48 hrs)');
                 return null;
             }
         }
 
         return parsed;
-    } catch {
+    } catch (e: any) {
+        console.error('[verifyToken] Exception:', e);
         return null;
     }
 }

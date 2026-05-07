@@ -33,15 +33,23 @@ export async function updateSession(request: NextRequest) {
     // Allow Puppeteer (PDF generation) to access /print- routes without auth
     // by verifying a secret internal token passed as a query parameter
     if (pathname.startsWith('/print-') || pathname.startsWith('/api/migrate-settlement')) {
-        const token = request.nextUrl.searchParams.get('_token');
+        const internalToken = request.nextUrl.searchParams.get('_token');
+        const accountsToken = request.nextUrl.searchParams.get('accounts_token');
         const expectedToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
-        if (token === expectedToken) {
+        if (internalToken === expectedToken || accountsToken) {
             return supabaseResponse; // Allow through without auth
         }
     }
 
     // Redirect unauthenticated users to login
-    const isPublicRoute = pathname.startsWith('/login') || pathname.startsWith('/auth') || pathname.startsWith('/qr-order') || pathname.startsWith('/security-protocols') || pathname.startsWith('/data-policy');
+    // /accounts-portal is a public, token-secured route for accountants — no login needed
+    const isPublicRoute =
+        pathname.startsWith('/login') ||
+        pathname.startsWith('/auth') ||
+        pathname.startsWith('/qr-order') ||
+        pathname.startsWith('/security-protocols') ||
+        pathname.startsWith('/data-policy') ||
+        pathname.startsWith('/accounts-portal');
 
     if (!user && !isPublicRoute) {
         const url = request.nextUrl.clone();
@@ -53,10 +61,10 @@ export async function updateSession(request: NextRequest) {
     // Skip the profile DB fetch for static assets and API routes — they never need role checks.
     if (user) {
         const isStaticPath = SKIP_PROFILE_PREFIXES.some(prefix => pathname.startsWith(prefix));
-                // Extra guard: Ignore any path that looks like a static asset (.css, .js, .png, etc)
-        const isAsset = pathname.includes('.') && 
-                        !pathname.endsWith('.html') && 
-                        !pathname.endsWith('.php'); // safety for some edge cases
+        // Extra guard: Ignore any path that looks like a static asset (.css, .js, .png, etc)
+        const isAsset = pathname.includes('.') &&
+            !pathname.endsWith('.html') &&
+            !pathname.endsWith('.php'); // safety for some edge cases
 
         if (!isStaticPath && !isAsset) {
             const { data: profile } = await supabase
