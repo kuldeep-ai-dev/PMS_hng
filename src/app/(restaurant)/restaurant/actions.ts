@@ -3,12 +3,12 @@
 import { createClient } from '@/utils/supabase/server';
 import { startOfDay, endOfDay, subDays, format } from 'date-fns';
 import { revalidatePath } from 'next/cache';
-import { getISTTodayRange, formatISTDate } from '@/utils/date';
+import { getISTTodayRange, formatISTDate, getISTDate, formatISTShort } from '@/utils/date';
 
 export async function getRestaurantInsights() {
     const supabase = await createClient();
     const { start: todayStart, end: todayEnd } = getISTTodayRange();
-    const now = new Date();
+    const now = getISTDate();
     const sevenDaysAgo = new Date(new Date(todayStart).getTime() - 6 * 24 * 60 * 60 * 1000).toISOString();
 
     console.log('[Analytics] Fetching range:', todayStart, 'to', todayEnd);
@@ -104,13 +104,13 @@ export async function getRestaurantInsights() {
         // 4. Chart Data Generation (Last 7 Days)
         const chartDataMap = new Map();
         for (let i = 6; i >= 0; i--) {
-            const dateLabel = format(subDays(now, i), 'MMM dd');
+            const dateLabel = formatISTShort(subDays(now, i));
             chartDataMap.set(dateLabel, 0);
         }
 
         allOrders.forEach(order => {
             if (['paid', 'charged_to_room'].includes(order.payment_status)) {
-                const dateLabel = format(new Date(order.order_time), 'MMM dd');
+                const dateLabel = formatISTShort(new Date(order.order_time));
                 if (chartDataMap.has(dateLabel)) {
                     chartDataMap.set(dateLabel, chartDataMap.get(dateLabel) + Number(order.total_amount));
                 }

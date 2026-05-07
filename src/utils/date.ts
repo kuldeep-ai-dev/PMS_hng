@@ -102,17 +102,15 @@ export function getISTTodayRange() {
  * Returns the UTC range for the last N days in IST.
  */
 export function getISTDateRange(daysBack: number) {
-    const { end } = getISTTodayRange();
-    const endDate = new Date(end);
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - daysBack);
-    // Align with start of day for the beginning of the range
-    startDate.setHours(0, 0, 0, 0);
+    const today = getTodayIST();
+    // India is UTC +5.5. Range start should be 00:00 IST of (Today - N)
+    const startDateObj = new Date(`${today}T00:00:00.000+05:30`);
+    startDateObj.setDate(startDateObj.getDate() - daysBack);
 
-    return {
-        start: startDate.toISOString(),
-        end: endDate.toISOString()
-    };
+    const start = startDateObj.toISOString();
+    const { end } = getISTTodayRange();
+
+    return { start, end };
 }
 
 /**
@@ -150,4 +148,32 @@ export function getISTNow(): Date {
 
     // Create UTC date first, then adjust to the extracted parts
     return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+}
+
+/**
+ * Returns a Javascript Date object for the start of the IST day (00:00:00)
+ */
+export function getISTMidnight(date?: string | Date): Date {
+    const d = date ? (typeof date === 'string' ? new Date(date) : date) : new Date();
+    const istStr = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour12: false
+    }).format(d);
+    const [month, day, year] = istStr.split('/');
+    return new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0);
+}
+
+/**
+ * Robust check if a checkout date (YYYY-MM-DD) has passed the 12:00 PM IST limit.
+ */
+export function isOverstay(checkOutDate: string): boolean {
+    if (!checkOutDate) return false;
+    const now = getISTNow();
+    // Standard checkout is 12:00 PM IST
+    const checkoutLimit = getISTMidnight(checkOutDate);
+    checkoutLimit.setHours(12, 0, 0, 0);
+    return now > checkoutLimit;
 }

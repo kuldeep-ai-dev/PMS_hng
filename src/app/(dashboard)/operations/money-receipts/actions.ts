@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
+import { getISTTodayRange } from '@/utils/date';
 
 export async function getMoneyReceiptsData(startDate?: string, endDate?: string) {
     const supabase = await createClient();
@@ -23,8 +24,12 @@ export async function getMoneyReceiptsData(startDate?: string, endDate?: string)
             )
         `);
 
-    if (startDate) query = query.gte('created_at', startDate);
-    if (endDate) query = query.lte('created_at', endDate + 'T23:59:59');
+    if (startDate) {
+        query = query.gte('created_at', startDate);
+    }
+    if (endDate) {
+        query = query.lte('created_at', endDate + 'T23:59:59.999+05:30');
+    }
 
     const { data: payments, error } = await query.order('created_at', { ascending: false });
 
@@ -46,8 +51,12 @@ export async function getMoneyReceiptsData(startDate?: string, endDate?: string)
         .in('payment_status', ['paid', 'charged_to_room'])
         .in('status', ['preparing', 'ready', 'served', 'completed']);
 
-    if (startDate) posQuery = posQuery.gte('order_time', startDate);
-    if (endDate) posQuery = posQuery.lte('order_time', endDate + 'T23:59:59');
+    if (startDate) {
+        posQuery = posQuery.gte('order_time', startDate);
+    }
+    if (endDate) {
+        posQuery = posQuery.lte('order_time', endDate + 'T23:59:59.999+05:30');
+    }
 
     const { data: restaurantPayments, error: posError } = await posQuery.order('order_time', { ascending: false });
 
@@ -64,11 +73,10 @@ export async function getMoneyReceiptsData(startDate?: string, endDate?: string)
 export async function getReceiptStats(startDate?: string, endDate?: string) {
     const supabase = await createClient();
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { start: todayStart, end: todayEnd } = getISTTodayRange();
 
-    const filterStart = startDate ? new Date(startDate).toISOString() : today.toISOString();
-    const filterEnd = endDate ? new Date(endDate + 'T23:59:59').toISOString() : new Date().toISOString();
+    const filterStart = startDate ? new Date(`${startDate}T00:00:00.000+05:30`).toISOString() : todayStart;
+    const filterEnd = endDate ? new Date(`${endDate}T23:59:59.999+05:30`).toISOString() : todayEnd;
 
     // Total in range (Room)
     const { data: todayRoom } = await supabase

@@ -44,6 +44,8 @@ export async function logPayment(bookingId: string, amount: number, method: stri
             .select();
 
         if (error) throw error;
+        revalidatePath(`/folio/${bookingId}`);
+        revalidatePath('/');
         return { success: true, data: data?.[0], error: null };
     } catch (err: any) {
         console.error('[Folio] logPayment error:', err);
@@ -114,6 +116,8 @@ export async function extendStay(bookingId: string, additionalNights: number) {
             .eq('id', bookingId);
 
         if (updateErr) throw updateErr;
+        revalidatePath(`/folio/${bookingId}`);
+        revalidatePath('/');
         return { success: true, newCheckoutDate: currentCheckout.toISOString(), error: null };
     } catch (err: any) {
         console.error('[Folio] extendStay error:', err);
@@ -162,6 +166,11 @@ export async function performCheckout(bookingId: string, roomId: string, billToC
             const assignedCleaner = cleaners[Math.floor(Math.random() * cleaners.length)];
             await assignCleaningStaff(roomId, assignedCleaner.id);
         }
+
+        revalidatePath('/front-desk');
+        revalidatePath('/rooms');
+        revalidatePath(`/folio/${bookingId}`);
+        revalidatePath('/', 'layout');
 
         return { success: true };
     } catch (err: any) {
@@ -270,6 +279,11 @@ export async function transferRoom(
                 assigned_at: new Date().toISOString()
             });
         }
+
+        revalidatePath('/front-desk');
+        revalidatePath('/rooms');
+        revalidatePath(`/folio/${bookingId}`);
+        revalidatePath('/', 'layout');
 
         return { success: true, newRoomNumber: toRoom.number, error: null };
     } catch (err: any) {

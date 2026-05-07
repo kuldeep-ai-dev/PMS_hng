@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { BentoCard } from '@/components/ui/BentoCard';
 import { Search, CheckCircle2, ChevronRight, Loader2, IndianRupee, X, Users, BedDouble, Calendar } from 'lucide-react';

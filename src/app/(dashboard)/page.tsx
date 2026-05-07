@@ -50,7 +50,8 @@ export default async function Dashboard() {
   }
 
   const { start: istStart, end: istEnd } = getISTTodayRange();
-  const sevenDaysAgo = subDays(getISTDate(), 6).toISOString();
+  // Calculate 7 days ago relative to IST start
+  const sevenDaysAgo = new Date(new Date(istStart).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // Parallel Data Fetching
   const [
@@ -84,7 +85,6 @@ export default async function Dashboard() {
   // --- Process Business Date ---
   const businessDateDisplay = formatISTDate(getTodayIST(), 'dashboard');
   const today = getISTDate();
-  today.setHours(0, 0, 0, 0);
 
   // --- Process Revenue ---
   let todayRevenue = 0;

@@ -8,8 +8,8 @@ export async function getAdminDashboardStats() {
     const supabase = createAdminClient();
     const { start: todayStart, end: todayEnd } = getISTTodayRange();
     const todayIST = getTodayIST();
-    // Use getISTDate to handle the rolling window relative to India
-    const weekStart = subDays(getISTDate(), 7).toISOString();
+    // Use start of today minus 7 days for the week range
+    const weekStart = new Date(new Date(todayStart).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     // Parallel fetching for performance
     const [
@@ -50,9 +50,10 @@ export async function getAdminDashboardStats() {
 
     // 4. Chart Data (Last 7 Days)
     const chartDataMap = new Map<string, number>();
+    const today = getISTDate();
     const interval = eachDayOfInterval({
-        start: subDays(getISTDate(), 6),
-        end: getISTDate()
+        start: subDays(today, 6),
+        end: today
     });
 
     interval.forEach(day => {
