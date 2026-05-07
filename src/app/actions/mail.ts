@@ -312,9 +312,9 @@ export async function sendBookingConfirmation(bookingId: string) {
 
         const pdfBuffer = await generateInvoicePDF(bookingId, true);
 
-        // TRIGGER WHATSAPP (Concurrent with Email)
+        // TRIGGER WHATSAPP (Concurrent with Email, passing the pdfBuffer we already generated)
         let waResult: any = null;
-        const waPromise = sendBookingWhatsApp(bookingId).then(r => { waResult = r; return r; }).catch(err => {
+        const waPromise = sendBookingWhatsApp(bookingId, pdfBuffer).then(r => { waResult = r; return r; }).catch(err => {
             console.error('[Mailer] WhatsApp booking send failed:', err.message);
             waResult = { success: false, error: err.message };
         });
@@ -409,9 +409,9 @@ export async function sendCheckoutMail(bookingId: string) {
             }
         ];
 
-        // TRIGGER WHATSAPP (Early so it's not blocked by email failures)
+        // TRIGGER WHATSAPP (Early, passing the pdfBuffer we already generated)
         let waResult: any = null;
-        const waPromise = sendCheckoutWhatsApp(bookingId).then(r => { waResult = r; return r; }).catch(err => {
+        const waPromise = sendCheckoutWhatsApp(bookingId, pdfBuffer).then(r => { waResult = r; return r; }).catch(err => {
             console.error('[Mailer] WhatsApp checkout send failed:', err.message);
             waResult = { success: false, error: err.message };
         });

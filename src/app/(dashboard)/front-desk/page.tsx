@@ -33,7 +33,8 @@ export default async function FrontDeskPage() {
                 profiles (name)
             )
         `)
-        .order('number', { ascending: true });
+        .order('number', { ascending: true })
+        .order('assigned_at', { foreignTable: 'cleaning_assignments', ascending: false });
 
     // Map the database structure to the expected Room interface
     // Note: We use a robust YYYY-MM-DD comparison for the India timezone.

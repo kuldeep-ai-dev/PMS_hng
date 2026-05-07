@@ -24,24 +24,27 @@ export async function getCleaningStaff() {
         .from('cleaning_assignments')
         .select('staff_id, status');
 
-    const busyIds = new Set(
-        busyStaff?.filter(s => {
-            const status = s.status?.toLowerCase().replace('-', '_');
-            return status === 'pending' || status === 'in_progress';
-        }).map(s => s.staff_id) || []
-    );
+    // Calculate task count for each staff
+    const taskCounts: Record<string, number> = {};
+    busyStaff?.forEach(s => {
+        const status = s.status?.toLowerCase().replace('-', '_');
+        if (status === 'pending' || status === 'in_progress') {
+            taskCounts[s.staff_id] = (taskCounts[s.staff_id] || 0) + 1;
+        }
+    });
 
-    // Mark busy vs available
+    // Mark task count for visibility
     return allStaff.map(s => ({
         ...s,
-        isBusy: busyIds.has(s.id)
+        taskCount: taskCounts[s.id] || 0,
+        isBusy: (taskCounts[s.id] || 0) > 0 // Keep isBusy for backward compat but focus on taskCount
     })) || [];
 }
 
 export async function getAvailableCleaningStaff() {
     const staff = await getCleaningStaff();
-    const available = staff.filter(s => !s.isBusy);
-    return available.length > 0 ? available : staff; // Fallback to all staff if none are free
+    // Return all active staff, allowing the UI/user to choose even if they are busy
+    return staff;
 }
 
 export async function assignCleaningStaff(roomId: string, staffId: string) {

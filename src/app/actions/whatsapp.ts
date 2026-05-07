@@ -20,7 +20,7 @@ const R2 = new S3Client({
 
 // ─── WhatsApp Cloud API Config ────────────────────────────────────────────────
 const WA_API_VERSION = 'v22.0';
-// Moved constants into functions to ensure they pick up .env.local changes instantly.
+const supabaseAdmin = createAdminClient();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -385,8 +385,9 @@ export async function sendHousekeepingAssignmentWhatsApp(assignmentId: string) {
 
 /**
  * Send booking confirmation WhatsApp with provisional invoice PDF.
+ * If pdfBuffer is provided, it uses it instead of generating a new one.
  */
-export async function sendBookingWhatsApp(bookingId: string) {
+export async function sendBookingWhatsApp(bookingId: string, pdfBuffer?: Uint8Array) {
     try {
         const settings = await getSettings();
         if (!settings.whatsapp_enabled) {
@@ -394,8 +395,7 @@ export async function sendBookingWhatsApp(bookingId: string) {
             return { success: false, message: 'WhatsApp disabled' };
         }
 
-        const supabase = await createClient();
-        const { data: booking, error } = await supabase
+        const { data: booking, error } = await supabaseAdmin
             .from('bookings')
             .select(`*, guests(*), rooms(*)`)
             .eq('id', bookingId)
@@ -414,9 +414,9 @@ export async function sendBookingWhatsApp(bookingId: string) {
         const guests = `${booking.adults} Adults${booking.children > 0 ? `, ${booking.children} Children` : ''}`;
 
         // Generate & upload PDF
-        const pdfBuffer = await generateInvoicePDF(bookingId, true);
+        const finalPdfBuffer = pdfBuffer || await generateInvoicePDF(bookingId, true);
         const pdfFilename = `Provisional_${bookingId.split('-')[0].toUpperCase()}_${Date.now()}.pdf`;
-        const pdfUrl = await uploadPdfToR2(pdfBuffer, pdfFilename);
+        const pdfUrl = await uploadPdfToR2(finalPdfBuffer, pdfFilename);
 
         const tpl = parseTemplateSetting(settings.whatsapp_booking_template || process.env.WHATSAPP_BOOKING_TEMPLATE || 'booking_confirmation');
 
@@ -439,22 +439,21 @@ export async function sendBookingWhatsApp(bookingId: string) {
 
         console.log('[WhatsApp] Booking confirmation result:', result);
 
-        // Save tracking record if message was sent successfully
-        if (result.success && result.messageId) {
-            try {
-                await supabase.from('whatsapp_analytics').insert({
-                    wamid: result.messageId,
-                    booking_id: bookingId,
-                    status: 'sent',
-                    template_type: 'check_in',
-                    guest_name: booking.guests.name,
-                    guest_phone: phone,
-                    sent_at: new Date().toISOString(),
-                });
-                console.log('[WhatsApp] Analytics record saved for wamid:', result.messageId);
-            } catch (analyticsErr: any) {
-                console.warn('[WhatsApp] Failed to save analytics record:', analyticsErr.message);
-            }
+        // Save tracking record
+        try {
+            await supabaseAdmin.from('whatsapp_analytics').insert({
+                wamid: (result.success && result.messageId) ? result.messageId : `fail-${Date.now()}`,
+                booking_id: bookingId,
+                status: result.success ? 'sent' : 'failed',
+                template_type: 'check_in',
+                guest_name: booking.guests.name,
+                guest_phone: phone,
+                error_message: result.success ? null : (result.error || 'Unknown error'),
+                sent_at: new Date().toISOString(),
+            });
+            console.log('[WhatsApp] Analytics record saved for check-in:', result.messageId || 'failed');
+        } catch (analyticsErr: any) {
+            console.warn('[WhatsApp] Failed to save analytics record:', analyticsErr.message);
         }
 
         return result;
@@ -466,8 +465,9 @@ export async function sendBookingWhatsApp(bookingId: string) {
 
 /**
  * Send checkout thank-you WhatsApp with final tax invoice PDF.
+ * If pdfBuffer is provided, it uses it instead of generating a new one.
  */
-export async function sendCheckoutWhatsApp(bookingId: string) {
+export async function sendCheckoutWhatsApp(bookingId: string, pdfBuffer?: Uint8Array) {
     try {
         const settings = await getSettings();
         if (!settings.whatsapp_enabled) {
@@ -475,8 +475,7 @@ export async function sendCheckoutWhatsApp(bookingId: string) {
             return { success: false, message: 'WhatsApp disabled' };
         }
 
-        const supabase = await createClient();
-        const { data: booking, error } = await supabase
+        const { data: booking, error } = await supabaseAdmin
             .from('bookings')
             .select(`*, guests(*), rooms(*)`)
             .eq('id', bookingId)
@@ -494,9 +493,9 @@ export async function sendCheckoutWhatsApp(bookingId: string) {
         const room = `${booking.rooms.number} (${booking.rooms.type})`;
 
         // Generate & upload PDF
-        const pdfBuffer = await generateInvoicePDF(bookingId, false);
+        const finalPdfBuffer = pdfBuffer || await generateInvoicePDF(bookingId, false);
         const pdfFilename = `Invoice_${bookingId.split('-')[0].toUpperCase()}_${Date.now()}.pdf`;
-        const pdfUrl = await uploadPdfToR2(pdfBuffer, pdfFilename);
+        const pdfUrl = await uploadPdfToR2(finalPdfBuffer, pdfFilename);
 
         // Generate a tracking ID for the "Rate Us" button URL
         // The full button URL will be: base_url_from_template + trackingId
@@ -522,25 +521,23 @@ export async function sendCheckoutWhatsApp(bookingId: string) {
 
         console.log('[WhatsApp] Checkout WhatsApp result:', result);
 
-        // Save tracking record if message was sent successfully
-        if (result.success && result.messageId) {
-            try {
-                const adminSupabase = createAdminClient();
-                const { error: insError } = await adminSupabase.from('whatsapp_analytics').insert({
-                    wamid: result.messageId,
-                    booking_id: bookingId,
-                    status: 'sent',
-                    template_type: 'check_out',
-                    guest_name: booking.guests.name,
-                    guest_phone: phone,
-                    destination_url: settings.google_review_url,
-                    tracking_id: trackingId,
-                    sent_at: new Date().toISOString(),
-                });
-                console.log('[WhatsApp] Analytics record saved for wamid:', result.messageId);
-            } catch (analyticsErr: any) {
-                console.warn('[WhatsApp] Failed to save analytics record:', analyticsErr.message);
-            }
+        // Save tracking record
+        try {
+            await supabaseAdmin.from('whatsapp_analytics').insert({
+                wamid: (result.success && result.messageId) ? result.messageId : `fail-${Date.now()}`,
+                booking_id: bookingId,
+                status: result.success ? 'sent' : 'failed',
+                template_type: 'check_out',
+                guest_name: booking.guests.name,
+                guest_phone: phone,
+                destination_url: settings.google_review_url,
+                tracking_id: trackingId,
+                error_message: result.success ? null : (result.error || 'Unknown error'),
+                sent_at: new Date().toISOString(),
+            });
+            console.log('[WhatsApp] Analytics record saved for check-out:', result.messageId || 'failed');
+        } catch (analyticsErr: any) {
+            console.warn('[WhatsApp] Failed to save analytics record:', analyticsErr.message);
         }
 
         return result;

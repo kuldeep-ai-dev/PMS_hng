@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { getSettings } from '@/app/(dashboard)/settings/actions';
 import { revalidatePath } from 'next/cache';
-import { getAvailableCleaningStaff } from '@/app/actions/housekeeping';
+import { getAvailableCleaningStaff, assignCleaningStaff } from '@/app/actions/housekeeping';
 import { sendCheckoutMail } from '@/app/actions/mail';
 
 export async function getBookingFolio(bookingId: string) {
@@ -136,10 +136,13 @@ export async function performCheckout(bookingId: string, roomId: string, billToC
 
         if (bookErr) throw bookErr;
 
-        // 1b. Trigger Emails (Non-blocking to prevent UI hangs)
-        sendCheckoutMail(bookingId).catch(e => {
-            console.error('[Checkout] Mail background failed:', e);
-        });
+        // 1b. Trigger Emails & WhatsApp (Awaited to ensure delivery before return)
+        try {
+            await sendCheckoutMail(bookingId);
+        } catch (e) {
+            console.error('[Checkout] Notification failed:', e);
+            // We don't throw here to ensure checkout still completes in DB
+        }
 
         // 2. Set room to Dirty (needs housekeeping)
         const { error: roomErr } = await supabase
@@ -156,15 +159,7 @@ export async function performCheckout(bookingId: string, roomId: string, billToC
         if (cleaners && cleaners.length > 0) {
             // Find staff with least assignments to balance load
             const assignedCleaner = cleaners[Math.floor(Math.random() * cleaners.length)];
-
-            await supabase
-                .from('cleaning_assignments')
-                .insert({
-                    room_id: roomId,
-                    staff_id: assignedCleaner.id,
-                    status: 'pending',
-                    assigned_at: new Date().toISOString()
-                });
+            await assignCleaningStaff(roomId, assignedCleaner.id);
         }
 
         return { success: true };
