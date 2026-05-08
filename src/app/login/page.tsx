@@ -58,9 +58,6 @@ export default async function LoginPage({
                                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/ISO_9001-2015_Logo.png/800px-ISO_9001-2015_Logo.png"
                                 alt="ISO 9001 Certified"
                                 className="h-12 w-auto opacity-90 brightness-110 drop-shadow-sm"
-                                onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                }}
                             />
                             <div className="text-center">
                                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Quality Management</p>
