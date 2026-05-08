@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Cloud, Trash2, ShieldAlert, Loader2, CalendarX, Skull, DatabaseZap, DownloadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { createR2BackupAction, purgeDataByDateRangeAction, factoryResetSystemAction, fetchR2BackupsAction, restoreFromR2BackupAction } from '@/app/actions/data-ops';
+import { createR2BackupAction, purgeDataByDateRangeAction, factoryResetSystemAction, fetchR2BackupsAction, restoreFromR2BackupAction, deleteR2BackupAction } from '@/app/actions/data-ops';
 
 export function DataOpsClient() {
     const [backups, setBackups] = useState<any[]>([]);
@@ -94,6 +94,22 @@ export function DataOpsClient() {
             toast.error(result.error, { id: 'restore', duration: 10000 });
         }
         setIsRestoring(false);
+    };
+
+    const handleDeleteBackup = async (fileKey: string) => {
+        const confirmDelete = confirm(`Are you sure you want to permanently delete backup ${fileKey.split('/').pop()} from Cloudflare R2?`);
+        if (!confirmDelete) return;
+
+        toast.loading('Deleting cloud snapshot...', { id: 'delete-backup' });
+
+        const result = await deleteR2BackupAction(fileKey);
+        if (result.success) {
+            toast.success(result.message, { id: 'delete-backup' });
+            const refresh = await fetchR2BackupsAction();
+            if (refresh.success) setBackups(refresh.backups || []);
+        } else {
+            toast.error(result.error, { id: 'delete-backup' });
+        }
     };
 
     const handleFactoryReset = async () => {
@@ -247,14 +263,24 @@ export function DataOpsClient() {
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{new Date(backup.lastModified).toLocaleString()}</span>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => handleRestore(backup.key)}
-                                            disabled={isRestoring || isBackingUp || isResetting}
-                                            className="shrink-0 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:border-indigo-500 hover:text-indigo-600 text-slate-600 rounded-lg text-xs font-black uppercase tracking-widest transition-colors disabled:opacity-50"
-                                        >
-                                            {isRestoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <DownloadCloud className="w-4 h-4" />}
-                                            Re-Roll
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleDeleteBackup(backup.key)}
+                                                disabled={isRestoring || isBackingUp || isResetting}
+                                                className="shrink-0 p-2 bg-white border border-slate-300 hover:border-red-500 hover:text-red-600 text-slate-500 rounded-lg transition-colors disabled:opacity-50"
+                                                title="Delete Backup"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleRestore(backup.key)}
+                                                disabled={isRestoring || isBackingUp || isResetting}
+                                                className="shrink-0 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:border-indigo-500 hover:text-indigo-600 text-slate-600 rounded-lg text-xs font-black uppercase tracking-widest transition-colors disabled:opacity-50"
+                                            >
+                                                {isRestoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <DownloadCloud className="w-4 h-4" />}
+                                                Re-Roll
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -292,7 +318,8 @@ export function DataOpsClient() {
                             <li>Every Past, Present, and Future Booking</li>
                             <li>All Payments, Receipts, and Folio Charges</li>
                             <li>Restaurant Orders, Table States, and Reservations</li>
-                            <li>System Audit Logs and Attendance Records</li>
+                            <li>Housekeeping Logs, Lost & Found, and Room Blocks</li>
+                            <li>System Audit Logs, Metrics, and Attendance Records</li>
                         </ul>
 
                         <h4 className="font-bold text-emerald-900 mt-4 mb-2 uppercase tracking-wide text-xs">What will survive (Config):</h4>

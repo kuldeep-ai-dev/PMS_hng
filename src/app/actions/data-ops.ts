@@ -1,7 +1,7 @@
 'use server';
 
 import { createAdminClient } from '@/utils/supabase/admin';
-import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 // Helper to determine if R2 is configured
 export async function checkR2Status() {
@@ -13,7 +13,7 @@ export async function checkR2Status() {
 // 1. Full Database JSON Backup to R2
 export async function createR2BackupAction() {
     const supabase = createAdminClient();
-    
+
     // Check credentials
     if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
         return { success: false, error: 'Cloudflare R2 credentials are not fully configured in the environment variables.' };
@@ -24,9 +24,12 @@ export async function createR2BackupAction() {
         const tables = [
             'hotel_settings', 'profiles', 'rooms', 'restaurant_tables',
             'restaurant_categories', 'restaurant_menu_items', 'companies',
-            'guests', 'bookings', 'payments', 'extra_charges', 
+            'guests', 'bookings', 'payments', 'extra_charges',
             'restaurant_orders', 'restaurant_reservations', 'restaurant_order_items',
-            'staff_attendance', 
+            'staff_attendance', 'staff_activity_logs', 'cleaning_assignments',
+            'lost_and_found', 'room_transfers', 'room_blocks',
+            'night_audit_logs', 'system_activity_logs', 'leads', 'website_bookings',
+            'whatsapp_analytics', 'marketing_campaigns', 'marketing_leads', 'whatsapp_campaigns'
         ];
 
         const backupData: Record<string, any> = {};
@@ -85,15 +88,15 @@ export async function purgeDataByDateRangeAction(startDate: string, endDate: str
         // Delete child relationships first
         await supabase.from('restaurant_order_items').delete().gte('created_at', startDate).lte('created_at', endDate);
         await supabase.from('restaurant_orders').delete().gte('created_at', startDate).lte('created_at', endDate);
-        
+
         await supabase.from('extra_charges').delete().gte('created_at', startDate).lte('created_at', endDate);
         await supabase.from('payments').delete().gte('created_at', startDate).lte('created_at', endDate);
-        
+
         await supabase.from('night_audit_logs').delete().gte('audit_date', startDate).lte('audit_date', endDate);
         await supabase.from('system_activity_logs').delete().gte('created_at', startDate).lte('created_at', endDate);
-        
+
         await supabase.from('bookings').delete().gte('created_at', startDate).lte('created_at', endDate);
-        
+
         // Wipe guests in that range
         await supabase.from('guests').delete().gte('created_at', startDate).lte('created_at', endDate);
 
@@ -109,23 +112,32 @@ export async function factoryResetSystemAction() {
     const supabase = createAdminClient();
     try {
         console.log('INITIATING FACTORY RESET...');
-        
+
         // 1. Delete deeply nested dependencies
         await supabase.from('restaurant_order_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('restaurant_orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('restaurant_reservations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        
+
         // 2. Financial records
         await supabase.from('extra_charges').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        
+
         // 3. Operational records
         await supabase.from('system_activity_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('night_audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('staff_attendance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        await supabase.from('lost_and_found_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        
-        // 4. Primary entities
+        await supabase.from('staff_activity_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('cleaning_assignments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('lost_and_found').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('room_transfers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('room_blocks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+        // 4. Marketing & External
+        await supabase.from('leads').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('marketing_leads').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('whatsapp_analytics').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+        // 5. Primary entities
         await supabase.from('bookings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('guests').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
@@ -206,7 +218,7 @@ export async function restoreFromR2BackupAction(fileKey: string) {
         );
 
         if (!response.Body) throw new Error("Empty backup payload.");
-        
+
         const rawBody = await response.Body.transformToString();
         const snapshot = JSON.parse(rawBody);
 
@@ -221,23 +233,34 @@ export async function restoreFromR2BackupAction(fileKey: string) {
 
         // 3. Strictly Ordered Insertion Matrix (Parents -> Children)
         const insertionOrder = [
-            'hotel_settings', 
-            'companies', 
-            'profiles', 
-            'rooms', 
+            'hotel_settings',
+            'companies',
+            'profiles',
+            'rooms',
             'restaurant_tables',
-            'restaurant_categories', 
-            'restaurant_menu_items', 
-            'guests', 
-            'bookings', 
-            'payments', 
-            'restaurant_orders', 
-            'restaurant_order_items', 
+            'restaurant_categories',
+            'restaurant_menu_items',
+            'guests',
+            'bookings',
+            'payments',
+            'restaurant_orders',
+            'restaurant_order_items',
             'restaurant_reservations',
-            'extra_charges', 
+            'extra_charges',
             'staff_attendance',
+            'staff_activity_logs',
+            'cleaning_assignments',
+            'lost_and_found',
+            'room_transfers',
+            'room_blocks',
             'system_activity_logs',
-            'night_audit_logs'
+            'night_audit_logs',
+            'leads',
+            'marketing_leads',
+            'whatsapp_analytics',
+            'marketing_campaigns',
+            'whatsapp_campaigns',
+            'website_bookings'
         ];
 
         let totalRecordsRestored = 0;
@@ -247,7 +270,7 @@ export async function restoreFromR2BackupAction(fileKey: string) {
             if (!records || !Array.isArray(records) || records.length === 0) continue;
 
             console.log(`[Disaster Recovery] Upserting ${records.length} records into ${table}...`);
-            
+
             // Sanitize GENERATED columns that cannot be forcefully inserted
             if (table === 'restaurant_orders') {
                 records.forEach((r) => { delete r.total; });
@@ -258,7 +281,7 @@ export async function restoreFromR2BackupAction(fileKey: string) {
 
             // Supabase allows bulk upsert arrays. The Admin Client bypasses RLS.
             const { error } = await supabase.from(table).upsert(records);
-            
+
             if (error) {
                 console.error(`[Disaster Recovery] Failed to restore table ${table}:`, error);
                 throw new Error(`Restoration halted. Integrity violation on table ${table}: ${error.message}`);
@@ -272,6 +295,36 @@ export async function restoreFromR2BackupAction(fileKey: string) {
         return { success: true, message: `System successfully rolled back! Restored ${totalRecordsRestored} records.` };
     } catch (err: any) {
         console.error('Restore Error:', err);
+        return { success: false, error: err.message };
+    }
+}
+
+// 6. Delete Backup from R2
+export async function deleteR2BackupAction(fileKey: string) {
+    if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
+        return { success: false, error: 'Cloudflare R2 is not configured.' };
+    }
+
+    try {
+        const s3 = new S3Client({
+            region: 'auto',
+            endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+            credentials: {
+                accessKeyId: process.env.R2_ACCESS_KEY_ID,
+                secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+            },
+        });
+
+        await s3.send(
+            new DeleteObjectCommand({
+                Bucket: process.env.R2_BUCKET_NAME,
+                Key: fileKey,
+            })
+        );
+
+        return { success: true, message: `Backup deleted successfully.` };
+    } catch (err: any) {
+        console.error('Delete backup error:', err);
         return { success: false, error: err.message };
     }
 }
