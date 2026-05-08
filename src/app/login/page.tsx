@@ -30,8 +30,8 @@ export default async function LoginPage({
             <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 sm:p-12 bg-white selection:bg-blue-100 selection:text-blue-900">
                 <div className="w-full max-w-sm">
                     {/* Dynamic Hotel Branding Modular Card */}
-                    <div className="mb-12 text-center lg:text-left bg-slate-50 border border-slate-100 rounded-3xl p-6 shadow-sm">
-                        <div className="flex items-center gap-4 mb-4 justify-center lg:justify-start">
+                    <div className="mb-12 text-center bg-slate-50 border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col items-center">
+                        <div className="flex items-center gap-4 mb-4 justify-center">
                             {settings.logo_url ? (
                                 <img
                                     src={settings.logo_url}
@@ -43,25 +43,26 @@ export default async function LoginPage({
                                     {settings.hotel_name?.charAt(0)}
                                 </div>
                             )}
-                            <div className="hidden lg:block h-8 w-px bg-slate-200" />
-                            <h2 className="text-2xl font-black text-slate-900 tracking-tight hidden lg:block">
+                            <div className="h-8 w-px bg-slate-200" />
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
                                 {settings.hotel_name}
                             </h2>
                         </div>
-                        <h2 className="text-2xl font-black text-slate-900 tracking-tight block lg:hidden mb-2">
-                            {settings.hotel_name}
-                        </h2>
+
                         <p className="text-xs text-slate-500 font-bold tracking-wide uppercase">
                             Property Management Dashboard
                         </p>
 
-                        <div className="mt-6 pt-6 border-t border-slate-200/60 flex items-center gap-4 justify-center lg:justify-start">
+                        <div className="mt-6 pt-6 border-t border-slate-200/60 w-full flex flex-col items-center gap-3">
                             <img
-                                src="https://www.qas-international.com/wp-content/uploads/2018/06/iso-9001-2015-logo.png"
+                                src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/ISO_9001-2015_Logo.png/800px-ISO_9001-2015_Logo.png"
                                 alt="ISO 9001 Certified"
-                                className="h-10 w-auto opacity-70 grayscale hover:grayscale-0 transition-all duration-300"
+                                className="h-12 w-auto opacity-90 brightness-110 drop-shadow-sm"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                }}
                             />
-                            <div className="text-left">
+                            <div className="text-center">
                                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Quality Management</p>
                                 <p className="text-[11px] font-bold text-slate-900">ISO 9001:2015 Certified</p>
                             </div>
