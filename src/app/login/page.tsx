@@ -54,6 +54,18 @@ export default async function LoginPage({
                         <p className="text-xs text-slate-500 font-bold tracking-wide uppercase">
                             Property Management Dashboard
                         </p>
+
+                        <div className="mt-6 pt-6 border-t border-slate-200/60 flex items-center gap-4 justify-center lg:justify-start">
+                            <img
+                                src="https://www.qas-international.com/wp-content/uploads/2018/06/iso-9001-2015-logo.png"
+                                alt="ISO 9001 Certified"
+                                className="h-10 w-auto opacity-70 grayscale hover:grayscale-0 transition-all duration-300"
+                            />
+                            <div className="text-left">
+                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Quality Management</p>
+                                <p className="text-[11px] font-bold text-slate-900">ISO 9001:2015 Certified</p>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Form Component */}
