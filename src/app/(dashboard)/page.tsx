@@ -46,7 +46,7 @@ export default async function Dashboard() {
 
   if (isAdmin) {
     const adminStats = await getAdminDashboardStats();
-    return <AdminDashboard stats={adminStats} />;
+    return <AdminDashboard stats={adminStats} role={profile?.role} />;
   }
 
   const { start: istStart, end: istEnd } = getISTTodayRange();

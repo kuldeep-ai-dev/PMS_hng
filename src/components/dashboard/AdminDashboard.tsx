@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 interface AdminDashboardProps {
+    role?: string;
     stats: {
         todayRevenue: number;
         roomRevenue: number;
@@ -36,9 +37,11 @@ interface AdminDashboardProps {
     };
 }
 
-export function AdminDashboard({ stats }: AdminDashboardProps) {
+export function AdminDashboard({ stats, role }: AdminDashboardProps) {
     const formattedRevenue = stats.todayRevenue.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
     const formattedLoss = stats.todayLoss.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+
+    const isManager = role === 'manager';
 
     const keyMetrics = [
         {
@@ -98,7 +101,9 @@ export function AdminDashboard({ stats }: AdminDashboardProps) {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Admin Executive Overview</h1>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+                        {isManager ? 'Manager Dashboard' : 'Admin Executive Overview'}
+                    </h1>
                     <p className="text-slate-500 font-medium">Real-time business intelligence and financial performance.</p>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-2xl shadow-sm">

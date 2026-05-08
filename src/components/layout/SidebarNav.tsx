@@ -106,6 +106,49 @@ export function SidebarNav({ role, isSandboxMode, onNavigate }: SidebarNavProps)
         { label: 'User Guide', iconName: 'HelpCircle', href: '/help' },
     ];
 
+    if (role === 'manager') {
+        navGroups = [
+            { label: 'Manager Dashboard', iconName: 'LayoutDashboard', href: '/' },
+            {
+                label: 'Operations',
+                iconName: 'CalendarDays',
+                items: [
+                    { label: 'Room Grid', href: '/front-desk', iconName: 'Monitor' },
+                    { label: 'Check-In', href: '/check-in', iconName: 'UserPlus' },
+                    { label: 'Advance Booking', href: '/operations/advance-booking', iconName: 'CalendarPlus' },
+                    { label: 'Guests', href: '/guests', iconName: 'Users' },
+                    { label: 'Corporate', href: '/companies', iconName: 'Building2' },
+                    { label: 'Money Receipts', href: '/operations/money-receipts', iconName: 'Receipt' },
+                    { label: 'Bill Verification', href: '/operations/verify-bill', iconName: 'FileCheck' },
+                    { label: 'GRC', href: '/operations/grc', iconName: 'FileText' },
+                    { label: 'Lost & Found', href: '/operations/lost-and-found', iconName: 'PackageSearch' },
+                ]
+            },
+            {
+                label: 'Property',
+                iconName: 'BedDouble',
+                items: [
+                    { label: 'Rooms Grid', href: '/rooms', iconName: 'LayoutGrid' },
+                    { label: 'Restaurant POS', href: '/restaurant/pos', iconName: 'Utensils', newTab: true },
+                    { label: 'Website Bookings', href: '/website-bookings', iconName: 'Globe' },
+                ]
+            },
+            {
+                label: 'Analytics Group',
+                iconName: 'BarChart3',
+                items: [
+                    { label: 'WA Insights', href: '/admin/analytics/whatsapp', iconName: 'MessageCircle' },
+                    { label: 'Finance', href: '/admin/analytics/finance', iconName: 'Coins' },
+                    { label: 'Trends', href: '/admin/analytics/trends', iconName: 'TrendingUp' },
+                    { label: 'Staff Performance', href: '/admin/analytics/staff', iconName: 'Users2' },
+                    { label: 'Business Growth', href: '/admin/analytics/growth', iconName: 'Zap' },
+                ]
+            },
+            { label: 'House Keeping Monitor', iconName: 'Brush', href: '/admin/housekeeping' },
+            { label: 'User Guide', iconName: 'HelpCircle', href: '/help' },
+        ];
+    }
+
     if (role === 'master') {
         navGroups = [
             { label: 'Master Control', iconName: 'Zap', href: '/master-control' },

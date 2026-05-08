@@ -19,7 +19,7 @@ export default async function SettingsLayout({
         .eq('id', user.id)
         .single();
 
-    const isAdmin = profile?.role === 'admin' || profile?.role === 'owner' || profile?.role === 'manager' || profile?.role === 'master';
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'owner' || profile?.role === 'master';
 
     if (!isAdmin) {
         redirect('/');
