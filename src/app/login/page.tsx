@@ -52,28 +52,29 @@ export default async function LoginPage({
                         <p className="text-xs text-slate-500 font-bold tracking-wide uppercase">
                             Property Management Dashboard
                         </p>
-
-                        <div className="mt-6 pt-6 border-t border-slate-200/60 w-full flex flex-col items-center gap-3">
-                            <img
-                                src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/ISO_9001-2015_Logo.png/800px-ISO_9001-2015_Logo.png"
-                                alt="ISO 9001 Certified"
-                                className="h-12 w-auto opacity-90 brightness-110 drop-shadow-sm"
-                            />
-                            <div className="text-center">
-                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Quality Management</p>
-                                <p className="text-[11px] font-bold text-slate-900">ISO 9001:2015 Certified</p>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Form Component */}
                     <LoginForm message={resolvedParams?.message} />
 
-                    <div className="mt-12 pt-8 border-t border-slate-100 relative z-10">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-loose text-center">
+                    <div className="mt-12 pt-8 border-t border-slate-100 relative z-10 flex flex-col items-center">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-loose text-center mb-8">
                             By continuing, you agree to our <br />
                             <Link href="/security-protocols" className="text-indigo-600 cursor-pointer hover:underline">Security Protocols</Link> & <Link href="/data-policy" className="text-indigo-600 cursor-pointer hover:underline">Data Policy</Link>
                         </p>
+
+                        {/* ISO Badge - Bottom of page */}
+                        <div className="flex flex-col items-center gap-3 opacity-60 hover:opacity-100 transition-opacity duration-300">
+                            <img
+                                src="/iso-9001-green.svg"
+                                alt="ISO 9001 Certified"
+                                className="h-14 w-auto"
+                            />
+                            <div className="text-center">
+                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none mb-1">Quality Management</p>
+                                <p className="text-[11px] font-bold text-slate-900">ISO 9001:2015 Certified</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
