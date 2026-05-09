@@ -231,6 +231,9 @@ export default function POSTerminal() {
           guest_id: orderType === 'room' ? rooms.find(r => r.id === selectedRoomId)?.bookings?.[0]?.guest_id : null,
           customer_name: customerName,
           customer_mobile: customerMobile,
+          subtotal: subtotal,
+          tax: tax,
+          total_amount: totalRaw,
           status: 'pending',
           payment_status: 'pending',
           kot_no: kotNo,
@@ -259,6 +262,13 @@ export default function POSTerminal() {
 
       const { error: itemsErr } = await supabase.from('restaurant_order_items').insert(orderItems);
       if (itemsErr) throw itemsErr;
+
+      // Update Order Totals
+      await supabase.from('restaurant_orders').update({
+        subtotal,
+        tax,
+        total_amount: totalRaw
+      }).eq('id', orderId);
 
       toast.success(currentOrderId ? 'KOT Updated' : 'KOT Generated');
     } catch (err: any) {

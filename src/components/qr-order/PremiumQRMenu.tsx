@@ -318,14 +318,18 @@ export default function PremiumQRMenu({ type, id }: Props) {
                             {restaurantInfo?.restaurant_name || 'Loading...'}
                         </h1>
                         {guestName && (
-                            <motion.p
+                            <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.5 }}
-                                className="text-indigo-400 font-bold tracking-tight mb-4 text-lg"
+                                className="flex flex-col items-center"
                             >
-                                Welcome back, {guestName}
-                            </motion.p>
+                                <p className="text-white/60 font-medium text-xs uppercase tracking-[0.2em] mb-1">Authentic Hospitality</p>
+                                <p className="text-indigo-400 font-black tracking-tight mb-2 text-2xl drop-shadow-sm">
+                                    Namaste, {guestName.split(' ')[0]}!
+                                </p>
+                                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Ready for a delicious meal?</p>
+                            </motion.div>
                         )}
                         <p className="text-[10px] text-white/40 font-bold tracking-[0.3em] uppercase text-center mt-2">
                             {restaurantInfo?.tagline || 'Exquisite Experience'}
@@ -459,10 +463,15 @@ export default function PremiumQRMenu({ type, id }: Props) {
                 )}
                 <div className="flex-1">
                     <h1 className="font-black text-slate-900 text-xl leading-tight tracking-tight">
-                        {guestName ? `Hi, ${guestName.split(' ')[0]}!` : (restaurantInfo?.restaurant_name || 'Restaurant Menu')}
+                        {guestName ? (
+                            <span className="flex flex-col">
+                                <span className="text-[10px] text-indigo-500 font-black uppercase tracking-[0.2em] mb-0.5">Namaste</span>
+                                <span>{guestName.split(' ')[0]}!</span>
+                            </span>
+                        ) : (restaurantInfo?.restaurant_name || 'Restaurant Menu')}
                     </h1>
-                    <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest mt-0.5">
-                        {type === 'room' ? `Room ${locationName} Dining` : `Table ${locationName}`}
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                        {type === 'room' ? `In-Room Dining • Room ${locationName}` : `Table ${locationName}`}
                     </p>
                 </div>
             </motion.div>

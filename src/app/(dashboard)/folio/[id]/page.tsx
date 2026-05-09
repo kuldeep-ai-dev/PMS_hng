@@ -372,7 +372,7 @@ export default function FolioPage() {
         }
         setCheckingOut(true);
         try {
-            const res = await performCheckout(bookingId, booking.rooms.id, billToCompany) as any;
+            const res = await performCheckout(bookingId, booking.rooms.id, billToCompany, window.location.origin) as any;
             if (!res.success) throw new Error(res.error);
             toast.success('Checkout successful');
             window.open(`/print-bill/${bookingId}?type=final`, '_blank');

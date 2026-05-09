@@ -91,8 +91,15 @@ export default async function PrintPOSBillPage({
     const billDate = formatISTDate(order.order_time);
     const billTime = formatISTTime(order.order_time);
 
-    const subtotal = Number(order.subtotal || 0);
-    const tax = Number(order.tax || 0);
+    let subtotal = Number(order.subtotal || 0);
+    let tax = Number(order.tax || 0);
+
+    // Fallback for orders where subtotal/tax weren't persisted
+    if (subtotal === 0 && Number(order.total_amount) > 0) {
+        subtotal = Number(order.total_amount) / 1.05;
+        tax = Number(order.total_amount) - subtotal;
+    }
+
     const totalWithTax = subtotal + tax;
     const loyaltyDiscount = Number(order.loyalty_discount_amount || 0);
     const finalTotal = Math.round(totalWithTax - loyaltyDiscount);
@@ -128,7 +135,7 @@ export default async function PrintPOSBillPage({
                     <p className="text-[8px] font-medium leading-tight px-4">{settings.address}</p>
                     <div className="text-[9px] font-bold flex flex-col items-center gap-0.5 pt-1">
                         {settings.gstin && <span className="uppercase">GSTIN: {settings.gstin.toUpperCase()}</span>}
-                        <span className="bg-black text-white px-2 py-0.5 rounded text-[8px] mt-1">TAX INVOICE</span>
+                        <span className="border border-black px-4 py-1 font-black text-[9px] mt-1 uppercase">Tax Invoice</span>
                     </div>
                 </div>
 
@@ -202,7 +209,7 @@ export default async function PrintPOSBillPage({
                         </div>
                     )}
 
-                    <div className="flex justify-between items-center bg-black text-white p-1.5 rounded mt-1">
+                    <div className="flex justify-between items-center border border-black p-2 mt-1">
                         <span className="font-black uppercase text-[10px]">Grand Total</span>
                         <span className="font-black text-lg">₹{finalTotal.toLocaleString('en-IN')}</span>
                     </div>

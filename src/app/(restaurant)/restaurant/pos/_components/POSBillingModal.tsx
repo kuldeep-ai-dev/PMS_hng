@@ -81,25 +81,29 @@ export function POSBillingModal({
                 if (updErr) throw updErr;
                 order = updated;
             } else {
-                // Create new order
+                const isFolio = paymentMode === 'Folio';
                 const { data: created, error: orderErr } = await supabase.from('restaurant_orders').insert({
                     order_source: orderType === 'room' ? 'pos_room' : orderType === 'table' ? 'pos_table' : 'pos_walkin',
                     room_id: selectedRoomId || null,
                     table_id: selectedTableId || null,
+                    booking_id: isFolio ? (selectedRoomId ? (await (async () => {
+                        const { data: b } = await supabase.from('bookings').select('id').eq('room_id', selectedRoomId).eq('status', 'Active').single();
+                        return b?.id;
+                    })()) : null) : null,
                     customer_id: custData.id,
                     customer_name: customerName,
                     customer_mobile: customerMobile,
                     subtotal,
                     tax,
                     total_amount: finalTotal,
-                    paid_amount: parseFloat(paidAmount),
-                    balance_amount: finalTotal - parseFloat(paidAmount),
-                    payment_status: parseFloat(paidAmount) >= finalTotal ? 'paid' : 'partial',
+                    paid_amount: isFolio ? 0 : parseFloat(paidAmount),
+                    balance_amount: isFolio ? finalTotal : (finalTotal - parseFloat(paidAmount)),
+                    payment_status: isFolio ? 'charged_to_room' : (parseFloat(paidAmount) >= finalTotal ? 'paid' : 'partial'),
                     payment_mode: paymentMode,
                     order_time: new Date().toISOString(),
                     bill_no: billNo,
                     kot_no: kotNo,
-                    status: parseFloat(paidAmount) >= finalTotal ? 'billed' : 'partial'
+                    status: (isFolio || parseFloat(paidAmount) >= finalTotal) ? 'billed' : 'partial'
                 }).select().single();
 
                 if (orderErr) throw orderErr;
@@ -116,14 +120,30 @@ export function POSBillingModal({
                 await supabase.from('restaurant_order_items').insert(orderItems);
             }
 
-            // Log payment record
-            await supabase.from('payments').insert({
-                restaurant_order_id: order.id,
-                amount: parseFloat(paidAmount),
-                payment_mode: paymentMode,
-                payment_date: new Date().toISOString(),
-                notes: `POS Payment - Bill #${billNo}`
-            });
+            // Log payment record if not folio
+            if (paymentMode !== 'Folio' && parseFloat(paidAmount) > 0) {
+                await supabase.from('payments').insert({
+                    restaurant_order_id: order.id,
+                    amount: parseFloat(paidAmount),
+                    method: paymentMode,
+                    created_at: new Date().toISOString()
+                });
+            }
+
+            // If Billed to Folio, add to extra_charges
+            if (paymentMode === 'Folio' && order.booking_id) {
+                const { error: extraErr } = await supabase.from('extra_charges').insert({
+                    booking_id: order.booking_id,
+                    description: `Restaurant Order #${billNo}`,
+                    amount: finalTotal
+                });
+
+                if (!extraErr) {
+                    await supabase.rpc('update_booking_total_bill', {
+                        p_booking_id: order.booking_id
+                    });
+                }
+            }
 
             if (selectedTableId && order.status === 'billed') {
                 await supabase.from('restaurant_tables').update({ status: 'available' }).eq('id', selectedTableId);

@@ -125,7 +125,7 @@ export async function extendStay(bookingId: string, additionalNights: number) {
     }
 }
 
-export async function performCheckout(bookingId: string, roomId: string, billToCompany: boolean = false) {
+export async function performCheckout(bookingId: string, roomId: string, billToCompany: boolean = false, devOrigin?: string) {
     try {
         const supabase = await createClient();
 
@@ -141,16 +141,13 @@ export async function performCheckout(bookingId: string, roomId: string, billToC
 
         if (bookErr) throw bookErr;
 
-        // 1b. Trigger Emails & WhatsApp (Background tasks to keep system fast)
-        (async () => {
-            try {
-                // Send Checkout Mail & WhatsApp
-                console.log('[Checkout] Starting background notifications for:', bookingId);
-                await sendCheckoutMail(bookingId);
-            } catch (e) {
-                console.error('[Background Checkout Notifications Failed]:', e);
-            }
-        })();
+        // 1b. Trigger Emails & WhatsApp (Awaited to ensure completion)
+        try {
+            console.log('[Checkout] sending notifications for:', bookingId, 'with origin:', devOrigin);
+            await sendCheckoutMail(bookingId, devOrigin);
+        } catch (e) {
+            console.error('[Checkout Notifications Failed]:', e);
+        }
 
         // 2. Set room to Dirty (needs housekeeping)
         const { error: roomErr } = await supabase

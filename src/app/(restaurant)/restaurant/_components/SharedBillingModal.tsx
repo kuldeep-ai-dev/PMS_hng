@@ -74,7 +74,7 @@ export function SharedBillingModal({
                     total_amount: finalTotal,
                     paid_amount: finalTotal,
                     balance_amount: 0,
-                    payment_status: 'paid',
+                    payment_status: paymentMode === 'Folio' ? 'charged_to_room' : 'paid',
                     status: 'billed',
                     payment_mode: paymentMode,
                     bill_no: billNo,
@@ -100,7 +100,7 @@ export function SharedBillingModal({
                     total_amount: finalTotal,
                     paid_amount: finalTotal,
                     balance_amount: 0,
-                    payment_status: 'paid',
+                    payment_status: paymentMode === 'Folio' ? 'charged_to_room' : 'paid',
                     payment_mode: paymentMode,
                     order_time: new Date().toISOString(),
                     bill_no: billNo,
@@ -133,6 +133,30 @@ export function SharedBillingModal({
                 payment_date: new Date().toISOString(),
                 notes: `Restaurant Payment - Bill #${billNo}`
             });
+
+            // Handle 'Bill to Folio' - Add to extra_charges
+            if (paymentMode === 'Folio' && selectedRoomId) {
+                // Find active booking for this room
+                const { data: booking } = await supabase
+                    .from('bookings')
+                    .select('id, total_bill')
+                    .eq('room_id', selectedRoomId)
+                    .eq('status', 'Active')
+                    .maybeSingle();
+
+                if (booking) {
+                    await supabase.from('extra_charges').insert({
+                        booking_id: booking.id,
+                        description: `Restaurant Bill #${billNo}`,
+                        amount: finalTotal
+                    });
+
+                    // Update booking total
+                    await supabase.from('bookings').update({
+                        total_bill: (booking.total_bill || 0) + finalTotal
+                    }).eq('id', booking.id);
+                }
+            }
 
             if (selectedTableId) {
                 await supabase.from('restaurant_tables').update({ status: 'available' }).eq('id', selectedTableId);

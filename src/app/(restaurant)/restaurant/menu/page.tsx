@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { BentoCard } from '@/components/ui/BentoCard';
-import { Plus, Trash2, Edit2, Check, X, ImageIcon, Utensils } from 'lucide-react';
+import { Plus, Trash2, Edit2, Pencil, Check, X, ImageIcon, Utensils, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function MenuManagement() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -56,19 +57,32 @@ export default function MenuManagement() {
 
   const deleteCategory = async (id: string) => {
     if (!confirm('Are you sure? This will delete all items in this category.')) return;
-    await supabase.from('restaurant_categories').delete().eq('id', id);
-    fetchData();
+    const { error } = await supabase.from('restaurant_categories').delete().eq('id', id);
+    if (error) toast.error('Failed to delete category');
+    else {
+      toast.success('Category deleted');
+      fetchData();
+    }
   };
 
   const deleteItem = async (id: string) => {
     if (!confirm('Delete this menu item?')) return;
-    await supabase.from('restaurant_menu_items').delete().eq('id', id);
-    fetchData();
+    const { error } = await supabase.from('restaurant_menu_items').delete().eq('id', id);
+    if (error) toast.error('Failed to delete item');
+    else {
+      toast.success('Item deleted');
+      fetchData();
+    }
   };
 
   const toggleAvailability = async (id: string, currentStatus: boolean) => {
-    await supabase.from('restaurant_menu_items').update({ is_available: !currentStatus }).eq('id', id);
-    fetchData();
+    const { error } = await supabase.from('restaurant_menu_items').update({ is_available: !currentStatus }).eq('id', id);
+    if (!error) {
+      toast.success(`Item marked as ${!currentStatus ? 'Available' : 'Unavailable'}`);
+      fetchData();
+    } else {
+      toast.error('Update failed');
+    }
   };
 
   const handleEdit = (item: any) => {
@@ -90,7 +104,10 @@ export default function MenuManagement() {
     setSavingItem(true);
 
     try {
-      if (!newItem.name || !newItem.categoryId || !newItem.price) return;
+      if (!newItem.name || !newItem.categoryId || !newItem.price) {
+        toast.error("Please fill all required fields (Name, Category, Price)");
+        return;
+      }
 
       const itemData: any = {
         name: newItem.name.trim(),
@@ -103,6 +120,8 @@ export default function MenuManagement() {
       };
 
       let error;
+      const tId = toast.loading(editingItemId ? 'Updating menu item...' : 'Creating menu item...');
+
       if (editingItemId) {
         const { error: updateErr } = await supabase
           .from('restaurant_menu_items')
@@ -116,7 +135,10 @@ export default function MenuManagement() {
         error = insertErr;
       }
 
+      toast.dismiss(tId);
+
       if (!error) {
+        toast.success(editingItemId ? 'Item updated successfully' : 'Item added successfully');
         setShowModal(false);
         setEditingItemId(null);
         setNewItem({
@@ -131,7 +153,7 @@ export default function MenuManagement() {
         fetchData();
       } else {
         console.error("Error saving item:", error);
-        alert("Failed to save item.");
+        toast.error("Failed to save item: " + error.message);
       }
     } finally {
       setSavingItem(false);
@@ -253,9 +275,10 @@ export default function MenuManagement() {
                   </button>
                   <button
                     onClick={() => handleEdit(item)}
-                    className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                    className="p-2.5 bg-white border border-slate-200 text-teal-600 hover:bg-teal-50 hover:border-teal-200 rounded-xl shadow-sm transition-all active:scale-95"
+                    title="Edit Item"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Pencil className="w-4 h-4" />
                   </button>
                   <button onClick={() => deleteItem(item.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                     <Trash2 className="w-4 h-4" />

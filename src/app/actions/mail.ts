@@ -26,13 +26,14 @@ const transporter = nodemailer.createTransport({
     maxMessages: 100
 });
 
-// Helper to generate PDF using Puppeteer
-async function generateInvoicePDF(bookingId: string, isProvisional: boolean) {
+async function generateInvoicePDF(bookingId: string, isProvisional: boolean, devOrigin?: string) {
     // Internal token to bypass auth middleware for PDF generation
     const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
     if (isProvisional) params.set('type', 'provisional');
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://genypms.hotelnewganga.in';
+
+    // Priority: 1. Passed devOrigin (from client), 2. env variable, 3. production fallback
+    const baseUrl = devOrigin || process.env.NEXT_PUBLIC_APP_URL || 'https://genypms.hotelnewganga.in';
     const url = `${baseUrl}/print-bill/${bookingId}?${params.toString()}`;
 
     console.log('[Mailer] Generating PDF for:', url);
@@ -368,7 +369,7 @@ export async function sendBookingConfirmation(bookingId: string) {
     }
 }
 
-export async function sendCheckoutMail(bookingId: string) {
+export async function sendCheckoutMail(bookingId: string, devOrigin?: string) {
     try {
         const supabase = await createClient();
 
