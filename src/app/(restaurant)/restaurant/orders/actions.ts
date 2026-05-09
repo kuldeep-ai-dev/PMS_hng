@@ -76,16 +76,36 @@ export async function updateOrderStatus(orderId: string, currentStatus: string) 
                 .eq('id', orderId)
                 .single();
 
-            if (order && order.order_source === 'qr_room' && order.booking_id) {
-                // Automate the billing via the existing finalizeRestaurantBill function
-                const billResult = await finalizeRestaurantBill(orderId, {
-                    payment_mode: 'Folio',
-                    redeem_points: 0,
-                    discount_amount: 0
-                });
+            if (order && order.order_source === 'qr_room') {
+                let bId = order.booking_id;
 
-                if (billResult.success) {
-                    return { success: true, nextStatus: 'billed', bill_no: billResult.bill_no };
+                // Fallback: If booking_id is missing, try to find the active booking for the room
+                if (!bId && order.room_id) {
+                    const { data: activeBooking } = await supabase
+                        .from('bookings')
+                        .select('id')
+                        .eq('room_id', order.room_id)
+                        .eq('status', 'Active')
+                        .maybeSingle();
+                    if (activeBooking) bId = activeBooking.id;
+                }
+
+                if (bId) {
+                    // Update the order with the booking_id if it was missing
+                    if (!order.booking_id) {
+                        await supabase.from('restaurant_orders').update({ booking_id: bId }).eq('id', orderId);
+                    }
+
+                    // Automate the billing via the existing finalizeRestaurantBill function
+                    const billResult = await finalizeRestaurantBill(orderId, {
+                        payment_mode: 'Folio',
+                        redeem_points: 0,
+                        discount_amount: 0
+                    });
+
+                    if (billResult.success) {
+                        return { success: true, nextStatus: 'billed', bill_no: billResult.bill_no };
+                    }
                 }
             }
         }

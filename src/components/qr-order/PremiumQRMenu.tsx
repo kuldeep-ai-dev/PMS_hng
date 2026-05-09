@@ -47,6 +47,7 @@ export default function PremiumQRMenu({ type, id }: Props) {
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [locationName, setLocationName] = useState('');
     const [guestName, setGuestName] = useState<string | null>(null);
+    const [bookingId, setBookingId] = useState<string | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
 
     // Geofencing State
@@ -157,16 +158,13 @@ export default function PremiumQRMenu({ type, id }: Props) {
             else if (!data) setLocationError('Room not found');
             else {
                 setLocationName(data.number);
-                // Also fetch active guest name
-                const { data: booking } = await supabase
-                    .from('bookings')
-                    .select('id, guest:guests(name)')
-                    .eq('room_id', id)
-                    .eq('status', 'Active')
-                    .maybeSingle();
+                // Use RPC to fetch active guest name and booking ID (bypassing RLS safely)
+                const { data: bookingDetails } = await supabase
+                    .rpc('get_active_booking_details', { p_room_id: id });
 
-                if (booking?.guest) {
-                    setGuestName((booking.guest as any).name);
+                if (bookingDetails && bookingDetails.length > 0) {
+                    setGuestName(bookingDetails[0].guest_name);
+                    setBookingId(bookingDetails[0].booking_id);
                 }
             }
         } else {
@@ -224,23 +222,15 @@ export default function PremiumQRMenu({ type, id }: Props) {
         try {
             const { data: kotNo } = await supabase.rpc('get_next_restaurant_kot_no');
 
-            let bookingId = null;
-            if (type === 'room') {
-                const { data: booking } = await supabase
-                    .from('bookings')
-                    .select('id')
-                    .eq('room_id', id)
-                    .eq('status', 'Active')
-                    .maybeSingle();
-                if (booking) bookingId = booking.id;
-            }
+            // bookingId is already fetched in fetchLocation and stored in state
+            const finalBookingId = bookingId;
 
             const { data: order, error: orderError } = await supabase
                 .from('restaurant_orders')
                 .insert([{
                     room_id: type === 'room' ? id : null,
                     table_id: type === 'table' ? id : null,
-                    booking_id: bookingId,
+                    booking_id: finalBookingId,
                     customer_name: guestName || (type === 'room' ? 'Room Guest' : 'Table Guest'),
                     order_source: type === 'room' ? 'qr_room' : 'qr_table',
                     status: 'pending',
