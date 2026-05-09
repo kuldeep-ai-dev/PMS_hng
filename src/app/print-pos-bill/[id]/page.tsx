@@ -121,7 +121,7 @@ export default async function PrintPOSBillPage({
                 <div className="text-center space-y-1">
                     {settings.logo_url && (
                         <div className="flex justify-center mb-2">
-                            <img src={settings.logo_url} alt="Logo" className="h-12 w-auto object-contain grayscale brightness-0" />
+                            <img src={settings.logo_url} alt="Logo" className="h-12 w-auto object-contain grayscale contrast-200" />
                         </div>
                     )}
                     <h1 className="text-sm font-black uppercase tracking-tight leading-none">{settings.hotel_name || 'Hotel New Ganga'}</h1>
@@ -210,24 +210,11 @@ export default async function PrintPOSBillPage({
 
                 {/* Payment Info */}
                 <div className="text-center py-1 bg-slate-100 rounded text-[8px] font-black uppercase tracking-widest mt-1">
-                    Paid via: {order.payment_mode || (order.payment_status === 'charged_to_room' ? 'Charge to Room' : 'Cash/UPI')}
+                    Paid via: {order.payment_mode === 'Folio' ? 'Room Folio' : (order.payment_mode || (order.payment_status === 'charged_to_room' ? 'Room Folio' : 'Cash/UPI'))}
                 </div>
 
                 {/* Branding Footer */}
                 <div className="mt-4 flex flex-col items-center gap-2 border-t border-black pt-2">
-
-                    {/* Authorized Signature for POS */}
-                    <div className="flex flex-col items-center w-full mb-2">
-                        <div className="h-16 w-full flex items-end justify-center mb-1">
-                            {authorizedSignature ? (
-                                <img src={authorizedSignature} alt="Authorized Signature" className="max-h-full w-auto grayscale brightness-0 opacity-100 scale-125" />
-                            ) : (
-                                <div className="w-24 border-b border-black border-dashed opacity-30 h-10"></div>
-                            )}
-                        </div>
-                        <span className="text-[7px] font-black uppercase tracking-[0.2em] opacity-80">Authorized Signature</span>
-                    </div>
-
                     <p className="text-[10px] font-black italic tracking-widest uppercase mb-1">Thank You! Visit Again</p>
 
                     <div className="flex flex-col items-center gap-1">

@@ -234,6 +234,8 @@ export default function PremiumQRMenu({ type, id }: Props) {
                     customer_name: guestName || (type === 'room' ? 'Room Guest' : 'Table Guest'),
                     order_source: type === 'room' ? 'qr_room' : 'qr_table',
                     status: 'pending',
+                    subtotal,
+                    tax,
                     total_amount: total,
                     payment_status: 'unpaid',
                     kot_no: kotNo

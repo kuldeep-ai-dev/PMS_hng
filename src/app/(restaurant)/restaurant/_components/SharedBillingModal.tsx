@@ -355,7 +355,7 @@ export function SharedBillingModal({
                                                             {mode === 'Online' && <Smartphone className="w-5 h-5" />}
                                                             {mode === 'Folio' && <Bed className="w-5 h-5" />}
                                                         </div>
-                                                        <span className="font-black text-xs uppercase tracking-widest">{mode}</span>
+                                                        <span className="font-black text-xs uppercase tracking-widest">{mode === 'Folio' ? 'Room Folio' : mode}</span>
                                                     </div>
                                                     {paymentMode === mode && <CheckCircle2 className="w-5 h-5 text-teal-600" />}
                                                 </button>

@@ -275,7 +275,7 @@ export function POSBillingModal({
                                             {mode === 'Card' && <CreditCard className={cn("w-6 h-6", paymentMode === mode ? "text-blue-400" : "text-slate-400")} />}
                                             {mode === 'Online' && <Gift className={cn("w-6 h-6", paymentMode === mode ? "text-orange-400" : "text-slate-400")} />}
                                             {mode === 'Folio' && <Bed className={cn("w-6 h-6", paymentMode === mode ? "text-teal-400" : "text-slate-400")} />}
-                                            <span className="text-[11px] font-black uppercase tracking-widest">{mode}</span>
+                                            <span className="text-[11px] font-black uppercase tracking-widest">{mode === 'Folio' ? 'Room Folio' : mode}</span>
                                         </button>
                                     ))}
                                 </div>
