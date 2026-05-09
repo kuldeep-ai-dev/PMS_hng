@@ -156,7 +156,14 @@ export default async function PrintBillPage({
     const grandTotal = subtotalExclusive + cgstAmount + sgstAmount;
     const advancePaid = Number(booking.advance_payment) || 0;
     const additionalPayments = booking.payments?.reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
-    const totalPaid = advancePaid + additionalPayments;
+
+    // Check if the advance payment is already logged in the payments table to avoid double counting
+    const isAdvanceLogged = booking.payments?.some((p: any) =>
+        Number(p.amount) === advancePaid &&
+        (p.method === booking.advance_payment_mode || p.method === 'Online' || p.method === 'UPI')
+    );
+
+    const totalPaid = isAdvanceLogged ? additionalPayments : (advancePaid + additionalPayments);
 
     const roundOff = Math.round(grandTotal) - grandTotal;
     const finalGrandTotal = Math.round(grandTotal);
@@ -278,11 +285,11 @@ export default async function PrintBillPage({
                             <tr>
                                 <th className="p-2 font-bold text-left w-[12%]">Date</th>
                                 <th className="p-2 font-bold text-right">Room Rent</th>
-                                <th className="p-2 font-bold text-right">E.Bed</th>
-                                <th className="p-2 font-bold text-right">CGST</th>
-                                <th className="p-2 font-bold text-right">SGST</th>
-                                <th className="p-2 font-bold text-right">F&B</th>
+                                <th className="p-2 font-bold text-right">Meals</th>
+                                <th className="p-2 font-bold text-right">E.Pax/Bed</th>
+                                <th className="p-2 font-bold text-right">POS F&B</th>
                                 <th className="p-2 font-bold text-right">Other</th>
+                                <th className="p-2 font-bold text-right">Tax (GST)</th>
                                 <th className="p-2 font-bold text-right">Advance</th>
                                 <th className="p-2 font-bold text-right w-[15%] text-slate-800">Bill Total</th>
                             </tr>
@@ -291,11 +298,11 @@ export default async function PrintBillPage({
                             <tr>
                                 <td className="p-2 text-left font-medium">{invoiceDate}</td>
                                 <td className="p-2 text-right">{formatT(roomTotal)}</td>
-                                <td className="p-2 text-right">{formatT(extraBedTotal)}</td>
-                                <td className="p-2 text-right">{formatT(cgstAmount)}</td>
-                                <td className="p-2 text-right">{formatT(sgstAmount)}</td>
-                                <td className="p-2 text-right">{formatT(restaurantTotal + mealTotal)}</td>
-                                <td className="p-2 text-right">{formatT(earlyCheckInCharge + extraPaxTotal + extraChargesTotal)}</td>
+                                <td className="p-2 text-right">{formatT(mealTotal)}</td>
+                                <td className="p-2 text-right">{formatT(extraBedTotal + extraPaxTotal)}</td>
+                                <td className="p-2 text-right">{formatT(restaurantTotal)}</td>
+                                <td className="p-2 text-right">{formatT(earlyCheckInCharge + extraChargesTotal)}</td>
+                                <td className="p-2 text-right">{formatT(cgstAmount + sgstAmount)}</td>
                                 <td className="p-2 text-right text-green-600 print:text-slate-800">{formatT(totalPaid)}</td>
                                 <td className="p-2 text-right font-bold text-slate-900 bg-slate-50 border-l border-slate-100">{formatT(finalGrandTotal)}</td>
                             </tr>
