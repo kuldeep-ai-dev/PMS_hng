@@ -419,8 +419,7 @@ export default function OrdersClient({ initialData }: { initialData: any }) {
                                                                 'bg-blue-500 border-blue-400 shadow-blue-100'
                                                     )}
                                                 >
-                                                    {order.status === 'pending' ? 'Accept & Prep' :
-                                                        order.status === 'preparing' ? 'Mark Ready' : 'Mark Served'}
+                                                    {order.status === 'pending' ? 'Accept Order' : 'Mark Served'}
                                                 </button>
                                             )}
                                         </div>

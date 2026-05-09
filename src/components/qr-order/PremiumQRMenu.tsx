@@ -46,6 +46,7 @@ export default function PremiumQRMenu({ type, id }: Props) {
     const [submitting, setSubmitting] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [locationName, setLocationName] = useState('');
+    const [guestName, setGuestName] = useState<string | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
 
     // Geofencing State
@@ -154,7 +155,20 @@ export default function PremiumQRMenu({ type, id }: Props) {
             const { data, error } = await supabase.from('rooms').select('number').eq('id', id).single();
             if (error) setLocationError(error.message);
             else if (!data) setLocationError('Room not found');
-            else setLocationName(data.number);
+            else {
+                setLocationName(data.number);
+                // Also fetch active guest name
+                const { data: booking } = await supabase
+                    .from('bookings')
+                    .select('id, guest:guests(name)')
+                    .eq('room_id', id)
+                    .eq('status', 'Active')
+                    .maybeSingle();
+
+                if (booking?.guest) {
+                    setGuestName((booking.guest as any).name);
+                }
+            }
         } else {
             const { data, error } = await supabase.from('restaurant_tables').select('table_number').eq('id', id).single();
             if (error) setLocationError(error.message);
@@ -210,11 +224,24 @@ export default function PremiumQRMenu({ type, id }: Props) {
         try {
             const { data: kotNo } = await supabase.rpc('get_next_restaurant_kot_no');
 
+            let bookingId = null;
+            if (type === 'room') {
+                const { data: booking } = await supabase
+                    .from('bookings')
+                    .select('id')
+                    .eq('room_id', id)
+                    .eq('status', 'Active')
+                    .maybeSingle();
+                if (booking) bookingId = booking.id;
+            }
+
             const { data: order, error: orderError } = await supabase
                 .from('restaurant_orders')
                 .insert([{
                     room_id: type === 'room' ? id : null,
                     table_id: type === 'table' ? id : null,
+                    booking_id: bookingId,
+                    customer_name: guestName || (type === 'room' ? 'Room Guest' : 'Table Guest'),
                     order_source: type === 'room' ? 'qr_room' : 'qr_table',
                     status: 'pending',
                     total_amount: total,
@@ -295,10 +322,22 @@ export default function PremiumQRMenu({ type, id }: Props) {
                                 <Utensils className="w-12 h-12 text-white/50" />
                             </div>
                         )}
-                        <h1 className="text-3xl font-black text-white text-center mb-3 tracking-tight italic">
+                        <h1 className="text-3xl font-black text-white text-center mb-1 tracking-tight italic">
                             {restaurantInfo?.restaurant_name || 'Loading...'}
                         </h1>
-                        <p className="text-xs text-indigo-400 font-bold tracking-widest uppercase text-center">{restaurantInfo?.tagline || 'Exquisite Experience'}</p>
+                        {guestName && (
+                            <motion.p
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5 }}
+                                className="text-indigo-400 font-bold tracking-tight mb-4 text-lg"
+                            >
+                                Welcome back, {guestName}
+                            </motion.p>
+                        )}
+                        <p className="text-[10px] text-white/40 font-bold tracking-[0.3em] uppercase text-center mt-2">
+                            {restaurantInfo?.tagline || 'Exquisite Experience'}
+                        </p>
                     </motion.div>
 
                     <div className="absolute bottom-24 flex flex-col items-center gap-4">
@@ -428,7 +467,7 @@ export default function PremiumQRMenu({ type, id }: Props) {
                 )}
                 <div className="flex-1">
                     <h1 className="font-black text-slate-900 text-xl leading-tight tracking-tight">
-                        {restaurantInfo?.restaurant_name || 'Restaurant Menu'}
+                        {guestName ? `Hi, ${guestName.split(' ')[0]}!` : (restaurantInfo?.restaurant_name || 'Restaurant Menu')}
                     </h1>
                     <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest mt-0.5">
                         {type === 'room' ? `Room ${locationName} Dining` : `Table ${locationName}`}

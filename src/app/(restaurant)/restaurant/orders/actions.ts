@@ -61,21 +61,42 @@ export async function getOrdersData() {
 
 export async function updateOrderStatus(orderId: string, currentStatus: string) {
     const supabase = await createClient();
-    const sequence = ['pending', 'preparing', 'ready', 'served'];
+    const sequence = ['pending', 'preparing', 'served'];
     const nextIndex = sequence.indexOf(currentStatus) + 1;
 
     if (nextIndex >= sequence.length) return { success: false, error: 'Invalid status transition' };
     const nextStatus = sequence[nextIndex];
 
-    let updateData: any = {
-        status: nextStatus,
-        updated_at: new Date().toISOString()
-    };
-
     try {
+        // Handle Automatic Folio Billing for QR Room Orders when marking as Served
+        if (nextStatus === 'served') {
+            const { data: order } = await supabase
+                .from('restaurant_orders')
+                .select('*')
+                .eq('id', orderId)
+                .single();
+
+            if (order && order.order_source === 'qr_room' && order.booking_id) {
+                // Automate the billing via the existing finalizeRestaurantBill function
+                const billResult = await finalizeRestaurantBill(orderId, {
+                    payment_mode: 'Folio',
+                    redeem_points: 0,
+                    discount_amount: 0
+                });
+
+                if (billResult.success) {
+                    return { success: true, nextStatus: 'billed', bill_no: billResult.bill_no };
+                }
+            }
+        }
+
+        let updateData: any = {
+            status: nextStatus,
+            updated_at: new Date().toISOString()
+        };
+
         // When accepting a pending order, assign a KOT number
         if (currentStatus === 'pending' && nextStatus === 'preparing') {
-            const { data: kotNo, error: rpcError } = await supabase.rpc('get_next_restaurant_bill_no'); // Reusing bill no as human readable ID for tracking if needed, or get_next_restaurant_kot_no
             const { data: kotReal, error: kotError } = await supabase.rpc('get_next_restaurant_kot_no');
             if (kotError) throw kotError;
             updateData.kot_no = kotReal;
@@ -150,7 +171,7 @@ export async function finalizeRestaurantBill(orderId: string, payload: {
                 .from('extra_charges')
                 .insert([{
                     booking_id: order.booking_id,
-                    description: `Restaurant Order #${order.bill_no || order.kot_no || 'POS'}`,
+                    description: `Restaurant Order #${billNo || order.kot_no || 'POS'}`,
                     amount: billAmount
                 }]);
 
