@@ -112,6 +112,7 @@ export function AnalyticsDashboard() {
             .channel('admin-analytics-realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_orders' }, () => fetchData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => fetchData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => fetchData())
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };

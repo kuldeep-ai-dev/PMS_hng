@@ -95,6 +95,23 @@ export async function submitAdvanceBooking(formData: any) {
 
     if (bookingError) throw bookingError;
 
+    // 3. Log Advance Payment in 'payments' table for accounting/analytics
+    if (formData.advance_payment > 0) {
+        const { error: paymentError } = await supabase
+            .from('payments')
+            .insert({
+                booking_id: booking.id,
+                amount: formData.advance_payment,
+                method: formData.advance_payment_mode || 'Cash'
+            });
+
+        if (paymentError) {
+            console.error('[Advance Payment Log] Error:', paymentError);
+            // We don't throw here to avoid failing the whole booking if just the log fails, 
+            // though in a mission-critical system we might want to.
+        }
+    }
+
     // NOTE: We do NOT update the room status to 'Occupied' for advance bookings.
     // The room remains 'Available' until actual check-in.
 

@@ -141,13 +141,16 @@ export async function performCheckout(bookingId: string, roomId: string, billToC
 
         if (bookErr) throw bookErr;
 
-        // 1b. Trigger Emails & WhatsApp (Awaited to ensure delivery before return)
-        try {
-            await sendCheckoutMail(bookingId);
-        } catch (e) {
-            console.error('[Checkout] Notification failed:', e);
-            // We don't throw here to ensure checkout still completes in DB
-        }
+        // 1b. Trigger Emails & WhatsApp (Background tasks to keep system fast)
+        (async () => {
+            try {
+                // Send Checkout Mail & WhatsApp
+                console.log('[Checkout] Starting background notifications for:', bookingId);
+                await sendCheckoutMail(bookingId);
+            } catch (e) {
+                console.error('[Background Checkout Notifications Failed]:', e);
+            }
+        })();
 
         // 2. Set room to Dirty (needs housekeeping)
         const { error: roomErr } = await supabase
@@ -157,20 +160,10 @@ export async function performCheckout(bookingId: string, roomId: string, billToC
 
         if (roomErr) throw roomErr;
 
-        // 3. Auto-Assign Cleaning Staff
-        const cleaners = await getAvailableCleaningStaff();
-
-        // If there is cleaning staff available, assign one
-        if (cleaners && cleaners.length > 0) {
-            // Find staff with least assignments to balance load
-            const assignedCleaner = cleaners[Math.floor(Math.random() * cleaners.length)];
-            await assignCleaningStaff(roomId, assignedCleaner.id);
-        }
-
         revalidatePath('/front-desk');
         revalidatePath('/rooms');
         revalidatePath(`/folio/${bookingId}`);
-        revalidatePath('/', 'layout');
+        revalidatePath('/');
 
         return { success: true };
     } catch (err: any) {

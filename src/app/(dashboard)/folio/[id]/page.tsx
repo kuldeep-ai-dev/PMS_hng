@@ -205,7 +205,14 @@ export default function FolioPage() {
 
             const advancePaid = Number(booking.advance_payment) || 0;
             const otherPayments = booking.payments?.reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
-            const totalPaid = advancePaid + otherPayments;
+
+            // Check if the advance payment is already logged in the payments table to avoid double counting
+            const isAdvanceLogged = booking.payments?.some((p: any) =>
+                Number(p.amount) === advancePaid &&
+                (p.method === booking.advance_payment_mode || p.method === 'Online' || p.method === 'UPI')
+            );
+
+            const totalPaid = isAdvanceLogged ? otherPayments : (advancePaid + otherPayments);
             const balanceDue = grandTotal - totalPaid;
 
             setBillingData({
@@ -790,7 +797,13 @@ export default function FolioPage() {
                                         </div>
 
                                         {/* Additional Payments Ledger */}
-                                        {booking.payments?.map((p: any) => (
+                                        {booking.payments?.filter((p: any) => {
+                                            const advanceAmt = Number(booking.advance_payment) || 0;
+                                            const isAdvance = advanceAmt > 0 &&
+                                                Number(p.amount) === advanceAmt &&
+                                                (p.method === booking.advance_payment_mode || p.method === 'Online' || p.method === 'UPI');
+                                            return !isAdvance;
+                                        }).map((p: any) => (
                                             <div key={p.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 group">
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-200 transition-colors group-hover:border-emerald-200"><CreditCard className="w-4 h-4 text-slate-400 group-hover:text-emerald-500" /></div>

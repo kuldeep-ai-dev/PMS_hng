@@ -38,14 +38,23 @@ export async function getPerformanceAnalytics() {
         year: { start: startOfYear(now).toISOString(), end: endOfYear(now).toISOString() }
     };
 
-    // 1. Fetch ALL relevant Bookings (for Hotel Revenue)
+    // 1. Fetch ALL relevant Bookings (for counts)
     const { data: allBookings, error: bError } = await supabase
         .from('bookings')
-        .select('created_at, total_bill, advance_payment_mode')
+        .select('created_at, status')
         .gte('created_at', boundaries.year.start)
         .lte('created_at', boundaries.year.end);
 
     if (bError) throw bError;
+
+    // 1.1 Fetch ALL relevant Payments (for Hotel Revenue)
+    const { data: allPayments, error: pError } = await supabase
+        .from('payments')
+        .select('created_at, amount, method, is_refund')
+        .gte('created_at', boundaries.year.start)
+        .lte('created_at', boundaries.year.end);
+
+    if (pError) throw pError;
 
     // 2. Fetch ALL relevant Orders (for Restaurant Revenue)
     // Filter out pending QR orders and cancelled orders
@@ -62,11 +71,11 @@ export async function getPerformanceAnalytics() {
     const hotelRevenue: RevenueMetrics = { today: 0, week: 0, month: 0, year: 0, breakdown: { cash: 0, card: 0, online: 0 } };
     const restaurantRevenue: RevenueMetrics = { today: 0, week: 0, month: 0, year: 0, breakdown: { cash: 0, card: 0, online: 0 } };
 
-    // Calculate Hotel Metrics
-    allBookings?.forEach(b => {
-        const date = new Date(b.created_at);
-        const amt = Number(b.total_bill || 0);
-        const mode = b.advance_payment_mode as 'Cash' | 'Card' | 'Online';
+    // Calculate Hotel Metrics from Payments
+    allPayments?.forEach(p => {
+        const date = new Date(p.created_at);
+        const amt = Number(p.amount || 0);
+        const mode = p.method as 'Cash' | 'Card' | 'Online';
 
         hotelRevenue.year += amt;
         if (date >= new Date(boundaries.month.start) && date <= new Date(boundaries.month.end)) hotelRevenue.month += amt;
@@ -77,7 +86,7 @@ export async function getPerformanceAnalytics() {
             if (mode === 'Cash') hotelRevenue.breakdown.cash += amt;
             else if (mode === 'Card') hotelRevenue.breakdown.card += amt;
             else if (mode === 'Online') hotelRevenue.breakdown.online += amt;
-            else hotelRevenue.breakdown.cash += amt; // Fallback to cash if null
+            else hotelRevenue.breakdown.cash += amt; // Fallback to cash
         }
     });
 
@@ -103,13 +112,23 @@ export async function getPerformanceAnalytics() {
         trends[key] = { date: key, hotelRevenue: 0, restaurantRevenue: 0, bookings: 0 };
     }
 
-    // Populate Hotel Trends
+    // Populate Hotel Revenue Trends from Payments
+    allPayments?.forEach(p => {
+        const d = new Date(p.created_at);
+        if (d >= thirtyDaysAgo) {
+            const key = format(d, 'MMM dd');
+            if (trends[key]) {
+                trends[key].hotelRevenue += Number(p.amount || 0);
+            }
+        }
+    });
+
+    // Populate Booking Counts from Bookings
     allBookings?.forEach(b => {
         const d = new Date(b.created_at);
         if (d >= thirtyDaysAgo) {
             const key = format(d, 'MMM dd');
             if (trends[key]) {
-                trends[key].hotelRevenue += Number(b.total_bill || 0);
                 trends[key].bookings += 1;
             }
         }

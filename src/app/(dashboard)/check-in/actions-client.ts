@@ -234,5 +234,21 @@ export async function submitCheckIn(formData: any, bookingId?: string) {
 
     if (roomError) throw roomError;
 
+    // 5. Log Advance Payment in 'payments' table for accounting/analytics
+    if (formData.advance_payment > 0) {
+        const { error: paymentError } = await supabase
+            .from('payments')
+            .insert({
+                booking_id: booking.id,
+                amount: formData.advance_payment,
+                method: formData.advance_payment_mode || 'Cash',
+                is_test_data: isSandbox
+            });
+
+        if (paymentError) {
+            console.error('[Check-in Payment Log] Error:', paymentError);
+        }
+    }
+
     return booking;
 }

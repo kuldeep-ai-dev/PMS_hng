@@ -68,7 +68,7 @@ export async function POST(req: Request) {
             const check_in_date = data.check_in_date || new Date().toISOString();
             const check_out_date = data.check_out_date || new Date(Date.now() + 86400000).toISOString();
 
-            const { error: bookingError } = await supabase
+            const { data: booking, error: bookingError } = await supabase
                 .from('bookings')
                 .insert({
                     guest_id: guest.id,
@@ -80,11 +80,29 @@ export async function POST(req: Request) {
                     purpose_of_visit: 'Leisure',
                     advance_payment: data.advance_payment || 0,
                     advance_payment_mode: 'Online'
-                });
+                })
+                .select()
+                .single();
 
             if (bookingError) {
                 console.error('Webhook Booking Insert Error:', bookingError);
                 return NextResponse.json({ error: 'Failed to create booking', details: bookingError }, { status: 500 });
+            }
+
+            // 3. Log Advance Payment in 'payments' table
+            const advanceAmt = Number(data.advance_payment || 0);
+            if (advanceAmt > 0) {
+                const { error: paymentError } = await supabase
+                    .from('payments')
+                    .insert({
+                        booking_id: booking.id,
+                        amount: advanceAmt,
+                        method: 'Online'
+                    });
+
+                if (paymentError) {
+                    console.error('Webhook Payment Log Error:', paymentError);
+                }
             }
 
             return NextResponse.json({ success: true, message: 'Booking created' });

@@ -12,22 +12,34 @@ export async function getGrowthAnalytics() {
     const today = getISTDate();
     const twelveMonthsAgo = subMonths(today, 12).toISOString();
 
-    // 1. Fetch bookings & Rooms for growth trends
+    // 1. Fetch bookings for guest analysis and counts
     const { data: bookings, error } = await supabase
         .from('bookings')
         .select('*, guests(id)')
         .gte('created_at', twelveMonthsAgo)
         .order('created_at', { ascending: true });
 
-    const { data: rooms } = await supabase.from('rooms').select('id');
-    const totalRoomsCount = rooms?.length || 30;
-
     if (error) {
         console.error('[Growth Analytics] Error:', error.message);
         return null;
     }
 
-    const all = bookings || [];
+    // 1.1 Fetch ALL payments for revenue calculations
+    const { data: allPayments, error: pError } = await supabase
+        .from('payments')
+        .select('*')
+        .gte('created_at', twelveMonthsAgo);
+
+    if (pError) {
+        console.error('[Growth Analytics] Payments Error:', pError.message);
+        return null;
+    }
+
+    const { data: rooms } = await supabase.from('rooms').select('id');
+    const totalRoomsCount = rooms?.length || 30;
+
+    const allBookings = bookings || [];
+    const allPaymentsList = allPayments || [];
 
     // 2. Monthly Metrics (RevPAR, ADR)
     const monthInterval = eachMonthOfInterval({
@@ -40,14 +52,20 @@ export async function getGrowthAnalytics() {
         const end = endOfMonth(month);
         const monthLabel = format(month, 'MMM yy');
 
-        const monthlyBookings = all.filter(b => {
+        // Revenue from Payments
+        const monthlyPayments = allPaymentsList.filter(p => {
+            const date = new Date(p.created_at);
+            return (date >= start && date <= end);
+        });
+        const totalRevenue = monthlyPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+
+        // Usage from Bookings (Sold count)
+        const monthlyBookings = allBookings.filter(b => {
             if (!b.check_in_date) return false;
             const bStart = new Date(b.check_in_date);
             if (isNaN(bStart.getTime())) return false;
             return (bStart >= start && bStart <= end);
         });
-
-        const totalRevenue = monthlyBookings.reduce((acc, b) => acc + (Number(b.total_bill) || 0), 0);
         const roomsSold = monthlyBookings.length;
 
         // ADR (Average Daily Rate) = Revenue / Rooms Sold
@@ -68,7 +86,7 @@ export async function getGrowthAnalytics() {
 
     // 3. Guest Retention Analysis
     const guestBookingCounts: Record<string, number> = {};
-    all.forEach(b => {
+    allBookings.forEach(b => {
         const gid = b.guests?.id;
         if (gid) guestBookingCounts[gid] = (guestBookingCounts[gid] || 0) + 1;
     });
