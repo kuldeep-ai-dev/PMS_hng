@@ -62,8 +62,9 @@ export function POSBillingModal({
             if (currentOrderId) {
                 // Update existing pending order
                 const { data: existingOrder } = await supabase.from('restaurant_orders').select('paid_amount').eq('id', currentOrderId).single();
-                const totalPaidSoFar = (existingOrder?.paid_amount || 0) + parseFloat(paidAmount);
-                const newBalance = finalTotal - totalPaidSoFar;
+                const isFolio = paymentMode === 'Folio';
+                const totalPaidSoFar = isFolio ? 0 : ((existingOrder?.paid_amount || 0) + parseFloat(paidAmount || '0'));
+                const newBalance = isFolio ? finalTotal : (finalTotal - totalPaidSoFar);
 
                 const { data: updated, error: updErr } = await supabase.from('restaurant_orders').update({
                     customer_id: custData.id,
@@ -72,9 +73,9 @@ export function POSBillingModal({
                     total_amount: finalTotal,
                     paid_amount: totalPaidSoFar,
                     balance_amount: newBalance,
-                    payment_status: newBalance <= 0 ? 'paid' : 'partial',
-                    status: newBalance <= 0 ? 'billed' : 'partial',
-                    payment_mode: paymentMode,
+                    payment_status: isFolio ? 'charged_to_room' : (newBalance <= 0 ? 'paid' : 'partial'),
+                    status: (isFolio || newBalance <= 0) ? 'billed' : 'partial',
+                    payment_mode: isFolio ? 'Room Folio' : paymentMode,
                     bill_no: billNo
                 }).eq('id', currentOrderId).select().single();
 
@@ -96,10 +97,10 @@ export function POSBillingModal({
                     subtotal,
                     tax,
                     total_amount: finalTotal,
-                    paid_amount: isFolio ? 0 : parseFloat(paidAmount),
-                    balance_amount: isFolio ? finalTotal : (finalTotal - parseFloat(paidAmount)),
-                    payment_status: isFolio ? 'charged_to_room' : (parseFloat(paidAmount) >= finalTotal ? 'paid' : 'partial'),
-                    payment_mode: paymentMode,
+                    paid_amount: isFolio ? 0 : parseFloat(paidAmount || '0'),
+                    balance_amount: isFolio ? finalTotal : (finalTotal - parseFloat(paidAmount || '0')),
+                    payment_status: isFolio ? 'charged_to_room' : (parseFloat(paidAmount || '0') >= finalTotal ? 'paid' : 'partial'),
+                    payment_mode: isFolio ? 'Room Folio' : paymentMode,
                     order_time: new Date().toISOString(),
                     bill_no: billNo,
                     kot_no: kotNo,
