@@ -48,8 +48,7 @@ export async function getMoneyReceiptsData(startDate?: string, endDate?: string)
             rooms (id, number),
             table:restaurant_tables (table_number)
         `)
-        .in('payment_status', ['paid', 'charged_to_room'])
-        .in('status', ['preparing', 'ready', 'served', 'completed', 'billed']);
+        .in('payment_status', ['paid', 'charged_to_room']);
 
     if (startDate) {
         posQuery = posQuery.gte('order_time', startDate);
@@ -91,7 +90,6 @@ export async function getReceiptStats(startDate?: string, endDate?: string) {
         .select('total_amount, payment_status')
         .eq('is_refund', false)
         .in('payment_status', ['paid', 'charged_to_room'])
-        .in('status', ['preparing', 'ready', 'served', 'completed', 'billed'])
         .gte('order_time', filterStart)
         .lte('order_time', filterEnd);
 
