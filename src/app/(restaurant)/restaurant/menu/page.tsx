@@ -99,8 +99,7 @@ export default function MenuManagement() {
         price: parseFloat(newItem.price),
         image_url: newItem.imageUrl.trim() || null,
         is_veg: newItem.isVeg,
-        is_available: newItem.isAvailable,
-        updated_at: new Date().toISOString()
+        is_available: newItem.isAvailable
       };
 
       let error;
