@@ -282,7 +282,7 @@ export default function MoneyReceiptsPage() {
                             <ReceiptIcon className="w-4 h-4" />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-slate-900">{formatCurrency(stats?.posCollection || 0)}</div>
+                    <div className="text-2xl font-bold text-slate-900">{formatCurrency(stats?.posFolioTotal || 0)}</div>
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
