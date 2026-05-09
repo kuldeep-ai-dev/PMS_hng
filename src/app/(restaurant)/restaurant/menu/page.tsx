@@ -9,6 +9,7 @@ export default function MenuManagement() {
   const [categories, setCategories] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -70,6 +71,20 @@ export default function MenuManagement() {
     fetchData();
   };
 
+  const handleEdit = (item: any) => {
+    setEditingItemId(item.id);
+    setNewItem({
+      name: item.name,
+      categoryId: item.category_id,
+      price: item.price.toString(),
+      description: item.description || '',
+      imageUrl: item.image_url || '',
+      isVeg: item.is_veg,
+      isAvailable: item.is_available
+    });
+    setShowModal(true);
+  };
+
   const saveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingItem(true);
@@ -77,18 +92,34 @@ export default function MenuManagement() {
     try {
       if (!newItem.name || !newItem.categoryId || !newItem.price) return;
 
-      const { error } = await supabase.from('restaurant_menu_items').insert([{
+      const itemData: any = {
         name: newItem.name.trim(),
         category_id: newItem.categoryId,
         description: newItem.description.trim() || null,
         price: parseFloat(newItem.price),
         image_url: newItem.imageUrl.trim() || null,
         is_veg: newItem.isVeg,
-        is_available: newItem.isAvailable
-      }]);
+        is_available: newItem.isAvailable,
+        updated_at: new Date().toISOString()
+      };
+
+      let error;
+      if (editingItemId) {
+        const { error: updateErr } = await supabase
+          .from('restaurant_menu_items')
+          .update(itemData)
+          .eq('id', editingItemId);
+        error = updateErr;
+      } else {
+        const { error: insertErr } = await supabase
+          .from('restaurant_menu_items')
+          .insert([itemData]);
+        error = insertErr;
+      }
 
       if (!error) {
         setShowModal(false);
+        setEditingItemId(null);
         setNewItem({
           name: '',
           categoryId: '',
@@ -168,7 +199,22 @@ export default function MenuManagement() {
         <BentoCard className="lg:col-span-8 p-0 overflow-hidden flex flex-col bg-white border border-slate-200/60 shadow-sm rounded-2xl">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-800 tracking-tight">Menu Items</h2>
-            <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-teal-500 text-white text-sm font-semibold rounded-lg hover:bg-teal-600 transition-colors flex items-center gap-2">
+            <button
+              onClick={() => {
+                setEditingItemId(null);
+                setNewItem({
+                  name: '',
+                  categoryId: '',
+                  price: '',
+                  description: '',
+                  imageUrl: '',
+                  isVeg: true,
+                  isAvailable: true
+                });
+                setShowModal(true);
+              }}
+              className="px-4 py-2 bg-teal-500 text-white text-sm font-semibold rounded-lg hover:bg-teal-600 transition-colors flex items-center gap-2"
+            >
               <Plus className="w-4 h-4" /> Add Item
             </button>
           </div>
@@ -206,6 +252,12 @@ export default function MenuManagement() {
                   >
                     {item.is_available ? <><Check className="w-3.5 h-3.5" /> Available</> : <><X className="w-3.5 h-3.5" /> Unavailable</>}
                   </button>
+                  <button
+                    onClick={() => handleEdit(item)}
+                    className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
                   <button onClick={() => deleteItem(item.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -231,8 +283,14 @@ export default function MenuManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <BentoCard className="w-full max-w-lg p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-slate-800 tracking-tight">Add Menu Item</h2>
-              <button onClick={() => setShowModal(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
+              <h2 className="text-xl font-bold text-slate-800 tracking-tight">{editingItemId ? 'Edit Menu Item' : 'Add Menu Item'}</h2>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setEditingItemId(null);
+                }}
+                className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
