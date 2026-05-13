@@ -18,7 +18,7 @@ export default async function HousekeepingInventoryPage() {
         admin
             .from('profiles')
             .select('id, name, role')
-            .eq('role', 'cleaning_staff')
+            .in('role', ['cleaning_staff', 'restaurant_staff', 'front_desk', 'manager', 'admin', 'master'])
             .eq('status', 'active')
             .order('name'),
         admin
