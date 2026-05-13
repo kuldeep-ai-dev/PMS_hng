@@ -20,18 +20,6 @@ export async function getInventoryItems() {
     return data;
 }
 
-export async function getActiveStaff() {
-    const { data, error } = await supabaseAdmin
-        .from('profiles')
-        .select('id, name, role')
-        .in('role', ['cleaning_staff', 'restaurant_staff', 'front_desk', 'manager', 'admin', 'master'])
-        .eq('status', 'active')
-        .order('name');
-
-    if (error) throw new Error(error.message);
-    return data;
-}
-
 export async function getInventoryCategories() {
     const { data, error } = await supabaseAdmin
         .from('inventory_categories')
@@ -177,17 +165,15 @@ export async function verifyStaffPassword(staffId: string, password: string) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const { data: authData, error: authError } = await tempClient.auth.signInWithPassword({
+    const { error: authError } = await tempClient.auth.signInWithPassword({
         email: userData.user.email,
         password: password,
     });
 
     if (authError) {
-        console.error('Housekeeping Auth Error:', authError.message, 'for email:', userData.user.email);
         throw new Error('Invalid password');
     }
 
-    console.log('Housekeeping Auth Success for:', userData.user.email);
     return { success: true };
 }
 
