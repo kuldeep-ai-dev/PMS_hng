@@ -73,6 +73,7 @@ export default function HousekeepingInventoryClient({ items, staff, rooms, ledge
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const filteredItems = items.filter(i =>
         i.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -357,10 +358,10 @@ export default function HousekeepingInventoryClient({ items, staff, rooms, ledge
                         <motion.div key="ledger_view" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                             <h2 className="text-2xl font-black tracking-tight text-center">Movement History</h2>
                             <div className="space-y-3">
-                                {ledger.filter(l => l.user_id === selectedStaff.id).length === 0 ? (
+                                {ledger.filter(l => l.staff_id === selectedStaff.id).length === 0 ? (
                                     <div className="text-center py-20 text-slate-300 italic">No activity recorded by you today.</div>
                                 ) : (
-                                    ledger.filter(l => l.user_id === selectedStaff.id).map((l, i) => (
+                                    ledger.filter(l => l.staff_id === selectedStaff.id).map((l, i) => (
                                         <div key={i} className="p-5 rounded-[2rem] bg-white border border-slate-50 shadow-sm flex items-center justify-between">
                                             <div>
                                                 <p className="text-sm font-black text-slate-800">{l.item_name}</p>
@@ -419,11 +420,20 @@ export default function HousekeepingInventoryClient({ items, staff, rooms, ledge
                             </div>
                             <span className="text-[9px] font-black uppercase tracking-tighter">History</span>
                         </button>
-                        <button onClick={() => window.location.reload()} className="flex flex-col items-center gap-1.5 text-slate-300 hover:text-rose-400 transition-all">
+                        <button
+                            disabled={isLoggingOut}
+                            onClick={() => {
+                                setIsLoggingOut(true);
+                                setTimeout(() => window.location.reload(), 800);
+                            }}
+                            className="flex flex-col items-center gap-1.5 text-slate-300 hover:text-rose-400 transition-all disabled:opacity-50"
+                        >
                             <div className="p-2 rounded-2xl">
-                                <X className="w-6 h-6" />
+                                {isLoggingOut ? <div className="w-6 h-6 border-2 border-rose-400/20 border-t-rose-400 rounded-full animate-spin" /> : <X className="w-6 h-6" />}
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-tighter">Logout</span>
+                            <span className="text-[9px] font-black uppercase tracking-tighter">
+                                {isLoggingOut ? 'Leaving...' : 'Logout'}
+                            </span>
                         </button>
                     </div>
                 </div>
