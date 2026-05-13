@@ -26,11 +26,12 @@ const transporter = nodemailer.createTransport({
     maxMessages: 100
 });
 
-async function generateInvoicePDF(bookingId: string, isProvisional: boolean, devOrigin?: string) {
+async function generateInvoicePDF(bookingId: string, isProvisional: boolean, devOrigin?: string, view?: 'room' | 'food' | 'full') {
     // Internal token to bypass auth middleware for PDF generation
     const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
     if (isProvisional) params.set('type', 'provisional');
+    if (view) params.set('view', view);
 
     // Priority: 1. Passed devOrigin (from client), 2. env variable, 3. production fallback
     const baseUrl = devOrigin || process.env.NEXT_PUBLIC_APP_URL || 'https://genypms.hotelnewganga.in';
@@ -369,7 +370,7 @@ export async function sendBookingConfirmation(bookingId: string) {
     }
 }
 
-export async function sendCheckoutMail(bookingId: string, devOrigin?: string) {
+export async function sendCheckoutMail(bookingId: string, devOrigin?: string, view: 'room' | 'full' = 'full') {
     try {
         const supabase = await createClient();
 
@@ -401,7 +402,7 @@ export async function sendCheckoutMail(bookingId: string, devOrigin?: string) {
             return { success: false, message: 'Booking not found' };
         }
 
-        const pdfBuffer = await generateInvoicePDF(bookingId, false);
+        const pdfBuffer = await generateInvoicePDF(bookingId, false, devOrigin, view);
         const attachment = [
             {
                 filename: `Tax_Invoice_${bookingId.split('-')[0].toUpperCase()}.pdf`,
@@ -412,7 +413,7 @@ export async function sendCheckoutMail(bookingId: string, devOrigin?: string) {
 
         // TRIGGER WHATSAPP (Early, passing the pdfBuffer we already generated)
         let waResult: any = null;
-        const waPromise = sendCheckoutWhatsApp(bookingId, pdfBuffer).then(r => { waResult = r; return r; }).catch(err => {
+        const waPromise = sendCheckoutWhatsApp(bookingId, pdfBuffer, view).then(r => { waResult = r; return r; }).catch(err => {
             console.error('[Mailer] WhatsApp checkout send failed:', err.message);
             waResult = { success: false, error: err.message };
         });

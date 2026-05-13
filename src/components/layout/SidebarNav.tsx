@@ -9,7 +9,7 @@ import {
     ChevronDown, LayoutDashboard, Building2, Monitor,
     UserPlus, FileCheck, FileText, PackageSearch, LayoutGrid,
     Utensils, Layout, UserCheck, Brush, BarChart3, MessageCircle,
-    TrendingUp, Coins, Users2, PieChart, LineChart, Zap, CalendarPlus, ShieldCheck, HelpCircle
+    TrendingUp, Coins, Users2, PieChart, LineChart, Zap, CalendarPlus, ShieldCheck, HelpCircle, Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toggleSandboxMode } from '@/app/actions/sandbox';
@@ -21,7 +21,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     LayoutDashboard, Building2, Monitor, UserPlus, FileCheck,
     FileText, PackageSearch, LayoutGrid, Utensils, Layout,
     UserCheck, Brush, BarChart3, MessageCircle, TrendingUp,
-    Coins, Users2, PieChart, LineChart, Zap, ShieldCheck, HelpCircle
+    Coins, Users2, PieChart, LineChart, Zap, ShieldCheck, HelpCircle, Package
 };
 
 type NavItem = {
@@ -71,6 +71,7 @@ export function SidebarNav({ role, isSandboxMode, onNavigate }: SidebarNavProps)
                 { label: role === 'front_desk' ? 'Manage Rooms' : 'Rooms Grid', href: '/rooms', iconName: 'LayoutGrid' },
                 { label: 'Restaurant POS', href: '/restaurant/pos', iconName: 'Utensils', newTab: true },
                 { label: 'Website Bookings', href: '/website-bookings', iconName: 'Globe' },
+                { label: 'Store Inventory', href: '/inventory', iconName: 'Package' },
                 { label: 'Restaurant Guide', href: '/help', iconName: 'HelpCircle' },
             ]
         },
@@ -99,6 +100,14 @@ export function SidebarNav({ role, isSandboxMode, onNavigate }: SidebarNavProps)
                 { label: 'Business Growth', href: '/admin/analytics/growth', iconName: 'Zap' },
                 { label: 'Rest. Revenue', href: '/admin/analytics/restaurant/revenue', iconName: 'Utensils' },
                 { label: 'Rest. Preferences', href: '/admin/analytics/restaurant/preferences', iconName: 'PieChart' },
+            ]
+        }] : []),
+        ...(isAdmin ? [{
+            label: 'Reports',
+            iconName: 'BarChart3',
+            items: [
+                { label: 'Operational Reports', href: '/reports/operational', iconName: 'Monitor' },
+                { label: 'Financial Reports', href: '/reports/financial', iconName: 'Coins' },
             ]
         }] : []),
         ...(isAdmin ? [{ label: 'Settings', iconName: 'Settings', href: '/settings' }] : []),
@@ -131,6 +140,7 @@ export function SidebarNav({ role, isSandboxMode, onNavigate }: SidebarNavProps)
                     { label: 'Rooms Grid', href: '/rooms', iconName: 'LayoutGrid' },
                     { label: 'Restaurant POS', href: '/restaurant/pos', iconName: 'Utensils', newTab: true },
                     { label: 'Website Bookings', href: '/website-bookings', iconName: 'Globe' },
+                    { label: 'Store Inventory', href: '/inventory', iconName: 'Package' },
                 ]
             },
             {
@@ -142,6 +152,14 @@ export function SidebarNav({ role, isSandboxMode, onNavigate }: SidebarNavProps)
                     { label: 'Trends', href: '/admin/analytics/trends', iconName: 'TrendingUp' },
                     { label: 'Staff Performance', href: '/admin/analytics/staff', iconName: 'Users2' },
                     { label: 'Business Growth', href: '/admin/analytics/growth', iconName: 'Zap' },
+                ]
+            },
+            {
+                label: 'Reports',
+                iconName: 'BarChart3',
+                items: [
+                    { label: 'Operational Reports', href: '/reports/operational', iconName: 'Monitor' },
+                    { label: 'Financial Reports', href: '/reports/financial', iconName: 'Coins' },
                 ]
             },
             { label: 'House Keeping Monitor', iconName: 'Brush', href: '/admin/housekeeping' },
@@ -162,6 +180,7 @@ export function SidebarNav({ role, isSandboxMode, onNavigate }: SidebarNavProps)
     if (role === 'cleaning_staff') {
         navGroups = [
             { label: 'Dashboard / Tasks', iconName: 'Home', href: '/' },
+            { label: 'Report Usage', iconName: 'Package', href: '/housekeeping/inventory' },
             ...(isAdmin ? [{ label: 'Profile Settings', iconName: 'Settings', href: '/settings' }] : []),
         ];
     }

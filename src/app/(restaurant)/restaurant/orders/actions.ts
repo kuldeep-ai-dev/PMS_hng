@@ -69,46 +69,8 @@ export async function updateOrderStatus(orderId: string, currentStatus: string) 
 
     try {
         // Handle Automatic Folio Billing for QR Room Orders when marking as Served
-        if (nextStatus === 'served') {
-            const { data: order } = await supabase
-                .from('restaurant_orders')
-                .select('*')
-                .eq('id', orderId)
-                .single();
+        // Automatic billing removed as requested - staff will now manually choose between Bill Now or Add to Folio
 
-            if (order && order.order_source === 'qr_room') {
-                let bId = order.booking_id;
-
-                // Fallback: If booking_id is missing, try to find the active booking for the room
-                if (!bId && order.room_id) {
-                    const { data: activeBooking } = await supabase
-                        .from('bookings')
-                        .select('id')
-                        .eq('room_id', order.room_id)
-                        .eq('status', 'Active')
-                        .maybeSingle();
-                    if (activeBooking) bId = activeBooking.id;
-                }
-
-                if (bId) {
-                    // Update the order with the booking_id if it was missing
-                    if (!order.booking_id) {
-                        await supabase.from('restaurant_orders').update({ booking_id: bId }).eq('id', orderId);
-                    }
-
-                    // Automate the billing via the existing finalizeRestaurantBill function
-                    const billResult = await finalizeRestaurantBill(orderId, {
-                        payment_mode: 'Folio',
-                        redeem_points: 0,
-                        discount_amount: 0
-                    });
-
-                    if (billResult.success) {
-                        return { success: true, nextStatus: 'billed', bill_no: billResult.bill_no };
-                    }
-                }
-            }
-        }
 
         let updateData: any = {
             status: nextStatus,
@@ -214,7 +176,7 @@ export async function finalizeRestaurantBill(orderId: string, payload: {
 
         // 4. Update/Upsert Customer for Marketing Leads
         if (payload.customer_mobile && payload.customer_mobile.length >= 10) {
-            await supabase
+            const { error: custErr } = await supabase
                 .from('restaurant_customers')
                 .upsert([{
                     mobile_number: payload.customer_mobile,
@@ -222,12 +184,14 @@ export async function finalizeRestaurantBill(orderId: string, payload: {
                     updated_at: new Date().toISOString()
                 }], { onConflict: 'mobile_number' });
 
-            // Also ensure loyalty wallet exists
-            await supabase
-                .from('restaurant_loyalty_wallets')
-                .upsert([
-                    { mobile_number: payload.customer_mobile }
-                ], { onConflict: 'mobile_number' });
+            if (!custErr) {
+                // Also ensure loyalty wallet exists
+                await supabase
+                    .from('restaurant_loyalty_wallets')
+                    .upsert([
+                        { mobile_number: payload.customer_mobile }
+                    ], { onConflict: 'mobile_number' });
+            }
         }
 
         // 5. Handle Loyalty if points redeemed

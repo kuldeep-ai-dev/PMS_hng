@@ -165,17 +165,26 @@ export function POSBillingModal({
             }
 
             const pointsEarned = Math.floor(finalTotal * (loyaltySettings?.points_per_rupee || 0));
-            if (pointsEarned > 0) {
-                const { data: existingWallet } = await supabase.from('restaurant_loyalty_wallets').select('*').eq('mobile_number', customerMobile).maybeSingle();
-                if (existingWallet) {
-                    await supabase.from('restaurant_loyalty_wallets').update({
-                        points_balance: (existingWallet.points_balance || 0) + pointsEarned
-                    }).eq('mobile_number', customerMobile);
-                } else {
-                    await supabase.from('restaurant_loyalty_wallets').insert({
-                        mobile_number: customerMobile,
-                        points_balance: pointsEarned
-                    });
+            if (pointsEarned > 0 && customerMobile && customerMobile.length >= 10) {
+                // Check if customer exists in restaurant database before loyalty ops
+                const { data: customerRecord } = await supabase
+                    .from('restaurant_customers')
+                    .select('id')
+                    .eq('mobile_number', customerMobile)
+                    .maybeSingle();
+
+                if (customerRecord) {
+                    const { data: existingWallet } = await supabase.from('restaurant_loyalty_wallets').select('*').eq('mobile_number', customerMobile).maybeSingle();
+                    if (existingWallet) {
+                        await supabase.from('restaurant_loyalty_wallets').update({
+                            points_balance: (existingWallet.points_balance || 0) + pointsEarned
+                        }).eq('mobile_number', customerMobile);
+                    } else {
+                        await supabase.from('restaurant_loyalty_wallets').insert({
+                            mobile_number: customerMobile,
+                            points_balance: pointsEarned
+                        });
+                    }
                 }
             }
 

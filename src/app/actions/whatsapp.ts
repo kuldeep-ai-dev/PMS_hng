@@ -88,10 +88,11 @@ async function uploadPdfToR2(pdfBuffer: Uint8Array, filename: string): Promise<s
 /**
  * Generate invoice PDF using Puppeteer (same logic as mail.ts).
  */
-async function generateInvoicePDF(bookingId: string, isProvisional: boolean): Promise<Uint8Array> {
+async function generateInvoicePDF(bookingId: string, isProvisional: boolean, view?: 'room' | 'food' | 'full'): Promise<Uint8Array> {
     const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
     if (isProvisional) params.set('type', 'provisional');
+    if (view) params.set('view', view);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://genypms.hotelnewganga.in';
     const url = `${baseUrl}/print-bill/${bookingId}?${params.toString()}`;
 
@@ -467,7 +468,7 @@ export async function sendBookingWhatsApp(bookingId: string, pdfBuffer?: Uint8Ar
  * Send checkout thank-you WhatsApp with final tax invoice PDF.
  * If pdfBuffer is provided, it uses it instead of generating a new one.
  */
-export async function sendCheckoutWhatsApp(bookingId: string, pdfBuffer?: Uint8Array) {
+export async function sendCheckoutWhatsApp(bookingId: string, pdfBuffer?: Uint8Array, view: 'room' | 'full' = 'full') {
     try {
         const settings = await getSettings();
         if (!settings.whatsapp_enabled) {
@@ -493,7 +494,7 @@ export async function sendCheckoutWhatsApp(bookingId: string, pdfBuffer?: Uint8A
         const room = `${booking.rooms.number} (${booking.rooms.type})`;
 
         // Generate & upload PDF
-        const finalPdfBuffer = pdfBuffer || await generateInvoicePDF(bookingId, false);
+        const finalPdfBuffer = pdfBuffer || await generateInvoicePDF(bookingId, false, view);
         const pdfFilename = `Invoice_${bookingId.split('-')[0].toUpperCase()}_${Date.now()}.pdf`;
         const pdfUrl = await uploadPdfToR2(finalPdfBuffer, pdfFilename);
 

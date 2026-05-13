@@ -21,15 +21,24 @@ import {
     CheckCircle2,
     Undo2,
     Mail,
-    Send
+    Send,
+    FileSpreadsheet,
+    Loader2,
+    Edit,
+    Trash2
 } from 'lucide-react';
-import { getMoneyReceiptsData, getReceiptStats, processRefund, settlePOSWithRestaurant, generateAndSendAccountsLink } from './actions';
+import { getMoneyReceiptsData, getReceiptStats, processRefund, settlePOSWithRestaurant, generateAndSendAccountsLink, editTransaction, deleteTransaction, exportMoneyReceiptsToExcel } from './actions';
 import { generateInvoiceNo, formatCurrency } from '@/utils/billing';
 import { formatISTDate, formatISTTime } from '@/utils/date';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
 import { RealtimeRefresh } from '@/components/pms/RealtimeRefresh';
+
+const CloseIcon = ({ className }: { className: string }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+);
+
 
 export default function MoneyReceiptsPage() {
     const router = useRouter();
@@ -39,6 +48,18 @@ export default function MoneyReceiptsPage() {
     const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
     const [refundReason, setRefundReason] = useState('Overpayment / Error');
     const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+
+    // Edit state
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedEdit, setSelectedEdit] = useState<any>(null);
+    const [editAmount, setEditAmount] = useState('');
+    const [editMethod, setEditMethod] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Delete state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedDelete, setSelectedDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [data, setData] = useState<any>({ roomPayments: [], posPayments: [] });
     const [stats, setStats] = useState<any>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -53,6 +74,33 @@ export default function MoneyReceiptsPage() {
     const [accountsStartDate, setAccountsStartDate] = useState('');
     const [accountsEndDate, setAccountsEndDate] = useState('');
     const [isSendingAccounts, setIsSendingAccounts] = useState(false);
+
+    // Excel Export State
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportStartDate, setExportStartDate] = useState(mainStartDate || new Date().toISOString().split('T')[0]);
+    const [exportEndDate, setExportEndDate] = useState(mainEndDate || new Date().toISOString().split('T')[0]);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExportExcel = async () => {
+        setIsExporting(true);
+        try {
+            const res = await exportMoneyReceiptsToExcel(exportStartDate, exportEndDate);
+            if (res.success && res.base64 && res.filename) {
+                const link = document.createElement('a');
+                link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${res.base64}`;
+                link.download = res.filename;
+                link.click();
+                toast.success('Excel exported successfully');
+                setIsExportModalOpen(false);
+            } else {
+                toast.error(res.message || 'Export failed');
+            }
+        } catch (err) {
+            toast.error('An error occurred during Excel export');
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     useEffect(() => {
         loadData(mainStartDate, mainEndDate);
@@ -233,6 +281,13 @@ export default function MoneyReceiptsPage() {
                     >
                         <Download className="w-4 h-4" />
                         Export PDF
+                    </button>
+                    <button
+                        onClick={() => setIsExportModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium text-sm shadow-sm active:scale-95 disabled:opacity-50"
+                    >
+                        <FileSpreadsheet className="w-4 h-4" />
+                        Export Excel
                     </button>
                     {isAdmin && (
                         <button
@@ -472,6 +527,33 @@ export default function MoneyReceiptsPage() {
                                                 >
                                                     <Undo2 className="w-4 h-4" />
                                                 </button>
+                                            )}
+
+                                            {isAdmin && receipt.status !== 'Refunded' && (
+                                                <>
+                                                    <button
+                                                        title="Edit Transaction"
+                                                        onClick={() => {
+                                                            setSelectedEdit(receipt);
+                                                            setEditAmount(receipt.amount.toString());
+                                                            setEditMethod(receipt.method);
+                                                            setIsEditModalOpen(true);
+                                                        }}
+                                                        className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        title="Delete Transaction"
+                                                        onClick={() => {
+                                                            setSelectedDelete(receipt);
+                                                            setIsDeleteModalOpen(true);
+                                                        }}
+                                                        className="p-2 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     </td>
@@ -733,15 +815,226 @@ export default function MoneyReceiptsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Edit Modal */}
+            {isEditModalOpen && selectedEdit && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-3 text-blue-600">
+                                <Edit className="w-5 h-5" />
+                                <h3 className="font-black text-lg tracking-tight">Edit Transaction</h3>
+                            </div>
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+                            >
+                                <CloseIcon className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Amount</label>
+                                <input
+                                    type="number"
+                                    value={editAmount}
+                                    onChange={(e) => setEditAmount(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Payment Method</label>
+                                <select
+                                    value={editMethod}
+                                    onChange={(e) => setEditMethod(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium"
+                                >
+                                    <option value="Cash">Cash</option>
+                                    <option value="Card">Card</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                    <option value="Billed to Folio">Billed to Folio</option>
+                                    <option value="Corporate">Corporate</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex gap-3">
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="flex-1 px-4 py-3 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                disabled={isEditing || !editAmount}
+                                onClick={async () => {
+                                    setIsEditing(true);
+                                    try {
+                                        const res = await editTransaction(selectedEdit.id, selectedEdit.source, { amount: Number(editAmount), method: editMethod });
+                                        if (res.success) {
+                                            toast.success('Transaction updated successfully');
+                                            setIsEditModalOpen(false);
+                                            loadData();
+                                        } else {
+                                            toast.error(res.message);
+                                        }
+                                    } catch (err: any) {
+                                        toast.error(err.message || 'Failed to update transaction');
+                                    } finally {
+                                        setIsEditing(false);
+                                    }
+                                }}
+                                className="flex-1 px-4 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isEditing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit className="w-4 h-4" />}
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Modal */}
+            {isDeleteModalOpen && selectedDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-3 text-red-600">
+                                <Trash2 className="w-5 h-5" />
+                                <h3 className="font-black text-lg tracking-tight">Delete Transaction</h3>
+                            </div>
+                            <button
+                                onClick={() => setIsDeleteModalOpen(false)}
+                                className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+                            >
+                                <CloseIcon className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                                Are you sure you want to completely delete this transaction? This action is irreversible and should only be used to remove completely faulty entries.
+                            </p>
+                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm">
+                                <p><strong>Source:</strong> {selectedDelete.source}</p>
+                                <p><strong>Amount:</strong> {formatCurrency(selectedDelete.amount)}</p>
+                                <p><strong>Method:</strong> {selectedDelete.method}</p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex gap-3">
+                            <button
+                                onClick={() => setIsDeleteModalOpen(false)}
+                                className="flex-1 px-4 py-3 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                disabled={isDeleting}
+                                onClick={async () => {
+                                    setIsDeleting(true);
+                                    try {
+                                        const res = await deleteTransaction(selectedDelete.id, selectedDelete.source);
+                                        if (res.success) {
+                                            toast.success('Transaction deleted globally');
+                                            setIsDeleteModalOpen(false);
+                                            loadData();
+                                        } else {
+                                            toast.error(res.message);
+                                        }
+                                    } catch (err: any) {
+                                        toast.error(err.message || 'Failed to delete transaction');
+                                    } finally {
+                                        setIsDeleting(false);
+                                    }
+                                }}
+                                className="flex-1 px-4 py-3 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                Confirm Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Excel Export Modal */}
+            {isExportModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-emerald-100 rounded-xl">
+                                    <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900">Export to Excel</h3>
+                                    <p className="text-xs text-slate-500">Select range for financial data</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsExportModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                <SearchX className="w-5 h-5 text-slate-400 group-hover:rotate-90 transition-transform" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Start Date</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="date"
+                                            value={exportStartDate}
+                                            onChange={(e) => setExportStartDate(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">End Date</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="date"
+                                            value={exportEndDate}
+                                            onChange={(e) => setExportEndDate(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3">
+                                <AlertCircle className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                                <div className="space-y-1">
+                                    <p className="text-xs font-semibold text-emerald-900">Structured Data</p>
+                                    <p className="text-[11px] text-emerald-700 leading-relaxed">
+                                        This will include Room Charges, F&B breakdown, and Tax Collected for all settled transactions in the selected period.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3">
+                            <button
+                                onClick={() => setIsExportModalOpen(false)}
+                                className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-100 transition-all font-bold text-sm shadow-sm active:scale-95"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleExportExcel}
+                                disabled={isExporting}
+                                className="flex-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all font-bold text-sm shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 group active:scale-95 disabled:opacity-50"
+                            >
+                                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                                Generate Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
-
-// Simple Loader icon as it might be missing
-const Loader2 = ({ className }: { className: string }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-);
-
-const CloseIcon = ({ className }: { className: string }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-);

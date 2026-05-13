@@ -47,6 +47,7 @@ export default function PremiumQRMenu({ type, id }: Props) {
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [locationName, setLocationName] = useState('');
     const [guestName, setGuestName] = useState<string | null>(null);
+    const [guestMobile, setGuestMobile] = useState<string | null>(null);
     const [bookingId, setBookingId] = useState<string | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
 
@@ -164,6 +165,7 @@ export default function PremiumQRMenu({ type, id }: Props) {
 
                 if (bookingDetails && bookingDetails.length > 0) {
                     setGuestName(bookingDetails[0].guest_name);
+                    setGuestMobile(bookingDetails[0].guest_phone);
                     setBookingId(bookingDetails[0].booking_id);
                 }
             }
@@ -232,6 +234,7 @@ export default function PremiumQRMenu({ type, id }: Props) {
                     table_id: type === 'table' ? id : null,
                     booking_id: finalBookingId,
                     customer_name: guestName || (type === 'room' ? 'Room Guest' : 'Table Guest'),
+                    customer_mobile: guestMobile || null,
                     order_source: type === 'room' ? 'qr_room' : 'qr_table',
                     status: 'pending',
                     subtotal,

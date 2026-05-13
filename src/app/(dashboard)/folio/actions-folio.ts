@@ -125,7 +125,7 @@ export async function extendStay(bookingId: string, additionalNights: number) {
     }
 }
 
-export async function performCheckout(bookingId: string, roomId: string, billToCompany: boolean = false, devOrigin?: string) {
+export async function performCheckout(bookingId: string, roomId: string, billToCompany: boolean = false, devOrigin?: string, billViewType: 'room' | 'full' = 'full') {
     try {
         const supabase = await createClient();
 
@@ -144,7 +144,7 @@ export async function performCheckout(bookingId: string, roomId: string, billToC
         // 1b. Trigger Emails & WhatsApp (Awaited to ensure completion)
         try {
             console.log('[Checkout] sending notifications for:', bookingId, 'with origin:', devOrigin);
-            await sendCheckoutMail(bookingId, devOrigin);
+            await sendCheckoutMail(bookingId, devOrigin, billViewType);
         } catch (e) {
             console.error('[Checkout Notifications Failed]:', e);
         }

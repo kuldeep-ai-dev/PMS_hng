@@ -111,7 +111,7 @@ export default async function PrintPOSBillPage({
             <POSPrintActions />
 
             {/* 80mm Thermal Format */}
-            <div className="w-[80mm] bg-white p-4 print:p-2 flex flex-col relative text-[10px] text-black leading-tight mx-auto gap-3 print:overflow-visible overflow-hidden shadow-2xl print:shadow-none">
+            <div className="w-[80mm] bg-white p-4 print:p-0 flex flex-col relative text-[10px] text-black leading-tight mx-auto print:mx-0 gap-3 print:overflow-visible overflow-hidden shadow-2xl print:shadow-none">
 
                 <style dangerouslySetInnerHTML={{
                     __html: `

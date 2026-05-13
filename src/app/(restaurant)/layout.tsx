@@ -44,10 +44,11 @@ export default async function RestaurantIsolatedLayout({
     const displayName = profile?.name || user?.email?.split('@')[0] || 'User';
     const hotelName = settings?.hotel_name || '';
 
-    // Automated Background Sync
+    /* Automated Background Sync - Disabled to prevent infinite loop
     if (role === 'admin' || role === 'owner' || role === 'master') {
         syncSystemDateAction().catch(console.error);
     }
+    */
 
     // ALL ROLES in this group get the Isolated Restaurant Layout
     return (

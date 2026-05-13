@@ -6,7 +6,7 @@ import {
     User, Calendar, IndianRupee, Clock, Plus, LogOut, Loader2,
     UtensilsCrossed, AlertCircle, CheckCircle2, Printer, FileSearch,
     AlertTriangle, ArrowRightLeft, X, Building2, CreditCard, Wallet,
-    Banknote, Info, ChevronRight, Hash
+    Banknote, Info, ChevronRight, Hash, FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatISTDate, formatISTTime } from '@/utils/date';
@@ -21,6 +21,7 @@ import { getSettings } from '../../settings/actions';
 import { generateInvoiceNo } from '@/utils/billing';
 import IdDropzone from '@/components/pms/IdDropzone';
 import { toast } from 'sonner';
+import { parseRoomCategory } from '@/utils/rooms';
 
 export default function FolioPage() {
     const params = useParams();
@@ -45,6 +46,7 @@ export default function FolioPage() {
     const [logMethod, setLogMethod] = useState<'Cash' | 'Card' | 'Online' | 'Company'>('Cash');
     const [logging, setLogging] = useState(false);
     const [billToCompany, setBillToCompany] = useState(false);
+    const [billViewType, setBillViewType] = useState<'full' | 'room'>('full');
 
     // Room Transfer state
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -184,7 +186,10 @@ export default function FolioPage() {
             // 2. PROVISIONAL CHARGES (Future/Pending)
             const remainingNights = Math.max(0, totalNights - nightsAudited);
             const provRoomCharge = remainingNights * (Number(room?.base_rate) || 0);
-            const extraPaxCount = Math.max(0, (booking.pax_count || 0) - (settings.free_pax_limit || 2));
+
+            const dynamicFreePaxLimit = room?.type ? parseRoomCategory(room.type).pax : settings.free_pax_limit;
+            const extraPaxCount = Math.max(0, (booking.pax_count || 0) - dynamicFreePaxLimit);
+
             const provExtraPaxCharge = remainingNights * extraPaxCount * (settings.extra_pax_rate || 0);
             const provExtraBedCharge = remainingNights * (Number(booking.extra_beds) || 0) * (settings.extra_bed_rate || 0);
             const mealPlanRate = settings.meal_plan_rates[booking.food_plan] || 0;
@@ -372,10 +377,10 @@ export default function FolioPage() {
         }
         setCheckingOut(true);
         try {
-            const res = await performCheckout(bookingId, booking.rooms.id, billToCompany, window.location.origin) as any;
+            const res = await performCheckout(bookingId, booking.rooms.id, billToCompany, window.location.origin, billViewType) as any;
             if (!res.success) throw new Error(res.error);
             toast.success('Checkout successful');
-            window.open(`/print-bill/${bookingId}?type=final`, '_blank');
+            window.open(`/print-bill/${bookingId}?type=final${billViewType === 'room' ? '&view=room' : ''}`, '_blank');
             router.push('/front-desk');
 
         } catch (err: any) {
@@ -549,12 +554,33 @@ export default function FolioPage() {
                         >
                             <ArrowRightLeft className="w-4 h-4" /> Transfer Bill
                         </button>
-                        <button
-                            onClick={() => window.open(`/print-bill/${bookingId}?type=provisional`, '_blank')}
-                            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:border-slate-300 transition-all flex items-center gap-2 shadow-sm"
-                        >
-                            <Printer className="w-4 h-4" /> Draft Bill
-                        </button>
+                        <div className="relative group">
+                            <button
+                                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:border-slate-300 transition-all flex items-center gap-2 shadow-sm"
+                            >
+                                <Printer className="w-4 h-4" /> Print Options
+                            </button>
+                            <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                                <button
+                                    onClick={() => window.open(`/print-bill/${bookingId}?type=provisional`, '_blank')}
+                                    className="w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 flex items-center gap-2 border-b border-slate-100"
+                                >
+                                    <Building2 className="w-3.5 h-3.5" /> Unified Bill (Draft)
+                                </button>
+                                <button
+                                    onClick={() => window.open(`/print-bill/${bookingId}?type=provisional&view=room`, '_blank')}
+                                    className="w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 flex items-center gap-2 border-b border-slate-100"
+                                >
+                                    <Hash className="w-3.5 h-3.5" /> Room Only Bill
+                                </button>
+                                <button
+                                    onClick={() => window.open(`/print-bill/${bookingId}?type=provisional&view=food`, '_blank')}
+                                    className="w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                                >
+                                    <UtensilsCrossed className="w-3.5 h-3.5" /> Food & Beverage Bill
+                                </button>
+                            </div>
+                        </div>
                         <button
                             onClick={() => router.push('/front-desk')}
                             className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800 transition-all shadow-md"
@@ -656,7 +682,7 @@ export default function FolioPage() {
 
                                             {billingData.provisionalBreakdown.extraPax > 0 && (
                                                 <tr className="text-[11px] bg-blue-50/10 border-l-2 border-blue-200">
-                                                    <td className="px-10 py-2 text-slate-500 font-bold uppercase italic">└ Extra Pax ({Math.max(0, (booking.pax_count || 0) - (settings.free_pax_limit || 2))}) Estimate</td>
+                                                    <td className="px-10 py-2 text-slate-500 font-bold uppercase italic">└ Extra Pax ({Math.max(0, (booking.pax_count || 0) - (booking.rooms?.type ? parseRoomCategory(booking.rooms.type).pax : settings.free_pax_limit))}) Estimate</td>
                                                     <td className="px-6 py-2 text-right">—</td>
                                                     <td className="px-6 py-2 text-right text-slate-400 italic">{sym}{settings.extra_pax_rate.toLocaleString()}</td>
                                                     <td className="px-6 py-2 text-right font-black text-slate-600">{sym} {billingData.provisionalBreakdown.extraPax.toLocaleString()}</td>
@@ -1063,6 +1089,39 @@ export default function FolioPage() {
                                             <span className="text-[11px] font-bold text-slate-300 group-hover:text-white transition-colors uppercase italic tracking-tight">Sync to company portal</span>
                                         </label>
                                     )}
+
+                                    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mb-4">
+                                        <h4 className="text-[10px] font-black text-slate-400 mb-3 flex items-center uppercase tracking-widest">
+                                            <FileText className="w-3 h-3 mr-2 text-blue-400" />
+                                            Bill Format for WhatsApp/Mail
+                                        </h4>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setBillViewType('full')}
+                                                className={cn(
+                                                    "flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border",
+                                                    billViewType === 'full'
+                                                        ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40"
+                                                        : "bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-500"
+                                                )}
+                                            >
+                                                Regular
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setBillViewType('room')}
+                                                className={cn(
+                                                    "flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border",
+                                                    billViewType === 'room'
+                                                        ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40"
+                                                        : "bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-500"
+                                                )}
+                                            >
+                                                Room Only
+                                            </button>
+                                        </div>
+                                    </div>
 
                                     <div className="flex gap-2 pt-2">
                                         <button onClick={() => setShowCheckoutConfirm(false)} className="px-4 py-3 bg-white/10 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-white/20 transition-all flex-1">Abort</button>

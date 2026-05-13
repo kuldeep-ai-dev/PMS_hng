@@ -12,6 +12,7 @@ import { getAvailableCleaningStaff, assignCleaningStaff } from '@/app/actions/ho
 import { unblockRoom, getRoomGridData } from '@/app/actions/rooms';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
+import { parseRoomCategory } from '@/utils/rooms';
 
 type RoomStatus = 'Available' | 'Occupied' | 'Dirty' | 'Maintenance' | 'Blocked';
 
@@ -67,6 +68,7 @@ const isClickable = (room: Room) => room.status === 'Available' || (room.status 
 export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
     const router = useRouter();
     const [filter, setFilter] = useState<RoomStatus | 'All'>('All');
+    const [categoryFilter, setCategoryFilter] = useState<string>('All');
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [showBlockModal, setShowBlockModal] = useState(false);
     const [blocking, setBlocking] = useState(false);
@@ -117,7 +119,20 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
         };
     }, []);
 
-    const filteredRooms = filter === 'All' ? rooms : rooms.filter(r => r.status === filter);
+    const statusFilteredRooms = filter === 'All' ? rooms : rooms.filter(r => r.status === filter);
+
+    const uniqueCategories = Array.from(new Set(rooms.map(r => parseRoomCategory(r.type).cleanName)));
+    const filteredRooms = categoryFilter === 'All'
+        ? statusFilteredRooms
+        : statusFilteredRooms.filter(r => parseRoomCategory(r.type).cleanName === categoryFilter);
+
+    // Group rooms by parsed category
+    const groupedRooms: Record<string, Room[]> = {};
+    for (const room of filteredRooms) {
+        const cat = parseRoomCategory(room.type).cleanName;
+        if (!groupedRooms[cat]) groupedRooms[cat] = [];
+        groupedRooms[cat].push(room);
+    }
 
     const handleDirtyClick = async (room: Room) => {
         setSelectedRoom(room);
@@ -141,7 +156,20 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                     <p className="text-sm text-slate-500 mt-1">Real-time room status and allocation</p>
                 </div>
 
-                <div className="flex gap-2 flex-wrap justify-end">
+                <div className="flex gap-2 flex-wrap items-center">
+                    <select
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        className="px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-slate-500 shadow-sm"
+                    >
+                        <option value="All">All Categories</option>
+                        {uniqueCategories.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </select>
+
+                    <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
                     {['All', 'Available', 'Occupied', 'Dirty', 'Maintenance', 'Blocked'].map((t) => (
                         <button
                             key={t}
@@ -157,135 +185,147 @@ export function RoomGrid({ initialRooms }: { initialRooms: Room[] }) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {filteredRooms.map((room) => (
-                    isClickable(room) ? (
-                        <Link href={getRoomHref(room)} key={room.id}>
-                            <BentoCard interactive className={cn("p-5 flex flex-col aspect-square justify-between transition-colors", getStatusColor(room.status))}>
-                                <div className="flex justify-between items-start w-full relative">
-                                    <span className="text-3xl font-black opacity-90 tracking-tighter drop-shadow-sm">{room.number}</span>
-                                    <div className="flex flex-col items-end gap-1 relative z-10">
-                                        <div className="p-2.5 bg-white/80 backdrop-blur-md rounded-xl border border-white/60 shadow-sm transition-transform hover:scale-110">
-                                            {getStatusIcon(room.status)}
-                                        </div>
-                                        {room.idPending && (
-                                            <span className="px-2 py-0.5 mt-1 bg-amber-400 text-amber-950 text-[10px] font-black rounded uppercase tracking-wider shadow-sm">ID</span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="mt-auto flex flex-col gap-1.5 px-0.5">
-                                    <div className="flex flex-wrap items-center gap-1">
-                                        <div className={cn(
-                                            "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border transition-all",
-                                            isOverstay(room.checkOutDate || '') ? "bg-rose-600 text-white border-rose-700 animate-pulse shadow-rose-200" : "bg-white text-blue-950 border-blue-200/50"
-                                        )}>
-                                            <LogOut className="w-2.5 h-2.5" />
-                                            <span>{isOverstay(room.checkOutDate || '') ? "Overstay" : formatISTDate(room.checkOutDate)}</span>
-                                        </div>
-
-                                        {room.status === 'Occupied' && (
-                                            <>
-                                                {room.bookingSource && (
-                                                    <div className={cn(
-                                                        "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
-                                                        room.bookingSource === 'OTA' ? "bg-indigo-50 text-indigo-700 border-indigo-100 shadow-indigo-50" : "bg-slate-50 text-slate-600 border-slate-200"
-                                                    )}>
-                                                        {room.bookingSource}
-                                                    </div>
-                                                )}
-
-                                                {room.foodPlan && (
-                                                    <div className={cn(
-                                                        "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
-                                                        room.foodPlan === 'EP' ? "bg-slate-50 text-slate-500 border-slate-200" : "bg-orange-50 text-orange-700 border-orange-100 shadow-orange-50"
-                                                    )}>
-                                                        {room.foodPlan}
-                                                    </div>
-                                                )}
-
-                                                <div className="flex items-center gap-1 bg-white text-blue-950 px-1.5 py-0.5 rounded-md text-[9px] font-black shadow-sm border border-blue-100">
-                                                    <User className="w-2.5 h-2.5" /> {room.paxCount || 1}
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-
-                                    <div className="flex flex-col gap-0.5">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-[#1a365d]/50 leading-none">{room.status}</p>
-                                        <p className="text-[15px] font-bold truncate tracking-tight text-[#1a365d] drop-shadow-sm">{room.guestName || room.type}</p>
-                                    </div>
-                                </div>
-                            </BentoCard>
-                        </Link>
-                    ) : (
-                        <div
-                            key={room.id}
-                            className={cn("h-full cursor-default", { "cursor-pointer": isClickable(room) })}
-                        >
-                            <BentoCard
-                                interactive={room.status === 'Dirty' || room.status === 'Available' || room.status === 'Blocked'}
-                                onClick={() => {
-                                    if (room.status === 'Dirty') {
-                                        handleDirtyClick(room);
-                                    } else if (room.status === 'Available' || room.status === 'Blocked') {
-                                        setSelectedRoom(room);
-                                        setShowBlockModal(true);
-                                    }
-                                }}
-                                className={cn(
-                                    "p-5 flex flex-col aspect-square justify-between transition-colors group relative overflow-hidden",
-                                    getStatusColor(room.status),
-                                    (room.status !== 'Dirty' && room.status !== 'Available' && room.status !== 'Blocked') && "opacity-50"
-                                )}
-                            >
-                                <div className="flex justify-between items-start w-full transition-transform group-hover:-translate-y-1">
-                                    <span className={cn("text-3xl font-black opacity-90 tracking-tighter drop-shadow-sm", room.status === 'Blocked' && 'text-slate-300')}>{room.number}</span>
-                                    <div className={cn("p-2.5 backdrop-blur-md rounded-xl border shadow-sm", room.status === 'Blocked' ? 'bg-slate-700/50 border-slate-600' : 'bg-white/80 border-white/60')}>
-                                        {getStatusIcon(room.status)}
-                                    </div>
-                                </div>
-
-                                {room.status === 'Dirty' && (
-                                    <div className="absolute inset-0 bg-[#F0924A]/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
-                                        <div className="bg-white/90 px-3 py-1.5 rounded-xl shadow-lg border border-[#F0924A]/10 flex items-center gap-2 scale-90 group-hover:scale-100 transition-transform">
-                                            <UserPlus className="w-3.5 h-3.5 text-[#F0924A]" />
-                                            <span className="text-[10px] font-black text-[#F0924A] uppercase tracking-wider">Assign Staff</span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="mt-auto flex flex-col gap-1 px-0.5 transition-transform group-hover:translate-y-1">
-                                    <div className="flex flex-col">
-                                        <p className={cn(
-                                            "text-[9px] font-black uppercase tracking-widest leading-none mb-1",
-                                            {
-                                                'text-[#F0924A]': room.status === 'Dirty',
-                                                'text-[#E33B32]': room.status === 'Maintenance',
-                                                'text-slate-400': room.status === 'Blocked' || room.status === 'Available'
-                                            }
-                                        )}>
-                                            {room.status === 'Dirty' ? 'Needs Cleaning' :
-                                                room.status === 'Maintenance' ? 'Under Maintenance' :
-                                                    room.status === 'Blocked' ? 'Blocked Offline' : 'Ready'}
-                                        </p>
-                                        <p className={cn(
-                                            "text-[15px] font-bold truncate tracking-tight drop-shadow-sm leading-tight",
-                                            {
-                                                'text-[#1a365d]': room.status !== 'Blocked',
-                                                'text-slate-400': room.status === 'Blocked'
-                                            }
-                                        )}>
-                                            {room.status === 'Blocked' ? (room.blockedReason || 'Isolated by Admin') : (room.guestName || room.type)}
-                                        </p>
-                                        <p className="text-[11px] font-semibold text-slate-500/60 leading-tight mt-0.5">
-                                            {room.assignedStaffName ? room.assignedStaffName : 'No Staff'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </BentoCard>
+            <div className="flex flex-col gap-8">
+                {Object.entries(groupedRooms).map(([category, catRooms]) => (
+                    <div key={category} className="flex flex-col gap-4">
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-lg font-black text-slate-800 tracking-tight">{category}</h2>
+                            <div className="h-px bg-slate-200 flex-1"></div>
+                            <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">{catRooms.length} Rooms</span>
                         </div>
-                    )
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {catRooms.map((room) => (
+                                isClickable(room) ? (
+                                    <Link href={getRoomHref(room)} key={room.id}>
+                                        <BentoCard interactive className={cn("p-5 flex flex-col aspect-square justify-between transition-colors", getStatusColor(room.status))}>
+                                            <div className="flex justify-between items-start w-full relative">
+                                                <span className="text-3xl font-black opacity-90 tracking-tighter drop-shadow-sm">{room.number}</span>
+                                                <div className="flex flex-col items-end gap-1 relative z-10">
+                                                    <div className="p-2.5 bg-white/80 backdrop-blur-md rounded-xl border border-white/60 shadow-sm transition-transform hover:scale-110">
+                                                        {getStatusIcon(room.status)}
+                                                    </div>
+                                                    {room.idPending && (
+                                                        <span className="px-2 py-0.5 mt-1 bg-amber-400 text-amber-950 text-[10px] font-black rounded uppercase tracking-wider shadow-sm">ID</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-auto flex flex-col gap-1.5 px-0.5">
+                                                <div className="flex flex-wrap items-center gap-1">
+                                                    <div className={cn(
+                                                        "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border transition-all",
+                                                        isOverstay(room.checkOutDate || '') ? "bg-rose-600 text-white border-rose-700 animate-pulse shadow-rose-200" : "bg-white text-blue-950 border-blue-200/50"
+                                                    )}>
+                                                        <LogOut className="w-2.5 h-2.5" />
+                                                        <span>{isOverstay(room.checkOutDate || '') ? "Overstay" : formatISTDate(room.checkOutDate)}</span>
+                                                    </div>
+
+                                                    {room.status === 'Occupied' && (
+                                                        <>
+                                                            {room.bookingSource && (
+                                                                <div className={cn(
+                                                                    "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
+                                                                    room.bookingSource === 'OTA' ? "bg-indigo-50 text-indigo-700 border-indigo-100 shadow-indigo-50" : "bg-slate-50 text-slate-600 border-slate-200"
+                                                                )}>
+                                                                    {room.bookingSource}
+                                                                </div>
+                                                            )}
+
+                                                            {room.foodPlan && (
+                                                                <div className={cn(
+                                                                    "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight shadow-sm border",
+                                                                    room.foodPlan === 'EP' ? "bg-slate-50 text-slate-500 border-slate-200" : "bg-orange-50 text-orange-700 border-orange-100 shadow-orange-50"
+                                                                )}>
+                                                                    {room.foodPlan}
+                                                                </div>
+                                                            )}
+
+                                                            <div className="flex items-center gap-1 bg-white text-blue-950 px-1.5 py-0.5 rounded-md text-[9px] font-black shadow-sm border border-blue-100">
+                                                                <User className="w-2.5 h-2.5" /> {room.paxCount || 1}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-col gap-0.5">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-[#1a365d]/50 leading-none">{room.status}</p>
+                                                    <p className="text-[15px] font-bold truncate tracking-tight text-[#1a365d] drop-shadow-sm">{room.guestName || parseRoomCategory(room.type).cleanName}</p>
+                                                </div>
+                                            </div>
+                                        </BentoCard>
+                                    </Link>
+                                ) : (
+                                    <div
+                                        key={room.id}
+                                        className={cn("h-full cursor-default", { "cursor-pointer": isClickable(room) })}
+                                    >
+                                        <BentoCard
+                                            interactive={room.status === 'Dirty' || room.status === 'Available' || room.status === 'Blocked'}
+                                            onClick={() => {
+                                                if (room.status === 'Dirty') {
+                                                    handleDirtyClick(room);
+                                                } else if (room.status === 'Available' || room.status === 'Blocked') {
+                                                    setSelectedRoom(room);
+                                                    setShowBlockModal(true);
+                                                }
+                                            }}
+                                            className={cn(
+                                                "p-5 flex flex-col aspect-square justify-between transition-colors group relative overflow-hidden",
+                                                getStatusColor(room.status),
+                                                (room.status !== 'Dirty' && room.status !== 'Available' && room.status !== 'Blocked') && "opacity-50"
+                                            )}
+                                        >
+                                            <div className="flex justify-between items-start w-full transition-transform group-hover:-translate-y-1">
+                                                <span className={cn("text-3xl font-black opacity-90 tracking-tighter drop-shadow-sm", room.status === 'Blocked' && 'text-slate-300')}>{room.number}</span>
+                                                <div className={cn("p-2.5 backdrop-blur-md rounded-xl border shadow-sm", room.status === 'Blocked' ? 'bg-slate-700/50 border-slate-600' : 'bg-white/80 border-white/60')}>
+                                                    {getStatusIcon(room.status)}
+                                                </div>
+                                            </div>
+
+                                            {room.status === 'Dirty' && (
+                                                <div className="absolute inset-0 bg-[#F0924A]/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
+                                                    <div className="bg-white/90 px-3 py-1.5 rounded-xl shadow-lg border border-[#F0924A]/10 flex items-center gap-2 scale-90 group-hover:scale-100 transition-transform">
+                                                        <UserPlus className="w-3.5 h-3.5 text-[#F0924A]" />
+                                                        <span className="text-[10px] font-black text-[#F0924A] uppercase tracking-wider">Assign Staff</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="mt-auto flex flex-col gap-1 px-0.5 transition-transform group-hover:translate-y-1">
+                                                <div className="flex flex-col">
+                                                    <p className={cn(
+                                                        "text-[9px] font-black uppercase tracking-widest leading-none mb-1",
+                                                        {
+                                                            'text-[#F0924A]': room.status === 'Dirty',
+                                                            'text-[#E33B32]': room.status === 'Maintenance',
+                                                            'text-slate-400': room.status === 'Blocked' || room.status === 'Available'
+                                                        }
+                                                    )}>
+                                                        {room.status === 'Dirty' ? 'Needs Cleaning' :
+                                                            room.status === 'Maintenance' ? 'Under Maintenance' :
+                                                                room.status === 'Blocked' ? 'Blocked Offline' : 'Ready'}
+                                                    </p>
+                                                    <p className={cn(
+                                                        "text-[15px] font-bold truncate tracking-tight drop-shadow-sm leading-tight",
+                                                        {
+                                                            'text-[#1a365d]': room.status !== 'Blocked',
+                                                            'text-slate-400': room.status === 'Blocked'
+                                                        }
+                                                    )}>
+                                                        {room.status === 'Blocked' ? (room.blockedReason || 'Isolated by Admin') : (room.guestName || parseRoomCategory(room.type).cleanName)}
+                                                    </p>
+                                                    <p className="text-[11px] font-semibold text-slate-500/60 leading-tight mt-0.5">
+                                                        {room.assignedStaffName ? room.assignedStaffName : 'No Staff'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </BentoCard>
+                                    </div>
+                                )
+                            ))}
+                        </div>
+                    </div>
                 ))}
             </div>
 

@@ -10,7 +10,8 @@ import { cn, calculateAge } from '@/lib/utils';
 import SignatureCanvas from 'react-signature-canvas';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { searchGuests, getAvailableRooms, submitCheckIn, getBookingById, checkRoomConflict } from './actions-client';
-import { formatISTDate, getTodayIST, getISTDate } from '@/utils/date';
+import { getISTDate, formatISTDate, getTodayIST } from '@/utils/date';
+import { parseRoomCategory } from '@/utils/rooms';
 import { sendBookingConfirmation } from '@/app/actions/mail';
 import { toast } from 'sonner';
 import { getSettings } from '../settings/actions';
@@ -246,7 +247,10 @@ function CheckInForm() {
 
     const roomCharges = roomRate * nights;
 
-    const extraPaxCount = Math.max(0, formData.pax_count - settings.free_pax_limit);
+    const selectedRoomDetails = availableRooms.find(r => r.id === formData.room_id);
+    const dynamicFreePaxLimit = selectedRoomDetails?.type ? parseRoomCategory(selectedRoomDetails.type).pax : settings.free_pax_limit;
+
+    const extraPaxCount = Math.max(0, formData.pax_count - dynamicFreePaxLimit);
     const extraPaxCharge = extraPaxCount * settings.extra_pax_rate * nights;
 
     const extraBedCharge = formData.extra_beds * settings.extra_bed_rate * nights;

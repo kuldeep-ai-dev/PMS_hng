@@ -128,80 +128,82 @@ export default function OrdersClient({ initialData }: { initialData: any }) {
         <head>
           <title>KOT - ${order.kot_no}</title>
           <style>
-            @page { size: 80mm auto; margin: 0; }
-            body { 
-              font-family: 'Inter', system-ui, -apple-system, sans-serif; 
-              width: 80mm; 
+            @page { 
+              size: 80mm auto; 
               margin: 0; 
-              padding: 5mm; 
-              background: #fff;
-              color: #000;
-              -webkit-print-color-adjust: exact;
             }
-            .header { text-align: center; margin-bottom: 5mm; }
+            html, body {
+              margin: 0;
+              padding: 0;
+              width: 80mm;
+              background: #fff;
+              -webkit-print-color-adjust: exact !important; 
+              print-color-adjust: exact !important;
+            }
+            body { 
+              font-family: 'Courier New', Courier, monospace; 
+              padding: 4mm; 
+              color: #000;
+              font-size: 14px;
+              line-height: 1.2;
+            }
+            .header { text-align: center; margin-bottom: 3mm; border-bottom: 2px solid #000; padding-bottom: 2mm; }
+            .hotel-name { font-size: 16px; font-weight: 900; text-transform: uppercase; margin-bottom: 1mm; }
             .kot-badge { 
-              background: #000; 
-              color: #fff; 
-              padding: 2mm 4mm; 
+              background: #000 !important; 
+              color: #fff !important; 
+              padding: 2mm 5mm; 
               display: inline-block; 
               font-weight: 900; 
               font-size: 24px;
-              border-radius: 4px;
-              margin-bottom: 2mm;
+              margin: 2mm 0;
             }
-            .time { font-size: 10px; font-weight: 600; text-transform: uppercase; color: #666; }
+            .time { font-size: 12px; font-weight: bold; }
             
-            .info-grid { 
-              display: grid; 
-              grid-template-cols: 1fr 1fr; 
-              gap: 2mm; 
-              margin-bottom: 4mm; 
-              padding: 3mm 0;
-              border-top: 1px dashed #000;
-              border-bottom: 1px dashed #000;
+            .info-section { 
+              margin-bottom: 3mm; 
+              font-size: 14px;
+              font-weight: 900;
+              line-height: 1.4;
             }
-            .info-item { font-size: 11px; }
-            .info-label { font-weight: 800; color: #666; text-transform: uppercase; font-size: 8px; display: block; margin-bottom: 0.5mm; }
-            .info-value { font-weight: 900; font-size: 13px; }
+            .info-row { display: flex; justify-content: space-between; }
 
-            table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
             th { 
               text-align: left; 
-              font-size: 9px; 
-              font-weight: 800; 
+              font-size: 12px; 
+              font-weight: 900; 
               text-transform: uppercase; 
-              padding-bottom: 2mm;
-              border-bottom: 1px solid #000;
+              padding: 1mm 0;
+              border-bottom: 2px solid #000;
             }
-            td { padding: 2.5mm 0; font-size: 12px; vertical-align: top; border-bottom: 0.5px solid #eee; }
-            .qty { font-weight: 900; font-size: 14px; text-align: right; width: 15%; padding-right: 2mm; }
-            .item-name { font-weight: 800; text-transform: uppercase; }
-            .notes { font-style: italic; font-size: 10px; color: #444; margin-top: 1mm; font-weight: 500; }
+            td { padding: 2mm 0; font-size: 14px; vertical-align: top; border-bottom: 1px dashed #ccc; }
+            .qty { font-weight: 900; font-size: 18px; text-align: right; width: 20%; }
+            .item-name { font-weight: 900; text-transform: uppercase; }
+            .notes { font-style: italic; font-size: 11px; color: #000; margin-top: 0.5mm; font-weight: 900; }
 
             .footer { 
               text-align: center; 
-              padding-top: 4mm; 
-              border-top: 1px dashed #000;
+              padding-top: 3mm; 
+              border-top: 2px solid #000;
             }
-            .total-items { font-weight: 900; font-size: 12px; text-transform: uppercase; }
-            .branding { font-size: 8px; font-weight: 800; text-transform: uppercase; color: #aaa; margin-top: 4mm; letter-spacing: 1px; }
+            .total-items { font-weight: 900; font-size: 15px; text-transform: uppercase; }
+            .branding { font-size: 10px; font-weight: bold; margin-top: 3mm; opacity: 1; }
           </style>
         </head>
         <body onload="window.print(); window.close();">
           <div class="header">
-            <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 2mm;">${initialData.hotelSettings?.hotel_name || 'Hotel New Ganga'}</div>
+            <div class="hotel-name">${initialData.hotelSettings?.hotel_name || 'Hotel New Ganga'}</div>
             <div class="kot-badge">KOT #${order.kot_no}</div>
             <div class="time">${new Date(order.order_time).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}</div>
           </div>
 
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Section</span>
-              <span class="info-value">${order.order_source.replace('pos_', '').toUpperCase()}</span>
+          <div class="info-section">
+            <div class="info-row">
+              <span>Section: ${order.order_source.replace('pos_', '').toUpperCase()}</span>
             </div>
-            <div class="info-item">
-              <span class="info-label">Location</span>
-              <span class="info-value">${order.room?.number ? `ROOM ${order.room.number}` : order.table?.table_number ? `TABLE ${order.table.table_number}` : 'WALK-IN'}</span>
+            <div class="info-row">
+              <span>Location: ${order.room?.number ? `ROOM ${order.room.number}` : order.table?.table_number ? `TABLE ${order.table.table_number}` : 'WALK-IN'}</span>
             </div>
           </div>
 

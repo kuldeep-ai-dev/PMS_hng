@@ -45,10 +45,11 @@ export default async function DashboardLayout({
     const displayName = profile?.name || user?.email?.split('@')[0] || 'User';
     const hotelName = settings?.hotel_name || '';
 
-    // Automated Background Sync
+    /* Automated Background Sync - Commented out due to potential infinite refresh loop
     if (role === 'admin' || role === 'owner' || role === 'master') {
         syncSystemDateAction().catch(console.error);
     }
+    */
 
     // MASTER: Dedicated Master Dashboard Layout
     if (role === 'master') {
@@ -67,7 +68,7 @@ export default async function DashboardLayout({
                     </div>
                 </div>
                 <SessionTimeoutProvider userId={user.id} />
-                <WebsiteBookingSyncProvider role={role} />
+                {/* <WebsiteBookingSyncProvider role={role} /> */}
             </DashboardShell>
         );
     }
@@ -90,7 +91,7 @@ export default async function DashboardLayout({
                 </div>
             </div>
             <SessionTimeoutProvider userId={user.id} />
-            <WebsiteBookingSyncProvider role={role} />
+            {/* <WebsiteBookingSyncProvider role={role} /> */}
         </DashboardShell>
     );
 }

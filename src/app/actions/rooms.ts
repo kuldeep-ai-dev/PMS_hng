@@ -106,3 +106,14 @@ export async function getRoomGridData() {
 
     return formattedRooms;
 }
+
+export async function getRooms() {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('rooms')
+        .select('id, number')
+        .order('number', { ascending: true });
+
+    if (error) throw error;
+    return data;
+}

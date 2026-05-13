@@ -7,16 +7,17 @@ import { numberToWords } from '../../../utils/numberToWords';
 import { cn } from '@/lib/utils';
 import { generateInvoiceNo } from '@/utils/billing';
 import { formatISTDate, formatISTTime } from '@/utils/date';
+import { parseRoomCategory } from '@/utils/rooms';
 
 export default async function PrintBillPage({
     params,
     searchParams,
 }: {
     params: Promise<{ id: string }>;
-    searchParams: Promise<{ provisional?: string; type?: string; _token?: string; token?: string; accounts_token?: string }>;
+    searchParams: Promise<{ provisional?: string; type?: string; view?: 'unified' | 'room' | 'food'; _token?: string; token?: string; accounts_token?: string }>;
 }) {
     const { id: bookingId } = await params;
-    const { provisional, type, _token, token, accounts_token } = await searchParams;
+    const { provisional, type, view = 'unified', _token, token, accounts_token } = await searchParams;
     const isProvisional = provisional === 'true' || type === 'provisional';
 
     const pdfToken = _token || token;
@@ -123,7 +124,10 @@ export default async function PrintBillPage({
     // 2. PROVISIONAL CHARGES (Future/Pending)
     const remainingNights = Math.max(0, totalNights - nightsAudited);
     const provRoomCharge = remainingNights * (Number(booking.rooms?.base_rate) || 0);
-    const extraPaxCount = Math.max(0, (booking.pax_count || 0) - (settings.free_pax_limit || 2));
+
+    const dynamicFreePaxLimit = booking.rooms?.type ? parseRoomCategory(booking.rooms.type).pax : settings.free_pax_limit;
+    const extraPaxCount = Math.max(0, (booking.pax_count || 0) - dynamicFreePaxLimit);
+
     const provExtraPaxCharge = remainingNights * extraPaxCount * (settings.extra_pax_rate || 0);
     const provExtraBedCharge = remainingNights * (Number(booking.extra_beds) || 0) * (settings.extra_bed_rate || 0);
     const mealPlanRate = settings.meal_plan_rates[booking.food_plan] || 0;
@@ -135,20 +139,35 @@ export default async function PrintBillPage({
     const postedExtraPax = auditItems.filter(c => c.description.includes('Extra Pax Charge')).reduce((s, c) => s + Number(c.amount), 0);
     const postedExtraBeds = auditItems.filter(c => c.description.includes('Extra Bed Charge')).reduce((s, c) => s + Number(c.amount), 0);
 
-    const roomTotal = postedRoomOnly + provRoomCharge;
-    const mealTotal = postedMeals + provMealCharge;
-    const extraPaxTotal = postedExtraPax + provExtraPaxCharge;
-    const extraBedTotal = postedExtraBeds + provExtraBedCharge;
+    // Categorization Logic for Split Billing
+    const isRoomView = view === 'room' || view === 'unified';
+    const isFoodView = view === 'food' || view === 'unified';
 
-    const earlyCheckInCharge = Number(booking.early_check_in_charge || 0);
-    const restaurantTotal = (orders || []).reduce((sum, order) => sum + (order.is_refund ? 0 : Number(order.total_amount || order.total || 0)), 0);
+    const roomTotal = isRoomView ? (postedRoomOnly + provRoomCharge) : 0;
+    const mealTotal = isRoomView ? (postedMeals + provMealCharge) : 0;
+    const extraPaxTotal = isRoomView ? (postedExtraPax + provExtraPaxCharge) : 0;
+    const extraBedTotal = isRoomView ? (postedExtraBeds + provExtraBedCharge) : 0;
+    const earlyCheckInCharge = isRoomView ? Number(booking.early_check_in_charge || 0) : 0;
 
-    // Manual/Other Charges
+    // F&B Total from orders (Exclude those already billed to room folio to prevent double counting)
+    const restaurantTotalFromOrders = (orders || []).reduce((sum, order) => {
+        if (order.is_refund) return sum;
+        // If the order was charged to room, it's already in extra_charges as a manual charge
+        if (order.payment_status === 'charged_to_room' || order.payment_status === 'Folio' || order.payment_mode === 'Folio') return sum;
+        return sum + Number(order.total_amount || order.total || 0);
+    }, 0);
+
+    // Manual/Other Charges Categorization
     const manualCharges = (extraCharges || []).filter(c => !auditItems.includes(c));
-    const extraChargesTotal = manualCharges.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+    const restaurantManualChargesTotal = manualCharges.filter(c => c.description.toLowerCase().includes('restaurant') || c.description.toLowerCase().includes('food') || c.description.toLowerCase().includes('bill #')).reduce((sum, c) => sum + Number(c.amount || 0), 0);
+    const nonRestaurantManualChargesTotal = manualCharges.filter(c => !(c.description.toLowerCase().includes('restaurant') || c.description.toLowerCase().includes('food') || c.description.toLowerCase().includes('bill #'))).reduce((sum, c) => sum + Number(c.amount || 0), 0);
+
+    const finalRestaurantTotal = isFoodView ? (restaurantTotalFromOrders + restaurantManualChargesTotal) : 0;
 
     // Summing up for Taxes
-    const subtotalExclusive = roomTotal + mealTotal + extraPaxTotal + extraBedTotal + earlyCheckInCharge + extraChargesTotal + restaurantTotal;
+    const subtotalExclusive = roomTotal + mealTotal + extraPaxTotal + extraBedTotal + earlyCheckInCharge +
+        (isRoomView ? nonRestaurantManualChargesTotal : 0) +
+        finalRestaurantTotal;
 
     const cgstAmount = Math.round(subtotalExclusive * settings.cgst_rate / 100);
     const sgstAmount = Math.round(subtotalExclusive * settings.sgst_rate / 100);
@@ -157,19 +176,20 @@ export default async function PrintBillPage({
     const advancePaid = Number(booking.advance_payment) || 0;
     const additionalPayments = booking.payments?.reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
 
-    // Check if the advance payment is already logged in the payments table to avoid double counting
     const isAdvanceLogged = booking.payments?.some((p: any) =>
         Number(p.amount) === advancePaid &&
         (p.method === booking.advance_payment_mode || p.method === 'Online' || p.method === 'UPI')
     );
 
-    const totalPaid = isAdvanceLogged ? additionalPayments : (advancePaid + additionalPayments);
+    const totalPaidFull = isAdvanceLogged ? additionalPayments : (advancePaid + additionalPayments);
+    const totalPaid = view === 'unified' ? totalPaidFull : (view === 'room' ? totalPaidFull : 0); // Assign all payments to room bill if split
 
     const roundOff = Math.round(grandTotal) - grandTotal;
     const finalGrandTotal = Math.round(grandTotal);
     const balanceDue = finalGrandTotal - totalPaid;
 
-    const invoiceTitle = isProvisional ? 'Provisional Invoice' : 'Tax Invoice';
+    const viewTitle = view === 'room' ? ' (Room Bill)' : (view === 'food' ? ' (Food Bill)' : '');
+    const invoiceTitle = (isProvisional ? 'Provisional Invoice' : 'Tax Invoice') + viewTitle;
     const invoiceNumber = booking.invoice_number || generateInvoiceNo(bookingId, booking.check_in_date);
     const bookingRef = booking.id.slice(0, 8).toUpperCase();
     const invoiceDate = formatISTDate(new Date());
@@ -182,21 +202,21 @@ export default async function PrintBillPage({
         <div className="font-sans min-h-screen bg-slate-100 py-8 print:py-0 print:bg-white flex flex-col items-center">
             {/* Screen Controls */}
             <div className="w-[210mm] mb-4 flex justify-end gap-2 print:hidden relative z-50">
-                <PrintButton bookingId={bookingId} isProvisional={isProvisional} />
+                <PrintButton bookingId={bookingId} isProvisional={isProvisional} view={view} />
             </div>
+
+            {/* Custom Global CSS to ensure crisp printing borders matching the photo */}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                @media print {
+                    @page { size: A4 portrait; margin: 8mm; }
+                    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: white !important; margin: 0; padding: 0; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                }
+            `}} />
 
             {/* A4 Format */}
             <div className="w-[210mm] min-h-[297mm] print:min-h-0 print:h-auto bg-white print:shadow-none p-8 print:p-0 flex flex-col relative text-[11px] text-slate-800 leading-relaxed mx-auto gap-4 print:overflow-visible overflow-hidden">
-
-                {/* Custom Global CSS to ensure crisp printing borders matching the photo */}
-                <style dangerouslySetInnerHTML={{
-                    __html: `
-                    @media print {
-                        @page { size: A4 portrait; margin: 8mm; }
-                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: white !important; margin: 0; padding: 0; }
-                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                    }
-                `}} />
 
                 {/* Modular Header */}
                 <div className="w-full flex justify-between items-center bg-white rounded-xl p-4 border-2 border-slate-800">
@@ -231,7 +251,7 @@ export default async function PrintBillPage({
                     </div>
                     <div className="text-right">
                         <p className="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Date & Time</p>
-                        <p className="font-bold text-slate-700">{invoiceDate} <span className="text-slate-500">{timeFormatted}</span></p>
+                        <p className="font-bold text-slate-700" suppressHydrationWarning>{invoiceDate} <span className="text-slate-500">{timeFormatted}</span></p>
                     </div>
                 </div>
 
@@ -278,7 +298,7 @@ export default async function PrintBillPage({
                 {/* Main Billing Table */}
                 <div className="w-full border-2 border-slate-800 rounded-xl overflow-hidden shadow-sm print:shadow-none min-h-[100px]">
                     <div className="bg-white text-black px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border-b-2 border-slate-800">
-                        Itemized Billing
+                        Itemized Billing {view !== 'unified' ? `- ${view.toUpperCase()} ONLY` : ''}
                     </div>
                     <table className="w-full text-center table-fixed font-mono text-[9px]">
                         <thead className="bg-white text-black border-b-2 border-slate-800">
@@ -296,12 +316,12 @@ export default async function PrintBillPage({
                         </thead>
                         <tbody className="text-slate-700">
                             <tr>
-                                <td className="p-2 text-left font-medium">{invoiceDate}</td>
+                                <td className="p-2 text-left font-medium" suppressHydrationWarning>{invoiceDate}</td>
                                 <td className="p-2 text-right">{formatT(roomTotal)}</td>
                                 <td className="p-2 text-right">{formatT(mealTotal)}</td>
                                 <td className="p-2 text-right">{formatT(extraBedTotal + extraPaxTotal)}</td>
-                                <td className="p-2 text-right">{formatT(restaurantTotal)}</td>
-                                <td className="p-2 text-right">{formatT(earlyCheckInCharge + extraChargesTotal)}</td>
+                                <td className="p-2 text-right">{formatT(finalRestaurantTotal)}</td>
+                                <td className="p-2 text-right">{formatT(earlyCheckInCharge + (isRoomView ? nonRestaurantManualChargesTotal : 0))}</td>
                                 <td className="p-2 text-right">{formatT(cgstAmount + sgstAmount)}</td>
                                 <td className="p-2 text-right text-green-600 print:text-slate-800">{formatT(totalPaid)}</td>
                                 <td className="p-2 text-right font-bold text-slate-900 bg-slate-50 border-l border-slate-100">{formatT(finalGrandTotal)}</td>
@@ -458,7 +478,7 @@ export default async function PrintBillPage({
                                     </div>
                                     <div className="flex flex-col text-left">
                                         <span className="text-[11px] font-black text-green-800 leading-none mb-0.5">Signature valid</span>
-                                        <span className="text-[7px] font-medium text-green-700 leading-tight uppercase tracking-widest">Digitally signed by {settings.hotel_name || 'Hotel Admin'}<br />Date: {invoiceDate}</span>
+                                        <span className="text-[7px] font-medium text-green-700 leading-tight uppercase tracking-widest" suppressHydrationWarning>Digitally signed by {settings.hotel_name || 'Hotel Admin'}<br />Date: {invoiceDate}</span>
                                     </div>
                                 </div>
                             )}

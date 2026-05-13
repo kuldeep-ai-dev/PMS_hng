@@ -19,9 +19,10 @@
   "sgst_rate": 2.5,
   "address": "3rd & 4th Floor, Kaiser Commercial Complex, Below Bhangagarh Bridge, GS Road, Guwahati",
   "room_types": [
-    "Standard",
-    "Deluxe",
-    "Suite"
+    "STANDARD ROOM (2PAX)",
+    "PREMIUM STANDARD ROOM (2PAX)",
+    "DELUXE ROOM (2 PAX)",
+    "SUPER DELUXE ROOM ( 3 PAX )"
   ],
   "webhook_secret": "zf4qgsxrKpvLwTU_CIr3FvuitmPC3gBQQttQ8_05",
   "inbound_api_key": "I8cDzA77EQdl8poWcNNW011aVpe9n8-67jH_8l02",

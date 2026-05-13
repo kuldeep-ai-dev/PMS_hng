@@ -6,6 +6,7 @@ import { BedDouble, Sparkles, User, AlertTriangle, Plus, Pencil, Wrench, Trash2,
 import { cn } from '@/lib/utils';
 import { fetchRooms, addRoom, updateRoomRate, toggleMaintenance, deleteRoom, markRoomCleaned } from './actions-rooms';
 import { blockRoom, unblockRoom } from '@/app/actions/rooms';
+import { parseRoomCategory } from '@/utils/rooms';
 
 export default function RoomsPage() {
     const [rooms, setRooms] = useState<any[]>([]);
@@ -240,7 +241,7 @@ export default function RoomsPage() {
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 <h3 className="text-2xl font-bold text-slate-900">Room {room.number}</h3>
-                                <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">{room.type}</p>
+                                <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">{parseRoomCategory(room.type).cleanName}</p>
                             </div>
                             <div className={cn("p-3 rounded-xl", room.status === 'Available' ? 'bg-emerald-50' : room.status === 'Occupied' ? 'bg-blue-50' : room.status === 'Maintenance' ? 'bg-red-50' : 'bg-slate-50')}>
                                 {getStatusIcon(room.status)}

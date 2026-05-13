@@ -176,17 +176,22 @@ export function SharedBillingModal({
             }
 
             const pointsEarned = Math.floor(finalTotal * (loyaltySettings?.points_per_rupee || 0));
-            if (pointsEarned > 0) {
-                const { data: existingWallet } = await supabase.from('restaurant_loyalty_wallets').select('*').eq('mobile_number', customerMobile).maybeSingle();
-                if (existingWallet) {
-                    await supabase.from('restaurant_loyalty_wallets').update({
-                        points_balance: (existingWallet.points_balance || 0) + pointsEarned
-                    }).eq('mobile_number', customerMobile);
-                } else {
-                    await supabase.from('restaurant_loyalty_wallets').insert({
-                        mobile_number: customerMobile,
-                        points_balance: pointsEarned
-                    });
+            if (pointsEarned > 0 && customerMobile && customerMobile.length >= 10) {
+                // Verify if customer exists to prevent FK violation (Room guests are excluded from upsert)
+                const { data: customerRecord } = await supabase.from('restaurant_customers').select('mobile_number').eq('mobile_number', customerMobile).maybeSingle();
+
+                if (customerRecord) {
+                    const { data: existingWallet } = await supabase.from('restaurant_loyalty_wallets').select('*').eq('mobile_number', customerMobile).maybeSingle();
+                    if (existingWallet) {
+                        await supabase.from('restaurant_loyalty_wallets').update({
+                            points_balance: (existingWallet.points_balance || 0) + pointsEarned
+                        }).eq('mobile_number', customerMobile);
+                    } else {
+                        await supabase.from('restaurant_loyalty_wallets').insert({
+                            mobile_number: customerMobile,
+                            points_balance: pointsEarned
+                        });
+                    }
                 }
             }
 
@@ -357,35 +362,76 @@ export function SharedBillingModal({
                                     </div>
 
                                     {/* Payment Mode */}
-                                    <div>
-                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 px-1">Payment Mode</h4>
-                                        <div className="grid grid-cols-1 gap-2">
-                                            {(isBillToFolio ? (['Folio'] as const) : (['Cash', 'Card', 'Online'] as const)).map(mode => (
+                                    <div className="space-y-4">
+                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">Settlement Option</h4>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {selectedRoomId && (
                                                 <button
-                                                    key={mode}
-                                                    onClick={() => setPaymentMode(mode)}
+                                                    onClick={() => setPaymentMode('Folio')}
                                                     className={cn(
-                                                        "flex items-center justify-between p-4 rounded-2xl border-2 transition-all group",
-                                                        paymentMode === mode ? "bg-teal-50 border-teal-500 text-teal-900" : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"
+                                                        "flex items-center justify-between p-5 rounded-3xl border-2 transition-all group",
+                                                        paymentMode === 'Folio' ? "bg-indigo-50 border-indigo-500 text-indigo-900" : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"
                                                     )}
                                                 >
-                                                    <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-4">
                                                         <div className={cn(
-                                                            "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                                                            paymentMode === mode ? "bg-teal-500 text-white" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200"
+                                                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
+                                                            paymentMode === 'Folio' ? "bg-indigo-500 text-white" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200"
                                                         )}>
-                                                            {mode === 'Cash' && <Banknote className="w-5 h-5" />}
-                                                            {mode === 'Card' && <CreditCard className="w-5 h-5" />}
-                                                            {mode === 'Online' && <Smartphone className="w-5 h-5" />}
-                                                            {mode === 'Folio' && <Bed className="w-5 h-5" />}
+                                                            <Bed className="w-6 h-6" />
                                                         </div>
-                                                        <span className="font-black text-xs uppercase tracking-widest">{mode === 'Folio' ? 'Room Folio' : mode}</span>
+                                                        <div className="text-left">
+                                                            <span className="font-black text-sm uppercase tracking-tight block">Add to Room Folio</span>
+                                                            <span className="text-[10px] font-bold opacity-60">Charge to Guest's Main Bill</span>
+                                                        </div>
                                                     </div>
-                                                    {paymentMode === mode && <CheckCircle2 className="w-5 h-5 text-teal-600" />}
+                                                    {paymentMode === 'Folio' && <CheckCircle2 className="w-6 h-6 text-indigo-600" />}
                                                 </button>
-                                            ))}
+                                            )}
+
+                                            <button
+                                                onClick={() => {
+                                                    if (paymentMode === 'Folio') setPaymentMode('Cash');
+                                                }}
+                                                className={cn(
+                                                    "flex items-center justify-between p-5 rounded-3xl border-2 transition-all group",
+                                                    paymentMode !== 'Folio' ? "bg-teal-50 border-teal-500 text-teal-900" : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={cn(
+                                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
+                                                        paymentMode !== 'Folio' ? "bg-teal-500 text-white" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200"
+                                                    )}>
+                                                        <Banknote className="w-6 h-6" />
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <span className="font-black text-sm uppercase tracking-tight block">Direct Payment</span>
+                                                        <span className="text-[10px] font-bold opacity-60">Cash, Card, or Online</span>
+                                                    </div>
+                                                </div>
+                                                {paymentMode !== 'Folio' && <CheckCircle2 className="w-6 h-6 text-teal-600" />}
+                                            </button>
                                         </div>
+
+                                        {paymentMode !== 'Folio' && (
+                                            <div className="grid grid-cols-3 gap-2 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                {['Cash', 'Card', 'Online'].map(mode => (
+                                                    <button
+                                                        key={mode}
+                                                        onClick={() => setPaymentMode(mode as any)}
+                                                        className={cn(
+                                                            "py-3 rounded-xl border-2 text-[10px] font-black uppercase tracking-wider transition-all",
+                                                            paymentMode === mode ? "bg-teal-500 border-teal-500 text-white shadow-lg shadow-teal-100" : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
+                                                        )}
+                                                    >
+                                                        {mode}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
+
                                 </div>
 
                                 {/* Fixed Footer Action Panel */}

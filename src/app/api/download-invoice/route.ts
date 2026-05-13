@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const bookingId = searchParams.get('id');
     const isProvisional = searchParams.get('type') === 'provisional';
+    const view = searchParams.get('view') || 'unified';
 
     if (!bookingId) {
         return new NextResponse('Missing booking ID', { status: 400 });
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
     const pdfToken = process.env.INTERNAL_PDF_TOKEN || '__geny_pms_internal_pdf_2026__';
     const params = new URLSearchParams({ _token: pdfToken });
     if (isProvisional) params.set('type', 'provisional');
+    if (view !== 'unified') params.set('view', view);
 
     const host = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const targetUrl = `${host}/print-bill/${bookingId}?${params.toString()}`;

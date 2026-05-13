@@ -7,10 +7,12 @@ import { useRouter } from 'next/navigation';
 export default function PrintButton({
     bookingId,
     isProvisional = false,
+    view = 'unified',
     documentType = 'invoice'
 }: {
     bookingId?: string,
     isProvisional?: boolean,
+    view?: 'unified' | 'room' | 'food',
     documentType?: 'invoice' | 'grc'
 }) {
     const router = useRouter();
@@ -50,7 +52,7 @@ export default function PrintButton({
             <button
                 onClick={() => {
                     const endpoint = documentType === 'grc' ? '/api/download-grc' : '/api/download-invoice';
-                    window.open(`${endpoint}?id=${bookingId}&type=${isProvisional ? 'provisional' : 'final'}`, '_blank');
+                    window.open(`${endpoint}?id=${bookingId}&type=${isProvisional ? 'provisional' : 'final'}&view=${view}`, '_blank');
                 }}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-bold flex items-center gap-2 shadow-md"
             >

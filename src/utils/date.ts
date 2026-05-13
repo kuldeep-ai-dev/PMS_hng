@@ -99,6 +99,16 @@ export function getISTTodayRange() {
 }
 
 /**
+ * Returns the UTC range for a specific date in YYYY-MM-DD format (IST).
+ */
+export function getISTDayRange(date: string) {
+    if (!date) return getISTTodayRange();
+    const start = new Date(`${date}T00:00:00.000+05:30`).toISOString();
+    const end = new Date(`${date}T23:59:59.999+05:30`).toISOString();
+    return { start, end };
+}
+
+/**
  * Returns the UTC range for the last N days in IST.
  */
 export function getISTDateRange(daysBack: number) {
