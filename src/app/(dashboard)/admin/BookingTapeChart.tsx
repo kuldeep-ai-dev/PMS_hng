@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { BentoCard } from '@/components/ui/BentoCard';
-import { Loader2, CalendarRange, User } from 'lucide-react';
+import { Loader2, CalendarRange, User, X, Phone, Calendar, Bed, ExternalLink } from 'lucide-react';
 import { addDays, format, differenceInDays, startOfDay, parseISO } from 'date-fns';
 import { fetchBookingChartData, TapeChartRoom, TapeChartBooking } from './actions-chart';
+import Link from 'next/link';
 
 const DAYS_TO_SHOW = 14;
 
@@ -13,6 +14,7 @@ export function BookingTapeChart() {
     const [bookings, setBookings] = useState<TapeChartBooking[]>([]);
     const [startDate, setStartDate] = useState<Date>(startOfDay(new Date()));
     const [loading, setLoading] = useState(true);
+    const [selectedBooking, setSelectedBooking] = useState<TapeChartBooking | null>(null);
 
     useEffect(() => {
         fetchBookingChartData()
@@ -145,7 +147,8 @@ export function BookingTapeChart() {
                                                 return (
                                                     <div
                                                         key={booking.id}
-                                                        className={`h-8 mx-[2px] rounded border border-black/10 shadow-sm flex items-center px-2 z-10 overflow-hidden text-white transition-all cursor-pointer ${getStatusColor(booking.status)}`}
+                                                        onClick={() => setSelectedBooking(booking)}
+                                                        className={`h-8 mx-[2px] rounded border border-black/10 shadow-sm flex items-center px-2 z-10 overflow-hidden text-white transition-all cursor-pointer ${getStatusColor(booking.status)} active:scale-[0.98]`}
                                                         style={style}
                                                         title={`${booking.guest_name} (${booking.status})`}
                                                     >
@@ -164,6 +167,84 @@ export function BookingTapeChart() {
                     </div>
                 </div>
             </div>
+
+            {/* Booking Details Modal */}
+            {selectedBooking && (
+                <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setSelectedBooking(null)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="relative h-24 bg-gradient-to-r from-indigo-500 to-teal-500 flex items-center justify-center">
+                            <button
+                                onClick={() => setSelectedBooking(null)}
+                                className="absolute top-4 right-4 p-2 bg-black/10 hover:bg-black/20 text-white rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                            <div className="mt-12 w-20 h-20 bg-white rounded-2xl shadow-xl flex items-center justify-center border-4 border-white">
+                                <User className="w-10 h-10 text-slate-400" />
+                            </div>
+                        </div>
+
+                        <div className="px-6 pt-12 pb-8 text-center">
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight">{selectedBooking.guest_name}</h3>
+                            <div className="mt-1 flex items-center justify-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white ${getStatusColor(selectedBooking.status)}`}>
+                                    {selectedBooking.status.replace('_', ' ')}
+                                </span>
+                            </div>
+
+                            <div className="mt-8 grid grid-cols-2 gap-4 text-left">
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center gap-2 text-slate-400 mb-1">
+                                        <Phone className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Contact</span>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-700">{selectedBooking.guest_phone}</p>
+                                </div>
+
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center gap-2 text-slate-400 mb-1">
+                                        <Bed className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Room</span>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-700">Room {rooms.find(r => r.id === selectedBooking.room_id)?.number || 'N/A'}</p>
+                                </div>
+
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center gap-2 text-slate-400 mb-1">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Check In</span>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-700">{format(parseISO(selectedBooking.check_in_date), 'dd MMM yyyy')}</p>
+                                </div>
+
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center gap-2 text-slate-400 mb-1">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Check Out</span>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-700">{selectedBooking.check_out_date ? format(parseISO(selectedBooking.check_out_date), 'dd MMM yyyy') : 'N/A'}</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex gap-3">
+                                <button
+                                    onClick={() => setSelectedBooking(null)}
+                                    className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all"
+                                >
+                                    Dismiss
+                                </button>
+                                <Link
+                                    href={`/folio/${selectedBooking.id}`}
+                                    className="flex-1 py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200"
+                                >
+                                    View Folio
+                                    <ExternalLink className="w-4 h-4" />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </BentoCard>
     );
 }

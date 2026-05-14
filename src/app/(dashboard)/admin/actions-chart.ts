@@ -18,6 +18,7 @@ export interface TapeChartBooking {
     check_out_date: string;
     status: string;
     guest_name?: string;
+    guest_phone?: string;
 }
 
 export async function fetchBookingChartData() {
@@ -41,7 +42,7 @@ export async function fetchBookingChartData() {
         .from('bookings')
         .select(`
             *,
-            guests ( name )
+            guests ( name, phone )
         `)
         .lte('check_in_date', windowEnd.toISOString())
         .gte('check_out_date', today.toISOString())
@@ -57,7 +58,8 @@ export async function fetchBookingChartData() {
         check_in_date: b.check_in_date,
         check_out_date: b.check_out_date,
         status: b.status,
-        guest_name: b.guests?.name || 'Unknown'
+        guest_name: b.guests?.name || 'Unknown',
+        guest_phone: b.guests?.phone || 'N/A'
     }));
 
     return {

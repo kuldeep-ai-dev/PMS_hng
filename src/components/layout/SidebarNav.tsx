@@ -53,6 +53,7 @@ export function SidebarNav({ role, isSandboxMode, onNavigate }: SidebarNavProps)
             iconName: 'CalendarDays',
             items: [
                 { label: 'Room Grid', href: '/front-desk', iconName: 'Monitor' },
+                { label: 'Booking Timeline', href: '/booking-timeline', iconName: 'CalendarDays' },
                 { label: 'Check-In', href: '/check-in', iconName: 'UserPlus' },
                 { label: 'Advance Booking', href: '/operations/advance-booking', iconName: 'CalendarPlus' },
                 { label: 'Guests', href: '/guests', iconName: 'Users' },
@@ -123,6 +124,7 @@ export function SidebarNav({ role, isSandboxMode, onNavigate }: SidebarNavProps)
                 iconName: 'CalendarDays',
                 items: [
                     { label: 'Room Grid', href: '/front-desk', iconName: 'Monitor' },
+                    { label: 'Booking Timeline', href: '/booking-timeline', iconName: 'CalendarDays' },
                     { label: 'Check-In', href: '/check-in', iconName: 'UserPlus' },
                     { label: 'Advance Booking', href: '/operations/advance-booking', iconName: 'CalendarPlus' },
                     { label: 'Guests', href: '/guests', iconName: 'Users' },
